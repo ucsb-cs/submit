@@ -130,9 +130,12 @@ class HTMLDiff(difflib.HtmlDiff):
     TO_DESC = 'Your Output'
     TD_DIFF_HEADER = '<td class="diff_header"{0}>{1}</td>\
     <td style="white-space:nowrap{2}">{3}</td>'
-    SHOW_HIDE_INSTRUMENTATION = """
-<p><a href="javascript:void(0)" onclick="showAll('difflib_chg_{0}_top');">Show All</a>
-    <a href="javascript:void(0)" onclick="hideAll('difflib_chg_{0}_top');">Hide All</a></p>"""
+    SHOW_HIDE_INSTRUMENTATION = "<p>" + \
+        """\t<a href="javascript:void(0)" onclick="showAll(""" + \
+        """'difflib_chg_{0}_top');">Show All</a>\n""" + \
+        """\t<a href="javascript:void(0)" onclick="hideAll(""" + \
+        """'difflib_chg_{0}_top');">Hide All</a>\n""" + \
+        "</p>"
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
     TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative total score: {0} / {1}</li>\
 <li>Tentative percentage score: {2:.2f}</li></ul>\n'
@@ -146,7 +149,9 @@ class HTMLDiff(difflib.HtmlDiff):
     EMPTY_FILE = '<td></td><td>&nbsp;Empty File&nbsp;</td>'
     MAX_SAME_LINES_BEFORE_SHOW_HIDE = 5  # must be >= 4
 
-    def __init__(self, diffs=[], calc_score=ScoreMaker()):
+    def __init__(self, diffs=[], calc_score=ScoreMaker(),
+                 num_reveal_limit=MAX_NUM_REVEALS):
+        """Set num_reveal_limit to None to not reveal"""
         super(HTMLDiff, self).__init__(wrapcolumn=50)
         self._legend = _legend
         self._table_template = _table_template
@@ -154,6 +159,7 @@ class HTMLDiff(difflib.HtmlDiff):
         self._last_collapsed = False
         self._diff_html = {}  # maps a diff to html
         self._calc_score = calc_score
+        self._num_reveal_limit = num_reveal_limit
         for d in diffs:
             self.add_diff(d)
 
@@ -344,8 +350,9 @@ class HTMLDiff(difflib.HtmlDiff):
             table='<hr>\n'.join(tables))
 
     def _line_wrapper(self, diffs):
-        return super(HTMLDiff, self)._line_wrapper(
-            limit_revealed_lines_to(diffs, MAX_NUM_REVEALS))
+        if self._num_reveal_limit:
+            diffs = limit_revealed_lines_to(diffs, self._num_reveal_limit)
+        return super(HTMLDiff, self)._line_wrapper(diffs)
 
     def _make_prefix(self):
         sameprefix = "same{0}_".format(HTMLDiff._default_prefix)
