@@ -259,7 +259,8 @@ class HTMLDiff(difflib.HtmlDiff):
         self._last_collapsed = False
         table = self.make_table(diff)
         if self._last_collapsed:
-            show_hide = self.SHOW_HIDE_INSTRUMENTATION
+            show_hide = self.SHOW_HIDE_INSTRUMENTATION.format(
+                self._prefix[1])
             table = '{0}{1}{0}'.format(show_hide, table)
         return table
 
