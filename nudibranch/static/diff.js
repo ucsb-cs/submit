@@ -17,7 +17,9 @@ function realTD( a ) {
     if ( p.id !== undefined && p.id.match( sameIDRegex ) ) {
 	return p;
     } else {
-	for each ( var child in p.parentNode.childNodes ) {
+	var childNodes = p.parentNode.childNodes;
+	for (var childID = 0; childID < childNodes.length; childID++) {
+	    var child = childNodes[childID];
 	    if ( child.id !== undefined && child.id.match( sameIDRegex ) ) {
 		return child;
 	    }
@@ -172,7 +174,9 @@ function pageLoaded() {
 }
 
 function toggleShowHide( initialStatus, source ) {
-    for each ( var a in source.getElementsByTagName( 'a' ) ) {
+    var elems = source.getElementsByTagName( 'a' );
+    for (var aID = 0; aID < elems.length; aID++) {
+	var a = elems[aID];
 	if ( a.innerHTML == initialStatus ) {
 	    showHideRows( a );
 	}

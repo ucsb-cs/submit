@@ -747,15 +747,19 @@ def submission_requeue(request):
 def submission_view(request, submission):
     prev_next_html = None
     submission_admin = submission.project.can_edit(request.user)
+    calc_score = ScoreWithSetTotal(
+        submission.project.total_available_points())
+    diff_renderer = None
     if submission_admin:
         try:
             prev_next_html = PrevNextFull(request, submission).to_html()
+            diff_renderer = HTMLDiff(calc_score=calc_score,
+                                     num_reveal_limit=None)
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
+    else:
+        diff_renderer = HTMLDiff(calc_score=calc_score)
 
-    diff_renderer = HTMLDiff(
-        calc_score=ScoreWithSetTotal(
-            submission.project.total_available_points()))
     for test_case_result in submission.test_case_results:
         full_diff = to_full_diff(request, test_case_result)
         if not full_diff:
