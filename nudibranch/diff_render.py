@@ -131,8 +131,8 @@ class HTMLDiff(difflib.HtmlDiff):
     TD_DIFF_HEADER = '<td class="diff_header"{0}>{1}</td>\
     <td style="white-space:nowrap{2}">{3}</td>'
     SHOW_HIDE_INSTRUMENTATION = """
-<p><a href="#" onclick="showAll('difflib_chg_{0}_top');">Show All</a>
-    <a href="#" onclick="hideAll('difflib_chg_{0}_top');">Hide All</a></p>"""
+<p><a href="javascript:void(0)" onclick="showAll('difflib_chg_{0}_top');">Show All</a>
+    <a href="javascript:void(0)" onclick="hideAll('difflib_chg_{0}_top');">Hide All</a></p>"""
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
     TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative total score: {0} / {1}</li>\
 <li>Tentative percentage score: {2:.2f}</li></ul>\n'
