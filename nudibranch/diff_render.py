@@ -49,7 +49,7 @@ def limit_revealed_lines_to(diffs, limit):
     for fromdata, todata, flag in diffs:
         if flag and ('\0-' in fromdata[1] or '\0^' in fromdata[1]):
             num_reveals += 1
-        if num_reveals > MAX_NUM_REVEALS:
+        if num_reveals > limit:
             trun = ('...', '<<OUTPUT TRUNCATED>>')
             retval.append((trun, trun, False))
             break
