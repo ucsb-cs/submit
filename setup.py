@@ -2,7 +2,7 @@ import os
 from setuptools import setup, find_packages
 
 README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                           'README.txt')).read()
+                           'README.md')).read()
 
 requires = [
     'pyramid',
@@ -12,11 +12,11 @@ requires = [
 setup(name='Nudibranch',
       version='0.0',
       description='Nudibranch',
-      long_description=README
+      long_description=README,
       classifiers=["Programming Language :: Python",
                    "Framework :: Pylons",
                    "Topic :: Internet :: WWW/HTTP",
-                   "Topic :: Internet :: WWW/HTTP :: WSGI :: Application"],
+                   "Topic :: Internet :: WWW/HTTP :: WSGI :: Application", ],
       author='',
       author_email='',
       url='',

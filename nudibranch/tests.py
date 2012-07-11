@@ -21,3 +21,9 @@ class ViewTests(unittest.TestCase):
         request = testing.DummyRequest()
         info = home(request)
         self.assertEqual(info['page_title'], 'Home')
+
+    def test_login(self):
+        from .views import login
+        request = testing.DummyRequest()
+        info = login(request)
+        self.assertEqual(info['page_title'], 'Login')

@@ -41,3 +41,8 @@ def static_path(request, *args, **kwargs):
 
 def url_path(full_path):
     return '/' + full_path.split('/', 3)[-1]
+
+
+def route_path(request, *args, **kwargs):
+    full_path = request.route_url(*args, _app_url=request.app_url, **kwargs)
+    return url_path(full_path)
