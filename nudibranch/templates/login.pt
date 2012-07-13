@@ -1,7 +1,8 @@
+<!DOCTYPE html>
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
     <div class="header">LOGIN</div>
-  
+    <p tal:condition="failed" class="error"> Invalid Login, Try Again</p>
     <div class="bottom">
         <form name="input" action="${action_path}" method="post">
             <p>
@@ -16,8 +17,6 @@
         </form>
     
     </div>
-
-   
-
 </div>
 </div>
+

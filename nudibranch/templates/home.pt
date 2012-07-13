@@ -1,9 +1,7 @@
+<!DOCTYPE html>
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <div class="header">Hello World!</div>
+  <p>Hello ${username} !!</p>
+</div>
+</div>
 
-<body>
-	<a href="${request.application_url}/login">Login Page</a>
-</body>
-</div>
-</div>

@@ -21,9 +21,9 @@ def site_layout(function):
     This should only be used on view functions that return dictionaries.
     """
     @wraps(function)
-    def wrapped(request):
+    def wrapped(request, **kwargs):
         renderer = get_renderer('templates/layout.pt')
-        info = function(request)
+        info = function(request, **kwargs)
         # Required parameters
         info['_LAYOUT'] = renderer.implementation().macros['layout']
         info['_S'] = lambda x: static_path(request, x)
@@ -32,6 +32,11 @@ def site_layout(function):
         info.setdefault('page_title', None)
         return info
     return wrapped
+
+
+@site_layout
+def use_site_layout(request, *args, **kwargs):
+    return kwargs
 
 
 def static_path(request, *args, **kwargs):
