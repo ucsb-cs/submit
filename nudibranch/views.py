@@ -10,7 +10,7 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-@view_config(route_name='home', renderer='templates/layout.pt')
+@view_config(route_name='home', renderer='templates/home.pt')
 @site_layout
 def home(request):
     return dict(page_title='Home',
@@ -42,7 +42,7 @@ def login(request):
                            )
 
 
-@view_config(route_name='userhome', renderer='templates/home.pt')
+@view_config(route_name='userhome', renderer='templates/userhome.pt')
 @site_layout
 def userhome(request):
     return dict(

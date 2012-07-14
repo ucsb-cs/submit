@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html metal:define-macro="layout">
 <head>
   <title><p tal:condition="page_title" tal:replace="page_title + ' - '">Nudibranch</title>
@@ -9,8 +8,7 @@
   <script tal:repeat="js javascripts" src="${_S('uploader:static/' + js)}"></script>
 </head>
 <body>
-  <div metal:define-slot="content">
-    <a href="${link}">Login Page</a>
-  </div>
+     <div metal:define-slot="content">
+     </div>
 </body>
 </html>
