@@ -7,7 +7,11 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 requires = [
     'pyramid',
     'pyramid_debugtoolbar',
-    'waitress']
+    'pytz',
+    'sqla_mixins',
+    'sqlalchemy',
+    'waitress',
+    'zope.sqlalchemy']
 
 setup(name='Nudibranch',
       version='0.0',
