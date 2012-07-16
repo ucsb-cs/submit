@@ -52,7 +52,7 @@ class ViewTests(unittest.TestCase):
 
     def test_login_post_only_submission_param(self):
         from .views import login
-        post_params = {'submit':'submit'}
+        post_params = {'submit': 'submit'}
         request = self._make_request(POST=post_params)
         info = login(request)
         self.assertEqual(self.TEST_PATHS['login'], info['action_path'])
@@ -62,7 +62,7 @@ class ViewTests(unittest.TestCase):
 
     def test_login_post_no_password(self):
         from .views import login
-        post_params = {'submit':'submit', 'Username': 'foobar'}
+        post_params = {'submit': 'submit', 'Username': 'foobar'}
         request = self._make_request(POST=post_params)
         info = login(request)
         self.assertEqual(self.TEST_PATHS['login'], info['action_path'])
@@ -72,7 +72,7 @@ class ViewTests(unittest.TestCase):
 
     def test_login_post_no_username(self):
         from .views import login
-        post_params = {'submit':'submit', 'Password': 'password'}
+        post_params = {'submit': 'submit', 'Password': 'password'}
         request = self._make_request(POST=post_params)
         info = login(request)
         self.assertEqual(self.TEST_PATHS['login'], info['action_path'])
@@ -82,7 +82,7 @@ class ViewTests(unittest.TestCase):
 
     def test_login_post_successful(self):
         from .views import login
-        post_params = {'submit':'submit',
+        post_params = {'submit': 'submit',
                        'Password': 'password',
                        'Username': 'foobar'}
         request = self._make_request(POST=post_params)

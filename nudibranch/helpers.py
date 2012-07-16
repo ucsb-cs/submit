@@ -2,6 +2,7 @@ from configparser import RawConfigParser
 from datetime import datetime
 from functools import wraps
 from pyramid.events import NewRequest, subscriber
+from pyramid.httpexceptions import HTTPException
 from pyramid.renderers import get_renderer
 from pytz import timezone
 
@@ -67,8 +68,10 @@ def site_layout(function):
     """
     @wraps(function)
     def wrapped(request, **kwargs):
-        renderer = get_renderer('templates/layout.pt')
         info = function(request, **kwargs)
+        if isinstance(info, HTTPException):
+            return info  # HTTPException objects should be immediately returned
+        renderer = get_renderer('templates/layout.pt')
         # Required parameters
         info['_LAYOUT'] = renderer.implementation().macros['layout']
         info['_S'] = lambda x: static_path(request, x)
@@ -77,11 +80,6 @@ def site_layout(function):
         info.setdefault('page_title', None)
         return info
     return wrapped
-
-
-@site_layout
-def use_site_layout(request, *args, **kwargs):
-    return kwargs
 
 
 def static_path(request, *args, **kwargs):

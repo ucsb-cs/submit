@@ -1,6 +1,6 @@
 from pyramid.response import Response
 from pyramid.view import notfound_view_config, view_config
-from .helpers import site_layout, url_path, route_path, use_site_layout
+from .helpers import site_layout, url_path, route_path
 from urllib.parse import urljoin
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 
@@ -17,6 +17,7 @@ def home(request):
 
 
 @view_config(route_name='login', renderer='templates/login.pt')
+@site_layout
 def login(request):
     failed = False
     user = ''
@@ -31,11 +32,8 @@ def login(request):
             failed = False
             return HTTPFound(location=route_path(request, 'userhome',
                                                  username=user))
-    return use_site_layout(request,
-                           page_title='Login',
-                           action_path=route_path(request, 'login'),
-                           failed=failed,
-                           user=user)
+    return {'page_title': 'Login', 'action_path': route_path(request, 'login'),
+            'failed': failed, 'user': user}
 
 
 @view_config(route_name='userhome', renderer='templates/userhome.pt')
