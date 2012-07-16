@@ -13,16 +13,13 @@ def not_found(request):
 @view_config(route_name='home', renderer='templates/home.pt')
 @site_layout
 def home(request):
-    return dict(page_title='Home',
-                link=route_path(request, 'login'),
-                )
+    return {'page_title': 'Home', 'link': route_path(request, 'login')}
 
 
 @view_config(route_name='login', renderer='templates/login.pt')
 def login(request):
     failed = False
     user = ''
-    url = request.route_url('home', _app_url=request.app_url)
     if 'submit' in request.POST:
         user = request.POST.get('Username', '').strip()
         password = request.POST.get('Password', '').strip()
@@ -32,20 +29,17 @@ def login(request):
             failed = True
         else:
             failed = False
-            return HTTPFound(location=route_path(request,
-                                                 'userhome', username=user))
+            return HTTPFound(location=route_path(request, 'userhome',
+                                                 username=user))
     return use_site_layout(request,
                            page_title='Login',
                            action_path=route_path(request, 'login'),
                            failed=failed,
-                           user=user,
-                           )
+                           user=user)
 
 
 @view_config(route_name='userhome', renderer='templates/userhome.pt')
 @site_layout
 def userhome(request):
-    return dict(
-        page_title='User Home',
-        username=request.matchdict['username'],
-    )
+    return {'page_title': 'User Home',
+            'username': request.matchdict['username']}

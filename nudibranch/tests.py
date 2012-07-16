@@ -2,28 +2,91 @@ import unittest
 from pyramid import testing
 
 
+def _init_testing_db():
+    from .models import DBSession
+    from .models import DBBase
+
+
 class ViewTests(unittest.TestCase):
+    # Need to add a "testing" version of all routes here
+    TEST_PATHS = {'home': '/test_home',
+                  'login': '/test_login',
+                  'userhome': '/test_userhome/{username}'}
+
     def setUp(self):
         self.config = testing.setUp()
+        for key, value in self.TEST_PATHS.items():
+            self.config.add_route(key, value)
 
     def tearDown(self):
         testing.tearDown()
 
+    def _make_request(self, **kwargs):
+        request = testing.DummyRequest(**kwargs)
+        request.app_url = None
+        return request
+
     def test_site_layout_decorator(self):
         from .views import home
         from chameleon.zpt.template import Macro
-        request = testing.DummyRequest()
+        request = self._make_request()
         info = home(request)
         self.assertIsInstance(info['_LAYOUT'], Macro)
+        self.assertRaises(ValueError, info['_S'], 'favicon.ico')
 
     def test_home(self):
         from .views import home
-        request = testing.DummyRequest()
+        request = self._make_request()
         info = home(request)
-        self.assertEqual(info['page_title'], 'Home')
+        self.assertEqual('Home', info['page_title'])
+        self.assertEqual(self.TEST_PATHS['login'], info['link'])
 
-    def test_login(self):
+    def test_login_get(self):
         from .views import login
-        request = testing.DummyRequest()
+        request = self._make_request()
         info = login(request)
-        self.assertEqual(info['page_title'], 'Login')
+        self.assertEqual(self.TEST_PATHS['login'], info['action_path'])
+        self.assertEqual(False, info['failed'])
+        self.assertEqual('Login', info['page_title'])
+        self.assertEqual('', info['user'])
+
+    def test_login_post_only_submission_param(self):
+        from .views import login
+        post_params = {'submit':'submit'}
+        request = self._make_request(POST=post_params)
+        info = login(request)
+        self.assertEqual(self.TEST_PATHS['login'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Login', info['page_title'])
+        self.assertEqual('', info['user'])
+
+    def test_login_post_no_password(self):
+        from .views import login
+        post_params = {'submit':'submit', 'Username': 'foobar'}
+        request = self._make_request(POST=post_params)
+        info = login(request)
+        self.assertEqual(self.TEST_PATHS['login'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Login', info['page_title'])
+        self.assertEqual('foobar', info['user'])
+
+    def test_login_post_no_username(self):
+        from .views import login
+        post_params = {'submit':'submit', 'Password': 'password'}
+        request = self._make_request(POST=post_params)
+        info = login(request)
+        self.assertEqual(self.TEST_PATHS['login'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Login', info['page_title'])
+        self.assertEqual('', info['user'])
+
+    def test_login_post_successful(self):
+        from .views import login
+        post_params = {'submit':'submit',
+                       'Password': 'password',
+                       'Username': 'foobar'}
+        request = self._make_request(POST=post_params)
+        info = login(request)
+        # Verify the user is redirected to their userhome page.
+        self.assertEqual(self.TEST_PATHS['userhome'].format(username='foobar'),
+                         info.location)
