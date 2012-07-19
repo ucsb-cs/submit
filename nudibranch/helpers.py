@@ -75,6 +75,7 @@ def site_layout(function):
         # Required parameters
         info['_LAYOUT'] = renderer.implementation().macros['layout']
         info['_S'] = lambda x: static_path(request, x)
+        info['_R'] = lambda *args, **kw: route_path(request, *args, **kw)
         # Required parameters that can be overwritten
         info.setdefault('javascripts', None)
         info.setdefault('page_title', None)

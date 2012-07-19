@@ -40,8 +40,6 @@ class ViewTests(unittest.TestCase):
         request = self._make_request()
         info = home(request)
         self.assertEqual('Home', info['page_title'])
-        self.assertEqual(self.TEST_PATHS['login'], info['login_link'])
-        self.assertEqual(self.TEST_PATHS['create'], info['user_link'])
 
     def test_login_get(self):
         from .views import login

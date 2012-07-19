@@ -14,9 +14,7 @@ def not_found(request):
 @view_config(route_name='home', renderer='templates/home.pt')
 @site_layout
 def home(request):
-    return {'page_title': 'Home',
-            'login_link': route_path(request, 'login'),
-            'user_link': route_path(request, 'create')}
+    return {'page_title': 'Home'}
 
 
 @view_config(route_name='login', renderer='templates/login.pt')
