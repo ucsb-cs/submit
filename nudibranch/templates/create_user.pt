@@ -1,7 +1,6 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-   <div metal:define-slot="content">
-    <p> Create User Page </p>
+    <div class="header">Create New User</div>
     <p tal:condition="failed" class="error"> Invalid Input, Try Again</p>
     <form name="input" action="${action_path}" method="post">
             <p>
@@ -22,4 +21,4 @@
         </form>
   </div>
 </div>
-</div>
+
