@@ -59,12 +59,12 @@ def create(request):
         if (user == '') or (password == '') or (email == '') or (name == ''):
             failed = True
         else:
-            failed = False
+            session = Session()
             new_user = User(name=name,
                             email=email,
                             username=user,
                             password=password)
-            Session.add(new_user)
+            session.add(new_user)
             return HTTPFound(location=route_path(request,
                                                  'userhome',
                                                  username=user))
