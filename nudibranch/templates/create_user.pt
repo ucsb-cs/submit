@@ -1,0 +1,25 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+   <div metal:define-slot="content">
+    <p> Create User Page </p>
+    <p tal:condition="failed" class="error"> Invalid Input, Try Again</p>
+    <form name="input" action="${action_path}" method="post">
+            <p>
+                <label for="name">Name</label><br/>
+                <input type="text" name="Name" /><br/>
+
+                <label for="user">Username</label><br/>
+                <input type="text" name="Username" /><br/>
+          
+                <label for="password">Password</label><br/>
+                <input type="password" name="Password" /><br/>
+
+                <label for="email">E-mail</label><br/>
+                <input type="text" name="Email" /><br/>
+            </p>
+            
+            <input type="submit" name="submit" value="Create"/>        
+        </form>
+  </div>
+</div>
+</div>

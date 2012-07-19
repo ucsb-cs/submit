@@ -11,7 +11,8 @@ class ViewTests(unittest.TestCase):
     # Need to add a "testing" version of all routes here
     TEST_PATHS = {'home': '/test_home',
                   'login': '/test_login',
-                  'userhome': '/test_userhome/{username}'}
+                  'userhome': '/test_userhome/{username}',
+                  'create': '/test_create/User'}
 
     def setUp(self):
         self.config = testing.setUp()
@@ -39,7 +40,8 @@ class ViewTests(unittest.TestCase):
         request = self._make_request()
         info = home(request)
         self.assertEqual('Home', info['page_title'])
-        self.assertEqual(self.TEST_PATHS['login'], info['link'])
+        self.assertEqual(self.TEST_PATHS['login'], info['login_link'])
+        self.assertEqual(self.TEST_PATHS['create'], info['user_link'])
 
     def test_login_get(self):
         from .views import login
@@ -90,3 +92,81 @@ class ViewTests(unittest.TestCase):
         # Verify the user is redirected to their userhome page.
         self.assertEqual(self.TEST_PATHS['userhome'].format(username='foobar'),
                          info.location)
+
+    def test_create_user_get(self):
+        from .views import create
+        request = self._make_request()
+        info = create(request)
+        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        self.assertEqual(False, info['failed'])
+        self.assertEqual('Create User', info['page_title'])
+
+    def test_create_user_post_only_submission_param(self):
+        from .views import create
+        post_params = {'submit': 'submit'}
+        request = self._make_request(POST=post_params)
+        info = create(request)
+        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Create User', info['page_title'])
+
+    def test_create_user_post_successful(self):
+        from .views import login
+        post_params = {'submit': 'submit',
+                       'Password': 'password',
+                       'Username': 'foobar',
+                       'Name': 'foo',
+                       'Email': 'foobar@email.com'}
+        request = self._make_request(POST=post_params)
+        info = login(request)
+        # Verify the user is redirected to their userhome page.
+        self.assertEqual(self.TEST_PATHS['userhome'].format(username='foobar'),
+                         info.location)
+
+    def test_create_user_post_no_password(self):
+        from .views import create
+        post_params = {'submit': 'submit',
+                       'Username': 'foobar',
+                       'Name': 'foo',
+                       'Email': 'foobar@email.com'}
+        request = self._make_request(POST=post_params)
+        info = create(request)
+        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Create User', info['page_title'])
+
+    def test_create_user_post_no_username(self):
+        from .views import create
+        post_params = {'submit': 'submit',
+                       'Password': 'password',
+                       'Name': 'foo',
+                       'Email': 'foobar@email.com'}
+        request = self._make_request(POST=post_params)
+        info = create(request)
+        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Create User', info['page_title'])
+
+    def test_create_user_post_no_name(self):
+        from .views import create
+        post_params = {'submit': 'submit',
+                       'Username': 'foobar',
+                       'Password': 'password',
+                       'Email': 'foobar@email.com'}
+        request = self._make_request(POST=post_params)
+        info = create(request)
+        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Create User', info['page_title'])
+
+    def test_create_user_post_no_email(self):
+        from .views import create
+        post_params = {'submit': 'submit',
+                       'Username': 'foobar',
+                       'Name': 'foo',
+                       'Password': 'password'}
+        request = self._make_request(POST=post_params)
+        info = create(request)
+        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Create User', info['page_title'])
