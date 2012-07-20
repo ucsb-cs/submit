@@ -43,8 +43,6 @@ def login(request):
 def userhome(request):
     session = Session()
     person = User.fetch_User(request.matchdict['username'])
-    for per in session.query(User):
-        print(per)
     return {'page_title': 'User Home',
             'username': person.name,
             'admin': person.is_admin}
