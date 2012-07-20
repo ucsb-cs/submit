@@ -16,6 +16,8 @@
         </form>
     
     </div>
+    <br/><br/>
+    <a href="${_R('home')}">Home</a><br/>
 </div>
 </div>
 

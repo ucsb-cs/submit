@@ -4,6 +4,7 @@ from .helpers import site_layout, url_path, route_path
 from urllib.parse import urljoin
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from .models import Session, User
+import transaction
 
 
 @notfound_view_config()
@@ -40,8 +41,13 @@ def login(request):
 @view_config(route_name='userhome', renderer='templates/userhome.pt')
 @site_layout
 def userhome(request):
+    session = Session()
+    person = User.fetch_User(request.matchdict['username'])
+    for per in session.query(User):
+        print(per)
     return {'page_title': 'User Home',
-            'username': request.matchdict['username']}
+            'username': person.name,
+            'admin': person.is_admin}
 
 
 @view_config(route_name='create', renderer='templates/create_user.pt')
@@ -54,6 +60,7 @@ def create(request):
         name = request.POST.get('Name', '').strip()
         password = request.POST.get('Password', '').strip()
         email = request.POST.get('Email', '').strip()
+        admin = False
         if (user == '') or (password == '') or (email == '') or (name == ''):
             failed = True
         else:
@@ -61,8 +68,10 @@ def create(request):
             new_user = User(name=name,
                             email=email,
                             username=user,
-                            password=password)
+                            password=password,
+                            is_admin=admin)
             session.add(new_user)
+            transaction.commit()
             return HTTPFound(location=route_path(request,
                                                  'userhome',
                                                  username=user))

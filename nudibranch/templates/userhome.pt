@@ -1,6 +1,8 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div>Hello ${username} !!</div>
+  <p tal:condition="admin"> Group: Admin </p>
+  <p tal:condition="not: admin"> Group: Student </p>
 </div>
 </div>
 

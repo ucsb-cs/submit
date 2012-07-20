@@ -17,9 +17,25 @@ class User(UserMixin, Base):
     `verify_password` function."""
     name = Column(Unicode, nullable=False)
     email = Column(Unicode, nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
+
+    @staticmethod
+    def fetch_User(uname):
+        session = Session()
+        user = session.query(User).filter_by(username=uname).first()
+        return user
+
+    def __str__(self):
+        return 'Name: {0} Username: {1} Email: {2}'.format(self.name,
+                                                           self.username,
+                                                           self.email)
 
 
 def initialize_sql(engine):
     Session.configure(bind=engine)
     Base.metadata.bind = engine
     Base.metadata.create_all(engine)
+
+
+def reset_database(engine):
+    Base.metadata.drop_all(engine)
