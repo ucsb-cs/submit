@@ -3,8 +3,8 @@ from pyramid import testing
 
 
 def _init_testing_db():
-    from .models import DBSession
-    from .models import DBBase
+    from .models import Session
+    from .models import Base
 
 
 class ViewTests(unittest.TestCase):
@@ -12,7 +12,7 @@ class ViewTests(unittest.TestCase):
     TEST_PATHS = {'home': '/test_home',
                   'login': '/test_login',
                   'userhome': '/test_userhome/{username}',
-                  'create': '/test_create/User'}
+                  'create_user': '/test_create/User'}
 
     def setUp(self):
         self.config = testing.setUp()
@@ -92,79 +92,79 @@ class ViewTests(unittest.TestCase):
                          info.location)
 
     def test_create_user_get(self):
-        from .views import create
+        from .views import create_user
         request = self._make_request()
-        info = create(request)
-        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        info = create_user(request)
+        self.assertEqual(self.TEST_PATHS['create_user'], info['action_path'])
         self.assertEqual(False, info['failed'])
         self.assertEqual('Create User', info['page_title'])
 
     def test_create_user_post_only_submission_param(self):
-        from .views import create
+        from .views import create_user
         post_params = {'submit': 'submit'}
         request = self._make_request(POST=post_params)
-        info = create(request)
-        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        info = create_user(request)
+        self.assertEqual(self.TEST_PATHS['create_user'], info['action_path'])
         self.assertEqual(True, info['failed'])
         self.assertEqual('Create User', info['page_title'])
 
     def test_create_user_post_successful(self):
-        from .views import login
+        from .views import create_user
         post_params = {'submit': 'submit',
                        'Password': 'password',
                        'Username': 'foobar',
                        'Name': 'foo',
                        'Email': 'foobar@email.com'}
         request = self._make_request(POST=post_params)
-        info = login(request)
+        info = create_user(request)
         # Verify the user is redirected to their userhome page.
         self.assertEqual(self.TEST_PATHS['userhome'].format(username='foobar'),
                          info.location)
 
     def test_create_user_post_no_password(self):
-        from .views import create
+        from .views import create_user
         post_params = {'submit': 'submit',
                        'Username': 'foobar',
                        'Name': 'foo',
                        'Email': 'foobar@email.com'}
         request = self._make_request(POST=post_params)
-        info = create(request)
-        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        info = create_user(request)
+        self.assertEqual(self.TEST_PATHS['create_user'], info['action_path'])
         self.assertEqual(True, info['failed'])
         self.assertEqual('Create User', info['page_title'])
 
     def test_create_user_post_no_username(self):
-        from .views import create
+        from .views import create_user
         post_params = {'submit': 'submit',
                        'Password': 'password',
                        'Name': 'foo',
                        'Email': 'foobar@email.com'}
         request = self._make_request(POST=post_params)
-        info = create(request)
-        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        info = create_user(request)
+        self.assertEqual(self.TEST_PATHS['create_user'], info['action_path'])
         self.assertEqual(True, info['failed'])
         self.assertEqual('Create User', info['page_title'])
 
     def test_create_user_post_no_name(self):
-        from .views import create
+        from .views import create_user
         post_params = {'submit': 'submit',
                        'Username': 'foobar',
                        'Password': 'password',
                        'Email': 'foobar@email.com'}
         request = self._make_request(POST=post_params)
-        info = create(request)
-        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        info = create_user(request)
+        self.assertEqual(self.TEST_PATHS['create_user'], info['action_path'])
         self.assertEqual(True, info['failed'])
         self.assertEqual('Create User', info['page_title'])
 
     def test_create_user_post_no_email(self):
-        from .views import create
+        from .views import create_user
         post_params = {'submit': 'submit',
                        'Username': 'foobar',
                        'Name': 'foo',
                        'Password': 'password'}
         request = self._make_request(POST=post_params)
-        info = create(request)
-        self.assertEqual(self.TEST_PATHS['create'], info['action_path'])
+        info = create_user(request)
+        self.assertEqual(self.TEST_PATHS['create_user'], info['action_path'])
         self.assertEqual(True, info['failed'])
         self.assertEqual('Create User', info['page_title'])

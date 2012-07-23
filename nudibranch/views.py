@@ -55,9 +55,9 @@ def userhome(request):
             'admin': person.is_admin}
 
 
-@view_config(route_name='create', renderer='templates/create_user.pt')
+@view_config(route_name='create_user', renderer='templates/create_user.pt')
 @site_layout
-def create(request):
+def create_user(request):
     failed = False
     username = ''
     if 'submit' in request.POST:
@@ -84,5 +84,5 @@ def create(request):
                              headers=headers)
 
     return {'page_title': 'Create User',
-            'action_path': route_path(request, 'create'),
+            'action_path': route_path(request, 'create_user'),
             'failed': failed}
