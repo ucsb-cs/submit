@@ -1,9 +1,11 @@
 from pyramid.response import Response
 from pyramid.view import notfound_view_config, view_config
+from pyramid.security import authenticated_userid, forget, remember
 from .helpers import site_layout, url_path, route_path
 from urllib.parse import urljoin
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from .models import Session, User
+from .security import check_user
 import transaction
 
 
@@ -32,13 +34,18 @@ def login(request):
             failed = True
         else:
             failed = False
-            return HTTPFound(location=route_path(request, 'userhome',
-                                                 username=user))
+            if check_user(user, password):
+                headers = remember(request, user)
+                return HTTPFound(location=route_path(request, 'userhome',
+                                                     username=user),
+                                 headers=headers)
     return {'page_title': 'Login', 'action_path': route_path(request, 'login'),
             'failed': failed, 'user': user}
 
 
-@view_config(route_name='userhome', renderer='templates/userhome.pt')
+@view_config(route_name='userhome',
+             renderer='templates/userhome.pt',
+             permission='student')
 @site_layout
 def userhome(request):
     session = Session()
@@ -70,9 +77,11 @@ def create(request):
                             is_admin=admin)
             session.add(new_user)
             transaction.commit()
+            headers = remember(request, user)
             return HTTPFound(location=route_path(request,
                                                  'userhome',
-                                                 username=user))
+                                                 username=user),
+                             headers=headers)
 
     return {'page_title': 'Create User',
             'action_path': route_path(request, 'create'),
