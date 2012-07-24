@@ -4,7 +4,7 @@ from pyramid.security import authenticated_userid, forget, remember
 from .helpers import site_layout, url_path, route_path
 from urllib.parse import urljoin
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
-from .models import Session, User
+from .models import Session, User, Course
 from .security import check_user
 import transaction
 
@@ -86,3 +86,26 @@ def create_user(request):
     return {'page_title': 'Create User',
             'action_path': route_path(request, 'create_user'),
             'failed': failed}
+
+
+@view_config(route_name='create_class',
+             renderer='templates/create_class.pt',
+             permission='admin')
+@site_layout
+def create_class(request):
+    failed = False
+    message = []
+    if 'submit' in request.POST:
+        class_name = request.POST.get('Class_Name', '').strip()
+        if class_name == '':
+            failed = True
+        else:
+            session = Session()
+            new_class = Course(class_name=class_name)
+            message.append("Course added!")
+            session.add(new_class)
+            transaction.commit()
+    return {'page_title': 'Create Class',
+            'action_path': route_path(request, 'create_class'),
+            'failed': failed,
+            'message': message}

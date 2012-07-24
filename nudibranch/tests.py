@@ -1,10 +1,15 @@
 import unittest
 from pyramid import testing
+import transaction
 
 
 def _init_testing_db():
+    from sqlalchemy import create_engine
     from .models import Session
     from .models import Base
+    from .models import initialize_sql
+    engine = create_engine('sqlite://')
+    initialize_sql(engine)
 
 
 class ViewTests(unittest.TestCase):
@@ -12,10 +17,12 @@ class ViewTests(unittest.TestCase):
     TEST_PATHS = {'home': '/test_home',
                   'login': '/test_login',
                   'userhome': '/test_userhome/{username}',
-                  'create_user': '/test_create/User'}
+                  'create_user': '/test_create/User',
+                  'create_class': '/test_create/Class'}
 
     def setUp(self):
         self.config = testing.setUp()
+        self.session = _init_testing_db()
         for key, value in self.TEST_PATHS.items():
             self.config.add_route(key, value)
 
@@ -40,6 +47,8 @@ class ViewTests(unittest.TestCase):
         request = self._make_request()
         info = home(request)
         self.assertEqual('Home', info['page_title'])
+
+######################################################
 
     def test_login_get(self):
         from .views import login
@@ -90,6 +99,7 @@ class ViewTests(unittest.TestCase):
         # Verify the user is redirected to their userhome page.
         self.assertEqual(self.TEST_PATHS['userhome'].format(username='foobar'),
                          info.location)
+##########################################################################
 
     def test_create_user_get(self):
         from .views import create_user
@@ -168,3 +178,32 @@ class ViewTests(unittest.TestCase):
         self.assertEqual(self.TEST_PATHS['create_user'], info['action_path'])
         self.assertEqual(True, info['failed'])
         self.assertEqual('Create User', info['page_title'])
+
+##################################################################
+
+    def test_create_class_get(self):
+        from .views import create_class
+        request = self._make_request()
+        info = create_class(request)
+        self.assertEqual(self.TEST_PATHS['create_class'], info['action_path'])
+        self.assertEqual(False, info['failed'])
+        self.assertEqual('Create Class', info['page_title'])
+
+    def test_create_class_post_only_submission_param(self):
+        from .views import create_class
+        post_params = {'submit': 'submit'}
+        request = self._make_request(POST=post_params)
+        info = create_class(request)
+        self.assertEqual(self.TEST_PATHS['create_class'], info['action_path'])
+        self.assertEqual(True, info['failed'])
+        self.assertEqual('Create Class', info['page_title'])
+
+    def test_create_class_post_successful(self):
+        from .views import create_class
+        post_params = {'submit': 'submit',
+                       'Class_Name': 'foobar'}
+        request = self._make_request(POST=post_params)
+        info = create_class(request)
+        self.assertEqual(self.TEST_PATHS['create_class'], info['action_path'])
+        self.assertEqual(False, info['failed'])
+        self.assertEqual(["Course added!"], info['message'])

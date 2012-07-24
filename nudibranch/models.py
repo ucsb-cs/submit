@@ -31,6 +31,13 @@ class User(UserMixin, Base):
                                                            self.email)
 
 
+class Course(Base):
+    class_name = Column(Unicode)
+
+    def __str__(self):
+        return 'Class Name: {0}'.format(self.class_name)
+
+
 def initialize_sql(engine):
     Session.configure(bind=engine)
     Base.metadata.bind = engine
