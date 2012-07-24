@@ -4,14 +4,30 @@
     <p tal:condition="failed" class="error"> Invalid Input, Try Again</p>
     <p> Class List: </p> 
     <p tal:repeat="message message">${message}</p>
+    <br/>
+    <p> Remove a Class </p>
     <form name="input" action="${action_path}" method="post">
             <p>
-                <label for="name">Remove Class</label><br/>
+                <label for="name">Class Name</label><br/>
                 <input type="text" name="Class_Name" /><br/>
 
             </p>
             
-            <input type="submit" name="remove_submit" value="Remove"/>        
+            <input type="submit" name="remove_submit" value="Remove"/>
+        </form>
+    <br/>
+    <p> Rename a Class </p>
+     <form name="input" action="${action_path}" method="post">
+            <p>
+                <label for="name">Class Name</label><br/>
+                <input type="text" name="Old_Name" /><br/>
+                
+                <label for="name">New Name</label><br/>
+                <input type="text" name="New_Name" /><br/>
+
+            </p>
+            
+            <input type="submit" name="rename_submit" value="Rename"/>        
         </form>
     <br/><br/>
     <a href="${_R('home')}">Home</a><br/>

@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
    
-    <a href="${_R('login')}">Login Page</a><br/>
+    <a href="${_R('login')}">Login</a><br/>
     <a href="${_R('create_user')}">Create New User</a><br/>
   
 </div>

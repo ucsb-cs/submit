@@ -138,13 +138,32 @@ def edit_class(request):
 
     if 'remove_submit' in request.POST:
         course_name = request.POST.get('Class_Name', '').strip()
-        to_remove = Class.fetch_Class(course_name)
-        if to_remove:
-            session.delete(to_remove)
-            transaction.commit()
-            message.remove(to_remove.class_name)
-        else:
+        if course_name == '':
             failed = True
+        else:
+            to_remove = Class.fetch_Class(course_name)
+            if to_remove:
+                session.delete(to_remove)
+                transaction.commit()
+                message.remove(to_remove.class_name)
+            else:
+                failed = True
+
+    if 'rename_submit' in request.POST:
+        old_name = request.POST.get('Old_Name', '').strip()
+        new_name = request.POST.get('New_Name', '').strip()
+        if (old_name == '') or (new_name == ''):
+            failed = True
+        else:
+            rename = Class.fetch_Class(old_name)
+            if rename:
+                rename.class_name = new_name
+                message.remove(old_name)
+                message.append(new_name)
+                transaction.commit()
+            else:
+                failed = True
+
     return {'page_title': 'Edit Class',
             'action_path': route_path(request, 'edit_class'),
             'failed': failed,
