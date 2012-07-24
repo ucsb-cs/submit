@@ -38,5 +38,6 @@ def main(global_config, **settings):
     config.add_route('userhome', '/userhome/{username}')
     config.add_route('create_user', '/create/User')
     config.add_route('create_class', '/create/Class')
+    config.add_route('edit_class', '/edit')
     config.scan()
     return config.make_wsgi_app()

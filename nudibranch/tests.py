@@ -206,4 +206,4 @@ class ViewTests(unittest.TestCase):
         info = create_class(request)
         self.assertEqual(self.TEST_PATHS['create_class'], info['action_path'])
         self.assertEqual(False, info['failed'])
-        self.assertEqual(["Course added!"], info['message'])
+        self.assertEqual(["Class added!"], info['message'])

@@ -1,0 +1,20 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+    <div class="header">Edit Classes</div>
+    <p tal:condition="failed" class="error"> Invalid Input, Try Again</p>
+    <p> Class List: </p> 
+    <p tal:repeat="message message">${message}</p>
+    <form name="input" action="${action_path}" method="post">
+            <p>
+                <label for="name">Remove Class</label><br/>
+                <input type="text" name="Class_Name" /><br/>
+
+            </p>
+            
+            <input type="submit" name="remove_submit" value="Remove"/>        
+        </form>
+    <br/><br/>
+    <a href="${_R('home')}">Home</a><br/>
+  </div>
+</div>
+

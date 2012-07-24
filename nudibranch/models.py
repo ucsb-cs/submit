@@ -31,11 +31,18 @@ class User(UserMixin, Base):
                                                            self.email)
 
 
-class Course(Base):
+class Class(Base):
     class_name = Column(Unicode)
 
+    @staticmethod
+    def fetch_Class(class_name):
+        session = Session()
+        course = session.query(Class
+                               ).filter_by(class_name=class_name).first()
+        return course
+
     def __str__(self):
-        return 'Class Name: {0}'.format(self.class_name)
+        return 'Course Name: {0}'.format(self.class_name)
 
 
 def initialize_sql(engine):

@@ -4,7 +4,7 @@ from pyramid.security import authenticated_userid, forget, remember
 from .helpers import site_layout, url_path, route_path
 from urllib.parse import urljoin
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
-from .models import Session, User, Course
+from .models import Session, User, Class
 from .security import check_user
 import transaction
 
@@ -17,6 +17,11 @@ def not_found(request):
 @view_config(route_name='home', renderer='templates/home.pt')
 @site_layout
 def home(request):
+    if authenticated_userid(request):
+        name = User.fetch_User(authenticated_userid(request)).username
+        return HTTPFound(location=route_path(request,
+                                             'userhome',
+                                             username=name))
     return {'page_title': 'Home'}
 
 
@@ -39,6 +44,8 @@ def login(request):
                 return HTTPFound(location=route_path(request, 'userhome',
                                                      username=user),
                                  headers=headers)
+            else:
+                failed = True
     return {'page_title': 'Login', 'action_path': route_path(request, 'login'),
             'failed': failed, 'user': user}
 
@@ -108,11 +115,37 @@ def create_class(request):
             failed = True
         else:
             session = Session()
-            new_class = Course(class_name=class_name)
-            message.append("Course added!")
+            new_class = Class(class_name=class_name)
+            message.append("Class added!")
             session.add(new_class)
             transaction.commit()
     return {'page_title': 'Create Class',
             'action_path': route_path(request, 'create_class'),
+            'failed': failed,
+            'message': message}
+
+
+@view_config(route_name='edit_class',
+             permission='admin',
+             renderer='templates/edit_class.pt')
+@site_layout
+def edit_class(request):
+    session = Session()
+    failed = False
+    message = []
+    for course in session.query(Class):
+        message.append(course.class_name)
+
+    if 'remove_submit' in request.POST:
+        course_name = request.POST.get('Class_Name', '').strip()
+        to_remove = Class.fetch_Class(course_name)
+        if to_remove:
+            session.delete(to_remove)
+            transaction.commit()
+            message.remove(to_remove.class_name)
+        else:
+            failed = True
+    return {'page_title': 'Edit Class',
+            'action_path': route_path(request, 'edit_class'),
             'failed': failed,
             'message': message}
