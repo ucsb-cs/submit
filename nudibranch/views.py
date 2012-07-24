@@ -43,6 +43,13 @@ def login(request):
             'failed': failed, 'user': user}
 
 
+@view_config(route_name='logout')
+def logout(request):
+    headers = forget(request)
+    return HTTPFound(location=route_path(request, 'home'),
+                     headers=headers)
+
+
 @view_config(route_name='userhome',
              renderer='templates/userhome.pt',
              permission='student')

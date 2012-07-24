@@ -5,7 +5,7 @@
   <p tal:condition="not: admin"> Group: Student <br/></p>
   <p tal:condition="admin"> <a href="${_R('create_class')}">Create New Class</a> </p>
 
-  <a href="${_R('home')}">Home</a><br/>
+  <a href="${_R('logout')}"> Logout</a><br/>
 </div>
 </div>
 
