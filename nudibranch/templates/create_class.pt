@@ -6,7 +6,7 @@
     <form name="input" action="${action_path}" method="post">
             <p>
                 <label for="name">Name</label><br/>
-                <input type="text" name="Class_Name" /><br/>
+                <input type="text" name="Class_Name" id="name"/><br/>
 
             </p>
             

@@ -6,10 +6,10 @@
         <form name="input" action="${action_path}" method="post">
             <p>
                 <label for="user">Username</label><br/>
-                <input type="text" name="Username" /><br/>
+                <input type="text" name="Username" id=user/><br/>
           
                 <label for="password">Password</label><br/>
-                <input type="password" name="Password" />
+                <input type="password" name="Password" id=password />
             </p>
             
             <input type="submit" name="submit" value="Login"/>        

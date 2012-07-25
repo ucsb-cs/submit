@@ -20,7 +20,7 @@ class User(UserMixin, Base):
     is_admin = Column(Boolean, default=False, nullable=False)
 
     @staticmethod
-    def fetch_User(uname):
+    def fetch_user(uname):
         session = Session()
         user = session.query(User).filter_by(username=uname).first()
         return user
@@ -35,7 +35,7 @@ class Class(Base):
     class_name = Column(Unicode)
 
     @staticmethod
-    def fetch_Class(class_name):
+    def fetch_class(class_name):
         session = Session()
         course = session.query(Class
                                ).filter_by(class_name=class_name).first()

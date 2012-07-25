@@ -18,7 +18,7 @@ def not_found(request):
 @site_layout
 def home(request):
     if authenticated_userid(request):
-        name = User.fetch_User(authenticated_userid(request)).username
+        name = User.fetch_user(authenticated_userid(request)).username
         return HTTPFound(location=route_path(request,
                                              'userhome',
                                              username=name))
@@ -63,7 +63,7 @@ def logout(request):
 @site_layout
 def userhome(request):
     session = Session()
-    person = User.fetch_User(request.matchdict['username'])
+    person = User.fetch_user(request.matchdict['username'])
     return {'page_title': 'User Home',
             'username': person.name,
             'admin': person.is_admin}
@@ -91,7 +91,7 @@ def create_user(request):
                             is_admin=admin)
             session.add(new_user)
             transaction.commit()
-            headers = remember(request, user)
+            headers = remember(request, user.id)
             return HTTPFound(location=route_path(request,
                                                  'userhome',
                                                  username=user),
@@ -141,7 +141,7 @@ def edit_class(request):
         if course_name == '':
             failed = True
         else:
-            to_remove = Class.fetch_Class(course_name)
+            to_remove = Class.fetch_class(course_name)
             if to_remove:
                 session.delete(to_remove)
                 transaction.commit()
@@ -155,7 +155,7 @@ def edit_class(request):
         if (old_name == '') or (new_name == ''):
             failed = True
         else:
-            rename = Class.fetch_Class(old_name)
+            rename = Class.fetch_class(old_name)
             if rename:
                 rename.class_name = new_name
                 message.remove(old_name)

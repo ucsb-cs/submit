@@ -9,7 +9,7 @@
     <form name="input" action="${action_path}" method="post">
             <p>
                 <label for="name">Class Name</label><br/>
-                <input type="text" name="Class_Name" /><br/>
+                <input type="text" name="Class_Name" id="name"/><br/>
 
             </p>
             
@@ -20,10 +20,10 @@
      <form name="input" action="${action_path}" method="post">
             <p>
                 <label for="name">Class Name</label><br/>
-                <input type="text" name="Old_Name" /><br/>
+                <input type="text" name="Old_Name" id="name" /><br/>
                 
                 <label for="name">New Name</label><br/>
-                <input type="text" name="New_Name" /><br/>
+                <input type="text" name="New_Name" id="name"/><br/>
 
             </p>
             
