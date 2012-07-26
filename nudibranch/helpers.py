@@ -2,7 +2,8 @@ from configparser import RawConfigParser
 from datetime import datetime
 from functools import wraps
 from pyramid.events import NewRequest, subscriber
-from pyramid.httpexceptions import HTTPException
+from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
+                                    HTTPException)
 from pyramid.renderers import get_renderer
 from pytz import timezone
 
@@ -24,6 +25,23 @@ def app_url(event):
 def complete_date(the_datetime):
     return (the_datetime.replace(tzinfo=pytz.utc)
             .astimezone(timezone(TIMEZONE)).strftime('%H:%M, %A %B %d, %Y'))
+
+
+def http_bad_request(request, messages):
+    request.response.status = HTTPBadRequest.code
+    return {'error': 'Invalid request', 'messages': messages}
+
+
+def http_conflict(request, message):
+    request.response.status = HTTPConflict.code
+    return {'message': message}
+
+
+def http_created(request, redir_location, headers=None):
+    request.response.status = HTTPCreated.code
+    if headers:
+        request.response.headerlist.extend(headers)
+    return {'redir_location': redir_location}
 
 
 def load_settings(config_file):

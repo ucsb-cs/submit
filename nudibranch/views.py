@@ -1,12 +1,15 @@
 import transaction
+from sqlalchemy.exc import IntegrityError
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import (Authenticated, authenticated_userid, forget,
                               remember)
 from pyramid.view import notfound_view_config, view_config
 from urllib.parse import urljoin
-from .helpers import route_path, site_layout, url_path
+from .helpers import (http_conflict, http_created, route_path, site_layout,
+                      url_path)
 from .models import Class, Session, User
+from .validator import VString, VWSString, validated_form
 
 
 @notfound_view_config()
@@ -18,29 +21,31 @@ def not_found(request):
              request_method='GET')
 @site_layout
 def home(request):
-    if authenticated_userid(request):
-        name = User.fetch_user(authenticated_userid(request)).username
-        return HTTPFound(location=route_path(request, 'userhome',
+    user_id = authenticated_userid(request)
+    if user_id:
+        name = User.fetch_user_by_id(user_id).username
+        return HTTPFound(location=route_path(request, 'user_view',
                                              username=name))
     return {'page_title': 'Home'}
 
 
-@view_config(route_name='user', request_method='PUT')
-def user_create(request):
-    data = request.json_body
-    name = data.get('name', '').strip()
-    username = data.get('username', '').strip()
-    password = data.get('password', '').strip()
-    email = data.get('email', '').strip()
+@view_config(route_name='user', renderer='json', request_method='PUT')
+@validated_form(name=VString('name', min_length=3),
+                username=VString('username', min_length=3, max_length=16),
+                password=VWSString('password', min_length=6),
+                email=VString('email', min_length=6))
+def user_create(request, name, username, password, email):
     admin = False
-    if name and username and password and email:
-        session = Session()
-        user = User(name=name, username=username, password=password,
-                    email=email, is_admin=admin)
-        session.add(user)
+    session = Session()
+    user = User(name=name, username=username, password=password,
+                email=email, is_admin=admin)
+    session.add(user)
+    try:
         transaction.commit()
-        return HTTPFound(location=route_path(request, 'home'))
-    return HTTPNotFound('foobar')
+    except IntegrityError:
+        return http_conflict(request,
+                             'Username {0!r} already exists'.format(username))
+    return http_created(request, redir_location=route_path(request, 'home'))
 
 
 @view_config(route_name='user', renderer='templates/create_user.pt',
@@ -50,19 +55,18 @@ def user_edit(request):
     return {'page_title': 'Create User'}
 
 
-@view_config(route_name='session', request_method='PUT')
-def session_create(request):
-    data = request.json_body
-    username = data.get('username', '').strip()
-    password = data.get('password', '').strip()
-
-    if username and password:
-        user = User.login(username, password)
-        if user:
-            headers = remember(request, user.id)
-            url = route_path(request, 'user_view', username=user.username)
-            return HTTPFound(location=url, headers=headers)
-    return HTTPNotFound('foobar')
+@view_config(route_name='session', renderer='json', request_method='PUT')
+@validated_form(username=VString('username'),
+                password=VWSString('password'))
+def session_create(request, username, password):
+    user = User.login(username, password)
+    if user:
+        headers = remember(request, user.id)
+        url = route_path(request, 'user_view', username=user.username)
+        retval = http_created(request, redir_location=url, headers=headers)
+    else:
+        retval = http_conflict(request, 'Invalid login.')
+    return retval
 
 
 @view_config(route_name='session', renderer='templates/login.pt',
@@ -83,9 +87,9 @@ def session_destroy(request):
              renderer='templates/userhome.pt',
              permission='student')
 @site_layout
-def userhome(request):
+def user_view(request):
     session = Session()
-    person = User.fetch_user(request.matchdict['username'])
+    person = User.fetch_user_by_name(request.matchdict['username'])
     return {'page_title': 'User Home',
             'username': person.name,
             'admin': person.is_admin}

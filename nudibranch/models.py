@@ -1,7 +1,7 @@
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
                         Unicode, desc, engine_from_config)
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from zope.sqlalchemy import ZopeTransactionExtension
@@ -20,7 +20,13 @@ class User(UserMixin, Base):
     is_admin = Column(Boolean, default=False, nullable=False)
 
     @staticmethod
-    def fetch_user(username):
+    def fetch_user_by_id(user_id):
+        session = Session()
+        user = session.query(User).filter_by(id=user_id).first()
+        return user
+
+    @staticmethod
+    def fetch_user_by_name(username):
         session = Session()
         user = session.query(User).filter_by(username=username).first()
         return user
@@ -31,7 +37,7 @@ class User(UserMixin, Base):
         retval = None
         session = Session()
         try:
-            user = User.fetch_user(username)
+            user = User.fetch_user_by_name(username)
             if user and user.verify_password(password):
                 retval = user
         except OperationalError:

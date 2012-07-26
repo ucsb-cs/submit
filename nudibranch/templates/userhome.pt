@@ -6,8 +6,7 @@
   <p tal:condition="admin"> <a href="${_R('create_class')}">Create New Class</a><br/>
         <a href="${_R('edit_class')}">Edit Classes</a>
   </p>
-  <a href="${_R('logout')}"> Logout</a><br/>
-  
+  <a href="${_R('session')}"> Logout</a><br/>
 </div>
 </div>
 

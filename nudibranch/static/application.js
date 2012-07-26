@@ -4,7 +4,23 @@ function form_request(form, method) {
     xhr.open(method, form.action);
     xhr.onreadystatechange = function() {
         if (xhr.readyState == this.DONE) {
-            alert(xhr.status);
+            data = JSON.parse(xhr.responseText);
+            switch(xhr.status) {
+            case 201:  // Created
+                window.location = data['redir_location'];
+                break;
+            case 400:  // BadRequest
+                msg = data['error']
+                for (i in data['messages'])
+                    msg += '\n' + data['messages'][i]
+                alert(msg);
+                break;
+            case 409:  // Conflict
+                alert(data['message']);
+                break;
+            default:
+                alert("Unhandled status code: " + xhr.status);
+            }
         }
     };
     xhr.send(jsonified_form);
