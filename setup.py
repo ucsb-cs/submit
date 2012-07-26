@@ -1,4 +1,5 @@
 import os
+import sys
 from setuptools import setup, find_packages
 
 README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
@@ -6,12 +7,16 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 
 requires = [
     'pyramid',
-    'pyramid_debugtoolbar',
     'pytz',
     'sqla_mixins',
     'sqlalchemy',
-    'waitress',
     'zope.sqlalchemy']
+
+if '--production' == sys.argv[-1]:
+    requires.extend(['uwsgi'])
+    sys.argv.pop()
+else:
+    requires.extend(['pep8', 'pyramid_debugtoolbar', 'waitress'])
 
 setup(name='Nudibranch',
       version='0.0',
