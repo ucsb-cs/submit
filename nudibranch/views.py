@@ -6,8 +6,8 @@ from pyramid.security import (Authenticated, authenticated_userid, forget,
                               remember)
 from pyramid.view import notfound_view_config, view_config
 from urllib.parse import urljoin
-from .helpers import (http_conflict, http_created, route_path, site_layout,
-                      url_path)
+from .helpers import (http_conflict, http_created, http_gone, route_path,
+                      site_layout, url_path)
 from .models import Class, Session, User
 from .validator import VString, VWSString, validated_form
 
@@ -76,16 +76,17 @@ def session_edit(request):
     return {'page_title': 'Login'}
 
 
-@view_config(route_name='session', request_method='DELETE')
+@view_config(route_name='session', renderer='json', request_method='DELETE',
+             permission='authenticated')
 def session_destroy(request):
     headers = forget(request)
-    return HTTPFound(location=route_path(request, 'home'),
+    return http_gone(request, redir_location=route_path(request, 'home'),
                      headers=headers)
 
 
 @view_config(route_name='user_view',
              renderer='templates/userhome.pt',
-             permission='student')
+             permission='authenticated')
 @site_layout
 def user_view(request):
     session = Session()

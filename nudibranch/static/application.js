@@ -18,6 +18,9 @@ function form_request(form, method) {
             case 409:  // Conflict
                 alert(data['message']);
                 break;
+            case 410:  // Gone
+                window.location = data['redir_location'];
+                break;
             default:
                 alert("Unhandled status code: " + xhr.status);
             }

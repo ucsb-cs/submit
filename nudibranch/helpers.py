@@ -3,7 +3,7 @@ from datetime import datetime
 from functools import wraps
 from pyramid.events import NewRequest, subscriber
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
-                                    HTTPException)
+                                    HTTPException, HTTPGone)
 from pyramid.renderers import get_renderer
 from pytz import timezone
 
@@ -39,6 +39,13 @@ def http_conflict(request, message):
 
 def http_created(request, redir_location, headers=None):
     request.response.status = HTTPCreated.code
+    if headers:
+        request.response.headerlist.extend(headers)
+    return {'redir_location': redir_location}
+
+
+def http_gone(request, redir_location, headers=None):
+    request.response.status = HTTPGone.code
     if headers:
         request.response.headerlist.extend(headers)
     return {'redir_location': redir_location}
