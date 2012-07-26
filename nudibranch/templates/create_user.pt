@@ -1,28 +1,27 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-    <div class="header">Create New User</div>
-    <p tal:condition="failed" class="error"> Invalid Input, Try Again</p>
-    <form name="input" action="${action_path}" method="post">
-            <p>
-                <label for="name">Name</label><br/>
-                <input type="text" name="Name" /><br/>
+  <div class="header">Create New User</div>
+  <form name="input" action="${_R('user')}"
+        onsubmit="return form_request(this, 'put');">
+    <p>
+      <label for="name">Name</label><br/>
+      <input type="text" name="name" id="name"/><br/>
 
-                <label for="user">Username</label><br/>
-                <input type="text" name="Username" /><br/>
-          
-                <label for="password">Password</label><br/>
-                <input type="password" name="Password" /><br/>
+      <label for="username">Username</label><br/>
+      <input type="text" name="username" id="username" /><br/>
 
-                <label for="email">E-mail</label><br/>
-                <input type="text" name="Email" /><br/>
-            </p>
-            
-            <input type="submit" name="submit" value="Create"/>        
-        </form>
+      <label for="password">Password</label><br/>
+      <input type="password" name="password" id="password" /><br/>
+
+      <label for="email">E-mail</label><br/>
+      <input type="text" name="email" id="email" /><br/>
+    </p>
+
+    <input type="submit" name="submit" value="Create"/>
+  </form>
 
 
     <br/><br/>
     <a href="${_R('home')}">Home</a><br/>
   </div>
 </div>
-

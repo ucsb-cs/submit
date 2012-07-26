@@ -1,12 +1,12 @@
-from pyramid.response import Response
-from pyramid.view import notfound_view_config, view_config
-from pyramid.security import authenticated_userid, forget, remember
-from .helpers import site_layout, url_path, route_path
-from urllib.parse import urljoin
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound
-from .models import Session, User, Class
-from .security import check_user
 import transaction
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound
+from pyramid.response import Response
+from pyramid.security import (Authenticated, authenticated_userid, forget,
+                              remember)
+from pyramid.view import notfound_view_config, view_config
+from urllib.parse import urljoin
+from .helpers import route_path, site_layout, url_path
+from .models import Class, Session, User
 
 
 @notfound_view_config()
@@ -14,50 +14,72 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-@view_config(route_name='home', renderer='templates/home.pt')
+@view_config(route_name='home', renderer='templates/home.pt',
+             request_method='GET')
 @site_layout
 def home(request):
     if authenticated_userid(request):
         name = User.fetch_user(authenticated_userid(request)).username
-        return HTTPFound(location=route_path(request,
-                                             'userhome',
+        return HTTPFound(location=route_path(request, 'userhome',
                                              username=name))
     return {'page_title': 'Home'}
 
 
-@view_config(route_name='login', renderer='templates/login.pt')
+@view_config(route_name='user', request_method='PUT')
+def user_create(request):
+    data = request.json_body
+    name = data.get('name', '').strip()
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    email = data.get('email', '').strip()
+    admin = False
+    if name and username and password and email:
+        session = Session()
+        user = User(name=name, username=username, password=password,
+                    email=email, is_admin=admin)
+        session.add(user)
+        transaction.commit()
+        return HTTPFound(location=route_path(request, 'home'))
+    return HTTPNotFound('foobar')
+
+
+@view_config(route_name='user', renderer='templates/create_user.pt',
+             request_method='GET')
 @site_layout
-def login(request):
-    failed = False
-    user = ''
-    if 'submit' in request.POST:
-        user = request.POST.get('Username', '').strip()
-        password = request.POST.get('Password', '').strip()
-        if user == '':
-            failed = True
-        elif password == '':
-            failed = True
-        else:
-            failed = False
-            if check_user(user, password):
-                headers = remember(request, user)
-                return HTTPFound(location=route_path(request, 'userhome',
-                                                     username=user),
-                                 headers=headers)
-            else:
-                failed = True
-    return {'page_title': 'Login', 'action_path': route_path(request, 'login'),
-            'failed': failed, 'user': user}
+def user_edit(request):
+    return {'page_title': 'Create User'}
 
 
-@view_config(route_name='logout')
-def logout(request):
+@view_config(route_name='session', request_method='PUT')
+def session_create(request):
+    data = request.json_body
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+
+    if username and password:
+        user = User.login(username, password)
+        if user:
+            headers = remember(request, user.id)
+            url = route_path(request, 'user_view', username=user.username)
+            return HTTPFound(location=url, headers=headers)
+    return HTTPNotFound('foobar')
+
+
+@view_config(route_name='session', renderer='templates/login.pt',
+             request_method='GET')
+@site_layout
+def session_edit(request):
+    return {'page_title': 'Login'}
+
+
+@view_config(route_name='session', request_method='DELETE')
+def session_destroy(request):
     headers = forget(request)
     return HTTPFound(location=route_path(request, 'home'),
                      headers=headers)
 
 
-@view_config(route_name='userhome',
+@view_config(route_name='user_view',
              renderer='templates/userhome.pt',
              permission='student')
 @site_layout
@@ -69,40 +91,7 @@ def userhome(request):
             'admin': person.is_admin}
 
 
-@view_config(route_name='create_user', renderer='templates/create_user.pt')
-@site_layout
-def create_user(request):
-    failed = False
-    username = ''
-    if 'submit' in request.POST:
-        user = request.POST.get('Username', '').strip()
-        name = request.POST.get('Name', '').strip()
-        password = request.POST.get('Password', '').strip()
-        email = request.POST.get('Email', '').strip()
-        admin = False
-        if (user == '') or (password == '') or (email == '') or (name == ''):
-            failed = True
-        else:
-            session = Session()
-            new_user = User(name=name,
-                            email=email,
-                            username=user,
-                            password=password,
-                            is_admin=admin)
-            session.add(new_user)
-            transaction.commit()
-            headers = remember(request, user.id)
-            return HTTPFound(location=route_path(request,
-                                                 'userhome',
-                                                 username=user),
-                             headers=headers)
-
-    return {'page_title': 'Create User',
-            'action_path': route_path(request, 'create_user'),
-            'failed': failed}
-
-
-@view_config(route_name='create_class',
+@view_config(route_name='class',
              renderer='templates/create_class.pt',
              permission='admin')
 @site_layout
@@ -125,7 +114,7 @@ def create_class(request):
             'message': message}
 
 
-@view_config(route_name='edit_class',
+@view_config(route_name='class_view',
              permission='admin',
              renderer='templates/edit_class.pt')
 @site_layout

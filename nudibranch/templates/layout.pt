@@ -5,7 +5,10 @@
   <link rel="shortcut icon" href="${_S('nudibranch:static/favicon.ico')}" />
   <link rel="stylesheet" href="${_S('nudibranch:static/style.css')}"
         type="text/css" media="screen" charset="utf-8" />
-  <script tal:repeat="js javascripts" src="${_S('uploader:static/' + js)}"></script>
+  <script src="${_S('nudibranch:static/application.js')}"></script>
+  <script src="${_S('nudibranch:static/form2js.js')}"></script>
+  <script src="${_S('nudibranch:static/json2.js')}"></script>
+  <script tal:repeat="js javascripts" src="${_S('nudibranch:static/' + js)}"></script>
 </head>
 <body>
      <div metal:define-slot="content">

@@ -1,23 +1,19 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
     <div class="header">LOGIN</div>
-    <p tal:condition="failed" class="error"> Invalid Login, Try Again</p>
     <div class="bottom">
-        <form name="input" action="${action_path}" method="post">
+        <form name="input" action="${_R('session')}"
+              onsubmit="return form_request(this, 'put');">
             <p>
-                <label for="user">Username</label><br/>
-                <input type="text" name="Username" id=user/><br/>
-          
+                <label for="username">Username</label><br/>
+                <input type="text" name="username" id="username"/><br/>
                 <label for="password">Password</label><br/>
-                <input type="password" name="Password" id=password />
+                <input type="password" name="password" id="password" />
             </p>
-            
-            <input type="submit" name="submit" value="Login"/>        
+            <input type="submit" name="submit" value="Login"/>
         </form>
-    
     </div>
     <br/><br/>
     <a href="${_R('home')}">Home</a><br/>
 </div>
 </div>
-

@@ -1,7 +1,7 @@
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
                         Unicode, desc, engine_from_config)
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from zope.sqlalchemy import ZopeTransactionExtension
@@ -20,10 +20,23 @@ class User(UserMixin, Base):
     is_admin = Column(Boolean, default=False, nullable=False)
 
     @staticmethod
-    def fetch_user(uname):
+    def fetch_user(username):
         session = Session()
-        user = session.query(User).filter_by(username=uname).first()
+        user = session.query(User).filter_by(username=username).first()
         return user
+
+    @staticmethod
+    def login(username, password):
+        """Returns the user if successful, None otherwise"""
+        retval = None
+        session = Session()
+        try:
+            user = User.fetch_user(username)
+            if user and user.verify_password(password):
+                retval = user
+        except OperationalError:
+            pass
+        return retval
 
     def __str__(self):
         return 'Name: {0} Username: {1} Email: {2}'.format(self.name,
@@ -37,8 +50,7 @@ class Class(Base):
     @staticmethod
     def fetch_class(class_name):
         session = Session()
-        course = session.query(Class
-                               ).filter_by(class_name=class_name).first()
+        course = session.query(Class).filter_by(class_name=class_name).first()
         return course
 
     def __str__(self):
