@@ -31,7 +31,6 @@ class ViewTests(unittest.TestCase):
 
     def _make_request(self, **kwargs):
         request = testing.DummyRequest(**kwargs)
-        request.app_url = None
         return request
 
     def test_site_layout_decorator(self):

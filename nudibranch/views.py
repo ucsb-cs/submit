@@ -6,8 +6,7 @@ from pyramid.security import (Authenticated, authenticated_userid, forget,
                               remember)
 from pyramid.view import notfound_view_config, view_config
 from urllib.parse import urljoin
-from .helpers import (http_conflict, http_created, http_gone, route_path,
-                      site_layout, url_path)
+from .helpers import http_conflict, http_created, http_gone, site_layout
 from .models import Class, Session, User
 from .validator import VString, VWSString, validated_form
 
@@ -24,8 +23,8 @@ def home(request):
     user_id = authenticated_userid(request)
     if user_id:
         name = User.fetch_user_by_id(user_id).username
-        return HTTPFound(location=route_path(request, 'user_view',
-                                             username=name))
+        url = request.route_path('user_view', username=name)
+        return HTTPFound(location=url)
     return {'page_title': 'Home'}
 
 
@@ -45,7 +44,7 @@ def user_create(request, name, username, password, email):
     except IntegrityError:
         return http_conflict(request,
                              'Username {0!r} already exists'.format(username))
-    return http_created(request, redir_location=route_path(request, 'home'))
+    return http_created(request, redir_location=request.route_path('home'))
 
 
 @view_config(route_name='user', renderer='templates/create_user.pt',
@@ -62,7 +61,7 @@ def session_create(request, username, password):
     user = User.login(username, password)
     if user:
         headers = remember(request, user.id)
-        url = route_path(request, 'user_view', username=user.username)
+        url = request.route_path('user_view', username=user.username)
         retval = http_created(request, redir_location=url, headers=headers)
     else:
         retval = http_conflict(request, 'Invalid login.')
@@ -80,7 +79,7 @@ def session_edit(request):
              permission='authenticated')
 def session_destroy(request):
     headers = forget(request)
-    return http_gone(request, redir_location=route_path(request, 'home'),
+    return http_gone(request, redir_location=request.route_path('home'),
                      headers=headers)
 
 
@@ -114,7 +113,7 @@ def create_class(request):
             session.add(new_class)
             transaction.commit()
     return {'page_title': 'Create Class',
-            'action_path': route_path(request, 'create_class'),
+            'action_path': request.route_path('create_class'),
             'failed': failed,
             'message': message}
 
@@ -159,6 +158,6 @@ def edit_class(request):
                 failed = True
 
     return {'page_title': 'Edit Class',
-            'action_path': route_path(request, 'edit_class'),
+            'action_path': request.route_path('edit_class'),
             'failed': failed,
             'message': message}

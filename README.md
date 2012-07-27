@@ -128,3 +128,9 @@ remote repository. Doing so will likely cause a git train wreck.
 0. Finally push all outstanding commits to the remote repository
 
         git push
+
+
+# Production Installation Notes
+
+Python 3.2 has an issue with paste and requires a temporary fix described
+[here](http://stackoverflow.com/a/11679842/176978).

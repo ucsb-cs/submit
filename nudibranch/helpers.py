@@ -10,18 +10,6 @@ from pytz import timezone
 TIMEZONE = 'US/Pacific'  # Move this into settings at some point
 
 
-def _app_url(request):
-    if 'app_url' in request.registry.settings:
-        return request.registry.settings['app_url']
-    else:
-        return request.application_url
-
-
-@subscriber(NewRequest)
-def app_url(event):
-    event.request.set_property(_app_url, 'app_url', reify=True)
-
-
 def complete_date(the_datetime):
     return (the_datetime.replace(tzinfo=pytz.utc)
             .astimezone(timezone(TIMEZONE)).strftime('%H:%M, %A %B %d, %Y'))
@@ -99,24 +87,10 @@ def site_layout(function):
         renderer = get_renderer('templates/layout.pt')
         # Required parameters
         info['_LAYOUT'] = renderer.implementation().macros['layout']
-        info['_S'] = lambda x: static_path(request, x)
-        info['_R'] = lambda *args, **kw: route_path(request, *args, **kw)
+        info['_S'] = request.static_path
+        info['_R'] = request.route_path
         # Required parameters that can be overwritten
         info.setdefault('javascripts', None)
         info.setdefault('page_title', None)
         return info
     return wrapped
-
-
-def static_path(request, *args, **kwargs):
-    full_path = request.static_url(*args, _app_url=request.app_url, **kwargs)
-    return url_path(full_path)
-
-
-def url_path(full_path):
-    return '/' + full_path.split('/', 3)[-1]
-
-
-def route_path(request, *args, **kwargs):
-    full_path = request.route_url(*args, _app_url=request.app_url, **kwargs)
-    return url_path(full_path)
