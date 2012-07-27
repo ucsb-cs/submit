@@ -1,13 +1,15 @@
 import transaction
 from sqlalchemy.exc import IntegrityError
+from pyramid_addons.helpers import (http_conflict, http_created, http_gone,
+                                    site_layout)
+from pyramid_addons.validation import String, WhiteSpaceString, validated_form
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import (Authenticated, forget, remember)
 from pyramid.view import notfound_view_config, view_config
 from urllib.parse import urljoin
-from .helpers import http_conflict, http_created, http_gone, site_layout
 from .models import Class, Session, User
-from .validator import VString, VWSString, validated_form
+
 
 
 @notfound_view_config()
@@ -17,7 +19,7 @@ def not_found(request):
 
 @view_config(route_name='home', renderer='templates/home.pt',
              request_method='GET')
-@site_layout
+@site_layout('nudibranch:templates/layout.pt')
 def home(request):
     if request.user:
         url = request.route_path('user_view', username=request.user.username)
@@ -26,10 +28,10 @@ def home(request):
 
 
 @view_config(route_name='user', renderer='json', request_method='PUT')
-@validated_form(name=VString('name', min_length=3),
-                username=VString('username', min_length=3, max_length=16),
-                password=VWSString('password', min_length=6),
-                email=VString('email', min_length=6))
+@validated_form(name=String('name', min_length=3),
+                username=String('username', min_length=3, max_length=16),
+                password=WhiteSpaceString('password', min_length=6),
+                email=String('email', min_length=6))
 def user_create(request, name, username, password, email):
     admin = False
     session = Session()
@@ -46,14 +48,14 @@ def user_create(request, name, username, password, email):
 
 @view_config(route_name='user', renderer='templates/create_user.pt',
              request_method='GET')
-@site_layout
+@site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):
     return {'page_title': 'Create User'}
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
-@validated_form(username=VString('username'),
-                password=VWSString('password'))
+@validated_form(username=String('username'),
+                password=WhiteSpaceString('password'))
 def session_create(request, username, password):
     user = User.login(username, password)
     if user:
@@ -67,7 +69,7 @@ def session_create(request, username, password):
 
 @view_config(route_name='session', renderer='templates/login.pt',
              request_method='GET')
-@site_layout
+@site_layout('nudibranch:templates/layout.pt')
 def session_edit(request):
     return {'page_title': 'Login'}
 
@@ -84,7 +86,7 @@ def session_destroy(request):
 @view_config(route_name='user_view',
              renderer='templates/userhome.pt',
              permission='authenticated')
-@site_layout
+@site_layout('nudibranch:templates/layout.pt')
 def user_view(request):
     session = Session()
     person = User.fetch_user_by_name(request.matchdict['username'])
@@ -96,7 +98,7 @@ def user_view(request):
 @view_config(route_name='class',
              renderer='templates/create_class.pt',
              permission='admin')
-@site_layout
+@site_layout('nudibranch:templates/layout.pt')
 def create_class(request):
     failed = False
     message = []
@@ -119,7 +121,7 @@ def create_class(request):
 @view_config(route_name='class_view',
              permission='admin',
              renderer='templates/edit_class.pt')
-@site_layout
+@site_layout('nudibranch:templates/layout.pt')
 def edit_class(request):
     session = Session()
     failed = False

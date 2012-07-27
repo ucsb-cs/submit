@@ -1,3 +1,4 @@
+from pyramid_addons.helpers import load_settings
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
                         Unicode, desc, engine_from_config)
@@ -5,7 +6,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from zope.sqlalchemy import ZopeTransactionExtension
-from .helpers import load_settings
 
 Base = declarative_base(cls=BasicBase)
 Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
