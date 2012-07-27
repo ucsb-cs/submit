@@ -20,7 +20,7 @@ def not_found(request):
 @site_layout
 def home(request):
     if request.user:
-        url = request.route_path('user_view', username=user.username)
+        url = request.route_path('user_view', username=request.user.username)
         return HTTPFound(location=url)
     return {'page_title': 'Home'}
 
@@ -74,6 +74,7 @@ def session_edit(request):
 
 @view_config(route_name='session', renderer='json', request_method='DELETE',
              permission='authenticated')
+@validated_form()
 def session_destroy(request):
     headers = forget(request)
     return http_gone(request, redir_location=request.route_path('home'),
