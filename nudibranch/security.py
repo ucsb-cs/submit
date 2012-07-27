@@ -1,10 +1,16 @@
-from sqlalchemy.exc import OperationalError
+from pyramid.security import unauthenticated_userid
 from .models import Session, User
 
 
-def group_finder(user_id, request):
+def get_user(request):
     session = Session()
-    user = User.fetch_user_by_id(user_id)
+    user_id = unauthenticated_userid(request)
+    if user_id is not None:
+        return User.fetch_user_by_id(user_id)
+
+
+def group_finder(user_id, request):
+    user = request.user
     if user:
         if user.is_admin:
             return ['admin']

@@ -2,8 +2,7 @@ import transaction
 from sqlalchemy.exc import IntegrityError
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.response import Response
-from pyramid.security import (Authenticated, authenticated_userid, forget,
-                              remember)
+from pyramid.security import (Authenticated, forget, remember)
 from pyramid.view import notfound_view_config, view_config
 from urllib.parse import urljoin
 from .helpers import http_conflict, http_created, http_gone, site_layout
@@ -20,10 +19,8 @@ def not_found(request):
              request_method='GET')
 @site_layout
 def home(request):
-    user_id = authenticated_userid(request)
-    if user_id:
-        name = User.fetch_user_by_id(user_id).username
-        url = request.route_path('user_view', username=name)
+    if request.user:
+        url = request.route_path('user_view', username=user.username)
         return HTTPFound(location=url)
     return {'page_title': 'Home'}
 

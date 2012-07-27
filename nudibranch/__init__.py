@@ -4,7 +4,7 @@ from pyramid.config import Configurator
 from pyramid.security import ALL_PERMISSIONS, Allow, Authenticated
 from sqlalchemy import engine_from_config
 from .models import initialize_sql
-from .security import group_finder
+from .security import get_user, group_finder
 
 
 class Root(object):
@@ -29,6 +29,8 @@ def main(global_config, **settings):
     config = Configurator(settings=settings, authentication_policy=authen,
                           authorization_policy=author, root_factory=Root)
     config.add_static_view('static', 'static', cache_max_age=3600)
+    # Add user attribute to request
+    config.set_request_property(get_user, 'user', reify=True)
 
     # Application routes
     config.add_route('home', '/')
