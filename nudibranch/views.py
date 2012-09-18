@@ -26,6 +26,36 @@ def home(request):
     return {'page_title': 'Home'}
 
 
+@view_config(route_name='session', renderer='json', request_method='PUT')
+@validated_form(username=String('username'),
+                password=WhiteSpaceString('password'))
+def session_create(request, username, password):
+    user = User.login(username, password)
+    if user:
+        headers = remember(request, user.id)
+        url = request.route_path('user_view', username=user.username)
+        retval = http_created(request, redir_location=url, headers=headers)
+    else:
+        retval = http_conflict(request, 'Invalid login')
+    return retval
+
+
+@view_config(route_name='session', renderer='json', request_method='DELETE',
+             permission='authenticated')
+@validated_form()
+def session_destroy(request):
+    headers = forget(request)
+    return http_gone(request, redir_location=request.route_path('home'),
+                     headers=headers)
+
+
+@view_config(route_name='session', renderer='templates/login.pt',
+             request_method='GET')
+@site_layout('nudibranch:templates/layout.pt')
+def session_edit(request):
+    return {'page_title': 'Login'}
+
+
 @view_config(route_name='user', renderer='json', request_method='PUT')
 @validated_form(name=String('name', min_length=3),
                 username=String('username', min_length=3, max_length=16),
@@ -50,36 +80,6 @@ def user_create(request, name, username, password, email):
 @site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):
     return {'page_title': 'Create User'}
-
-
-@view_config(route_name='session', renderer='json', request_method='PUT')
-@validated_form(username=String('username'),
-                password=WhiteSpaceString('password'))
-def session_create(request, username, password):
-    user = User.login(username, password)
-    if user:
-        headers = remember(request, user.id)
-        url = request.route_path('user_view', username=user.username)
-        retval = http_created(request, redir_location=url, headers=headers)
-    else:
-        retval = http_conflict(request, 'Invalid login')
-    return retval
-
-
-@view_config(route_name='session', renderer='templates/login.pt',
-             request_method='GET')
-@site_layout('nudibranch:templates/layout.pt')
-def session_edit(request):
-    return {'page_title': 'Login'}
-
-
-@view_config(route_name='session', renderer='json', request_method='DELETE',
-             permission='authenticated')
-@validated_form()
-def session_destroy(request):
-    headers = forget(request)
-    return http_gone(request, redir_location=request.route_path('home'),
-                     headers=headers)
 
 
 @view_config(route_name='user_view',
@@ -121,7 +121,7 @@ def create_class(request):
              permission='admin',
              renderer='templates/edit_class.pt')
 @site_layout('nudibranch:templates/layout.pt')
-def edit_class(request):
+def class_edit(request):
     session = Session()
     failed = False
     message = []
