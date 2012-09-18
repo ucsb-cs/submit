@@ -11,7 +11,6 @@ from urllib.parse import urljoin
 from .models import Class, Session, User
 
 
-
 @notfound_view_config()
 def not_found(request):
     return Response('Not Found', status='404 Not Found')
@@ -63,7 +62,7 @@ def session_create(request, username, password):
         url = request.route_path('user_view', username=user.username)
         retval = http_created(request, redir_location=url, headers=headers)
     else:
-        retval = http_conflict(request, 'Invalid login.')
+        retval = http_conflict(request, 'Invalid login')
     return retval
 
 

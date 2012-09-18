@@ -1,7 +1,7 @@
 from pyramid_addons.helpers import load_settings
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
-                        Unicode, desc, engine_from_config)
+                        Table, Unicode, desc, engine_from_config)
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
@@ -11,6 +11,11 @@ Base = declarative_base(cls=BasicBase)
 Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 
 
+user_to_class = Table('association', Base.metadata,
+                      Column('user_id', Integer, ForeignKey('user.id')),
+                      Column('class_id', Integer, ForeignKey('class.id')))
+
+
 class User(UserMixin, Base):
     """The UserMixin provides the `username` and `password` attributes.
     `password` is a write-only attribute and can be verified using the
@@ -18,6 +23,7 @@ class User(UserMixin, Base):
     name = Column(Unicode, nullable=False)
     email = Column(Unicode, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
+#classes = relationship('Classes', secondary=user_to_class, backref="users")
 
     @staticmethod
     def fetch_user_by_id(user_id):
@@ -33,7 +39,7 @@ class User(UserMixin, Base):
 
     @staticmethod
     def login(username, password):
-        """Returns the user if successful, None otherwise"""
+        """Return the user if successful, None otherwise"""
         retval = None
         session = Session()
         try:
@@ -48,6 +54,10 @@ class User(UserMixin, Base):
         return 'Name: {0} Username: {1} Email: {2}'.format(self.name,
                                                            self.username,
                                                            self.email)
+
+    def __repr__(self):
+        return 'User(email="{0}", name="{1}", username="{2}")'.format(
+            self.email, self.name, self.username)
 
 
 class Class(Base):
