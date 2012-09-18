@@ -16,6 +16,22 @@ user_to_class = Table('association', Base.metadata,
                       Column('class_id', Integer, ForeignKey('class.id')))
 
 
+class Class(Base):
+    name = Column(Unicode, nullable=False, unique=True)
+
+    @staticmethod
+    def fetch_by_name(name):
+        session = Session()
+        course = session.query(Class).filter_by(name=name).first()
+        return course
+
+    def __repr__(self):
+        return 'Class(name={0})'.format(self.name)
+
+    def __str__(self):
+        return 'Class Name: {0}'.format(self.name)
+
+
 class User(UserMixin, Base):
     """The UserMixin provides the `username` and `password` attributes.
     `password` is a write-only attribute and can be verified using the
@@ -26,13 +42,13 @@ class User(UserMixin, Base):
 #classes = relationship('Classes', secondary=user_to_class, backref="users")
 
     @staticmethod
-    def fetch_user_by_id(user_id):
+    def fetch_by_id(user_id):
         session = Session()
         user = session.query(User).filter_by(id=user_id).first()
         return user
 
     @staticmethod
-    def fetch_user_by_name(username):
+    def fetch_by_name(username):
         session = Session()
         user = session.query(User).filter_by(username=username).first()
         return user
@@ -43,34 +59,21 @@ class User(UserMixin, Base):
         retval = None
         session = Session()
         try:
-            user = User.fetch_user_by_name(username)
+            user = User.fetch_by_name(username)
             if user and user.verify_password(password):
                 retval = user
         except OperationalError:
             pass
         return retval
 
-    def __str__(self):
-        return 'Name: {0} Username: {1} Email: {2}'.format(self.name,
-                                                           self.username,
-                                                           self.email)
-
     def __repr__(self):
         return 'User(email="{0}", name="{1}", username="{2}")'.format(
             self.email, self.name, self.username)
 
-
-class Class(Base):
-    class_name = Column(Unicode)
-
-    @staticmethod
-    def fetch_class(class_name):
-        session = Session()
-        course = session.query(Class).filter_by(class_name=class_name).first()
-        return course
-
     def __str__(self):
-        return 'Course Name: {0}'.format(self.class_name)
+        return 'Name: {0} Username: {1} Email: {2}'.format(self.name,
+                                                           self.username,
+                                                           self.email)
 
 
 def initialize_sql(engine):

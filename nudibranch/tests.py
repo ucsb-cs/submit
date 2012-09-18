@@ -6,17 +6,19 @@ import transaction
 def _init_testing_db():
     """Create an in-memory database for testing."""
     from sqlalchemy import create_engine
-    from .models import Session, User, initialize_sql
+    from .models import Class, Session, User, initialize_sql
     engine = create_engine('sqlite://')
     initialize_sql(engine)
 
-    items = [User(email='', name='User', username='user1', password='pswd1')]
+    items = [Class(name='Test 101'),
+             User(email='', name='User', username='user1', password='pswd1')]
     Session.add_all(items)
 
 
 class BaseAPITest(unittest.TestCase):
     """Base test class for all API method (or controller) tests."""
-    ROUTES = {'home': '/test_home',
+    ROUTES = {'class': '/test_class',
+              'home': '/test_home',
               'session': '/test_session',
               'user': '/test_user',
               'user_view': '/test_user_view'}
@@ -24,6 +26,7 @@ class BaseAPITest(unittest.TestCase):
     def make_request(self, path, **kwargs):
         """Build the request object used in view tests."""
         kwargs.setdefault('path', BaseAPITest.ROUTES[path])
+        kwargs.setdefault('user', None)
         request = testing.DummyRequest(**kwargs)
         return request
 
@@ -42,6 +45,70 @@ class BaseAPITest(unittest.TestCase):
         Session.remove()
 
 
+class BasicTests(BaseAPITest):
+    def test_site_layout_decorator(self):
+        from .views import home
+        from chameleon.zpt.template import Macro
+        request = self.make_request('home')
+        info = home(request)
+        self.assertIsInstance(info['_LAYOUT'], Macro)
+        self.assertRaises(ValueError, info['_S'], 'favicon.ico')
+
+    def test_home(self):
+        from .views import home
+        request = self.make_request('home')
+        info = home(request)
+        self.assertEqual('Home', info['page_title'])
+
+
+class ClassTests(BaseAPITest):
+    """The the API methods involved with modifying class information."""
+
+    def test_class_create_duplicate_name(self):
+        from .views import class_create
+        from pyramid.httpexceptions import HTTPConflict
+        json_data = {'name': 'Test 101'}
+        request = self.make_request('class', json_body=json_data)
+        info = class_create(request)
+        self.assertEqual(HTTPConflict.code, request.response.status_code)
+        self.assertEqual('Class \'Test 101\' already exists', info['message'])
+
+    def test_class_create_invalid_name(self):
+        from .views import class_create
+        from pyramid.httpexceptions import HTTPBadRequest
+
+        json_data = {}
+        for item in ['', 'a' * 2]:
+            json_data['name'] = item
+            request = self.make_request('user', json_body=json_data)
+            info = class_create(request)
+            self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+            self.assertEqual('Invalid request', info['error'])
+            self.assertEqual(1, len(info['messages']))
+
+    def test_class_create_no_params(self):
+        from .views import class_create
+        from pyramid.httpexceptions import HTTPBadRequest
+        request = self.make_request('class', json_body={})
+        info = class_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid request', info['error'])
+        self.assertEqual(1, len(info['messages']))
+
+    def test_class_create_valid(self):
+        from .models import Session, Class
+        from .views import class_create
+        from pyramid.httpexceptions import HTTPCreated
+        json_data = {'name': 'Foobar'}
+        request = self.make_request('user', json_body=json_data)
+        info = class_create(request)
+        self.assertEqual(HTTPCreated.code, request.response.status_code)
+        self.assertEqual(self.ROUTES['class'], info['redir_location'])
+        name = json_data['name']
+        klass = Session.query(Class).filter_by(name=name).first()
+        self.assertEqual(json_data['name'], klass.name)
+
+
 class SessionTests(BaseAPITest):
     """Test the API methods involved in session creation and destruction."""
 
@@ -54,16 +121,7 @@ class SessionTests(BaseAPITest):
         self.assertEqual(HTTPConflict.code, request.response.status_code)
         self.assertEqual('Invalid login', info['message'])
 
-    def test_session_create_valid(self):
-        from .views import session_create
-        from pyramid.httpexceptions import HTTPCreated
-        request = self.make_request('session', json_body={'username': 'user1',
-                                                          'password': 'pswd1'})
-        info = session_create(request)
-        self.assertEqual(HTTPCreated.code, request.response.status_code)
-        self.assertEqual(self.ROUTES['user_view'], info['redir_location'])
-
-    def test_session_create_with_no_params(self):
+    def test_session_create_no_params(self):
         from .views import session_create
         from pyramid.httpexceptions import HTTPBadRequest
         request = self.make_request('session', json_body={})
@@ -72,7 +130,7 @@ class SessionTests(BaseAPITest):
         self.assertEqual('Invalid request', info['error'])
         self.assertEqual(2, len(info['messages']))
 
-    def test_session_create_with_no_password(self):
+    def test_session_create_no_password(self):
         from .views import session_create
         from pyramid.httpexceptions import HTTPBadRequest
         request = self.make_request('session', json_body={'username': 'foo'})
@@ -81,7 +139,7 @@ class SessionTests(BaseAPITest):
         self.assertEqual('Invalid request', info['error'])
         self.assertEqual(1, len(info['messages']))
 
-    def test_session_create_with_no_username(self):
+    def test_session_create_no_username(self):
         from .views import session_create
         from pyramid.httpexceptions import HTTPBadRequest
         request = self.make_request('session', json_body={'password': 'bar'})
@@ -89,6 +147,15 @@ class SessionTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid request', info['error'])
         self.assertEqual(1, len(info['messages']))
+
+    def test_session_create_valid(self):
+        from .views import session_create
+        from pyramid.httpexceptions import HTTPCreated
+        request = self.make_request('session', json_body={'username': 'user1',
+                                                          'password': 'pswd1'})
+        info = session_create(request)
+        self.assertEqual(HTTPCreated.code, request.response.status_code)
+        self.assertEqual(self.ROUTES['user_view'], info['redir_location'])
 
     def test_session_edit(self):
         from .views import session_edit
@@ -100,7 +167,7 @@ class SessionTests(BaseAPITest):
 
 
 class UserTests(BaseAPITest):
-    """The the API methods involved with accessing user information."""
+    """The the API methods involved with modifying user information."""
 
     def test_user_create_duplicate_name(self):
         from .views import user_create
@@ -201,48 +268,3 @@ class UserTests(BaseAPITest):
         info = user_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Create User', info['page_title'])
-
-
-"""
-class ViewTests(unittest.TestCase):
-    def test_site_layout_decorator(self):
-        from .views import home
-        from chameleon.zpt.template import Macro
-        request = self._make_request()
-        info = home(request)
-        self.assertIsInstance(info['_LAYOUT'], Macro)
-        self.assertRaises(ValueError, info['_S'], 'favicon.ico')
-
-    def test_home(self):
-        from .views import home
-        request = self._make_request()
-        info = home(request)
-        self.assertEqual('Home', info['page_title'])
-
-    def test_create_class_get(self):
-        from .views import create_class
-        request = self._make_request()
-        info = create_class(request)
-        self.assertEqual(self.TEST_PATHS['create_class'], info['action_path'])
-        self.assertEqual(False, info['failed'])
-        self.assertEqual('Create Class', info['page_title'])
-
-    def test_create_class_post_only_submission_param(self):
-        from .views import create_class
-        post_params = {'submit': 'submit'}
-        request = self._make_request(POST=post_params)
-        info = create_class(request)
-        self.assertEqual(self.TEST_PATHS['create_class'], info['action_path'])
-        self.assertEqual(True, info['failed'])
-        self.assertEqual('Create Class', info['page_title'])
-
-    def test_create_class_post_successful(self):
-        from .views import create_class
-        post_params = {'submit': 'submit',
-                       'Class_Name': 'foobar'}
-        request = self._make_request(POST=post_params)
-        info = create_class(request)
-        self.assertEqual(self.TEST_PATHS['create_class'], info['action_path'])
-        self.assertEqual(False, info['failed'])
-        self.assertEqual(["Class added!"], info['message'])
-"""

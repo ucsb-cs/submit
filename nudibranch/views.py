@@ -26,6 +26,66 @@ def home(request):
     return {'page_title': 'Home'}
 
 
+@view_config(route_name='class', renderer='json', request_method='PUT',
+             permission='admin')
+@validated_form(name=String('name', min_length=3))
+def class_create(request, name):
+    session = Session()
+    klass = Class(name=name)
+    session.add(klass)
+    try:
+        transaction.commit()
+    except IntegrityError:
+        return http_conflict(request,
+                             'Class {0!r} already exists'.format(name))
+    return http_created(request, redir_location=request.route_path('class'))
+
+
+@view_config(route_name='class_view',
+             permission='admin',
+             renderer='templates/edit_class.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def class_edit(request):
+    session = Session()
+    failed = False
+    message = []
+    for course in session.query(Class):
+        message.append(course.class_name)
+
+    if 'remove_submit' in request.POST:
+        course_name = request.POST.get('Class_Name', '').strip()
+        if course_name == '':
+            failed = True
+        else:
+            to_remove = Class.fetch_by_name(course_name)
+            if to_remove:
+                session.delete(to_remove)
+                transaction.commit()
+                message.remove(to_remove.class_name)
+            else:
+                failed = True
+
+    if 'rename_submit' in request.POST:
+        old_name = request.POST.get('Old_Name', '').strip()
+        new_name = request.POST.get('New_Name', '').strip()
+        if (old_name == '') or (new_name == ''):
+            failed = True
+        else:
+            rename = Class.fetch_by_name(old_name)
+            if rename:
+                rename.class_name = new_name
+                message.remove(old_name)
+                message.append(new_name)
+                transaction.commit()
+            else:
+                failed = True
+
+    return {'page_title': 'Edit Class',
+            'action_path': request.route_path('edit_class'),
+            'failed': failed,
+            'message': message}
+
+
 @view_config(route_name='session', renderer='json', request_method='PUT')
 @validated_form(username=String('username'),
                 password=WhiteSpaceString('password'))
@@ -88,75 +148,7 @@ def user_edit(request):
 @site_layout('nudibranch:templates/layout.pt')
 def user_view(request):
     session = Session()
-    person = User.fetch_user_by_name(request.matchdict['username'])
+    person = User.fetch_by_name(request.matchdict['username'])
     return {'page_title': 'User Home',
             'username': person.name,
             'admin': person.is_admin}
-
-
-@view_config(route_name='class',
-             renderer='templates/create_class.pt',
-             permission='admin')
-@site_layout('nudibranch:templates/layout.pt')
-def create_class(request):
-    failed = False
-    message = []
-    if 'submit' in request.POST:
-        class_name = request.POST.get('Class_Name', '').strip()
-        if class_name == '':
-            failed = True
-        else:
-            session = Session()
-            new_class = Class(class_name=class_name)
-            message.append("Class added!")
-            session.add(new_class)
-            transaction.commit()
-    return {'page_title': 'Create Class',
-            'action_path': request.route_path('create_class'),
-            'failed': failed,
-            'message': message}
-
-
-@view_config(route_name='class_view',
-             permission='admin',
-             renderer='templates/edit_class.pt')
-@site_layout('nudibranch:templates/layout.pt')
-def class_edit(request):
-    session = Session()
-    failed = False
-    message = []
-    for course in session.query(Class):
-        message.append(course.class_name)
-
-    if 'remove_submit' in request.POST:
-        course_name = request.POST.get('Class_Name', '').strip()
-        if course_name == '':
-            failed = True
-        else:
-            to_remove = Class.fetch_class(course_name)
-            if to_remove:
-                session.delete(to_remove)
-                transaction.commit()
-                message.remove(to_remove.class_name)
-            else:
-                failed = True
-
-    if 'rename_submit' in request.POST:
-        old_name = request.POST.get('Old_Name', '').strip()
-        new_name = request.POST.get('New_Name', '').strip()
-        if (old_name == '') or (new_name == ''):
-            failed = True
-        else:
-            rename = Class.fetch_class(old_name)
-            if rename:
-                rename.class_name = new_name
-                message.remove(old_name)
-                message.append(new_name)
-                transaction.commit()
-            else:
-                failed = True
-
-    return {'page_title': 'Edit Class',
-            'action_path': request.route_path('edit_class'),
-            'failed': failed,
-            'message': message}
