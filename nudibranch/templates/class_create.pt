@@ -1,9 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
     <div class="header">Create New Class</div>
-    <p tal:condition="failed" class="error"> Invalid Input, Try Again</p>
-    <p tal:repeat="message message">${message}</p>
-    <form name="input" action="${action_path}" method="post">
+    <form name="input" action="${_R('class_create')}" method="post">
             <p>
                 <label for="name">Name</label><br/>
                 <input type="text" name="Class_Name" id="name"/><br/>

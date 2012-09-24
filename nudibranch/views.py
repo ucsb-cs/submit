@@ -26,8 +26,8 @@ def home(request):
     return {'page_title': 'Home'}
 
 
-@view_config(route_name='class_create', renderer='json', request_method='PUT',
-             permission='admin')
+@view_config(route_name='class_create', request_method='PUT',
+             permission='admin', renderer='json')
 @validated_form(name=String('name', min_length=3))
 def class_create(request, name):
     session = Session()
@@ -39,6 +39,13 @@ def class_create(request, name):
         return http_conflict(request,
                              'Class {0!r} already exists'.format(name))
     return http_created(request, redir_location=request.route_path('class'))
+
+
+@view_config(route_name='class_create', renderer='templates/class_create.pt',
+             request_method='GET', permission='admin')
+@site_layout('nudibranch:templates/layout.pt')
+def class_edit(request):
+    return {'page_title': 'Create Class'}
 
 
 @view_config(route_name='class_list', request_method='GET', permission='admin',

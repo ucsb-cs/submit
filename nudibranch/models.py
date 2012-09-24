@@ -94,4 +94,4 @@ def populate_database():
         transaction.commit()
         print('Admin user created')
     except IntegrityError:
-        pass
+        transaction.abort()
