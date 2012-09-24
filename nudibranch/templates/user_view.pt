@@ -1,9 +1,5 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <div>Hello ${username}!</div>
-  <form name="logout" action="${_R('session')}"
-        onsubmit="return form_request(this, 'delete');">
-    <input type="submit" name="submit" value="Logout" />
-  </form>
+     <p>Info for ${user.name}</p>
 </div>
 </div>

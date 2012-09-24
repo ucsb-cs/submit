@@ -78,11 +78,12 @@ class User(UserMixin, Base):
                                                                admin_str)
 
 
-def initialize_sql(engine):
+def initialize_sql(engine, populate=False):
     Session.configure(bind=engine)
     Base.metadata.bind = engine
     Base.metadata.create_all(engine)
-    populate_database()
+    if populate:
+        populate_database()
 
 
 def populate_database():

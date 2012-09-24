@@ -20,7 +20,7 @@ def main(global_config, **settings):
     """
     # Initialize the database
     engine = engine_from_config(settings, 'sqlalchemy.')
-    initialize_sql(engine)
+    initialize_sql(engine, populate=True)
 
     # Configure the webapp
     authen = AuthTktAuthenticationPolicy(secret='<PYRAMID_SECRET>',

@@ -16,16 +16,6 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-@view_config(route_name='home', renderer='templates/home.pt',
-             request_method='GET')
-@site_layout('nudibranch:templates/layout.pt')
-def home(request):
-    if request.user:
-        url = request.route_path('user_view', username=request.user.username)
-        return HTTPFound(location=url)
-    return {'page_title': 'Home'}
-
-
 @view_config(route_name='class_create', request_method='PUT',
              permission='admin', renderer='json')
 @validated_form(name=String('name', min_length=3))
@@ -38,7 +28,8 @@ def class_create(request, name):
     except IntegrityError:
         return http_conflict(request,
                              'Class {0!r} already exists'.format(name))
-    return http_created(request, redir_location=request.route_path('class'))
+    return http_created(request,
+                        redir_location=request.route_path('class_list'))
 
 
 @view_config(route_name='class_create', renderer='templates/class_create.pt',
@@ -57,46 +48,14 @@ def class_list(request):
     return {'page_title': 'Login', 'classes': classes}
 
 
-
-"""
-    failed = False
-    message = []
-    for course in session.query(Class):
-        message.append(course.class_name)
-
-    if 'remove_submit' in request.POST:
-        course_name = request.POST.get('Class_Name', '').strip()
-        if course_name == '':
-            failed = True
-        else:
-            to_remove = Class.fetch_by_name(course_name)
-            if to_remove:
-                session.delete(to_remove)
-                transaction.commit()
-                message.remove(to_remove.class_name)
-            else:
-                failed = True
-
-    if 'rename_submit' in request.POST:
-        old_name = request.POST.get('Old_Name', '').strip()
-        new_name = request.POST.get('New_Name', '').strip()
-        if (old_name == '') or (new_name == ''):
-            failed = True
-        else:
-            rename = Class.fetch_by_name(old_name)
-            if rename:
-                rename.class_name = new_name
-                message.remove(old_name)
-                message.append(new_name)
-                transaction.commit()
-            else:
-                failed = True
-
-    return {'page_title': 'Edit Class',
-            'action_path': request.route_path('edit_class'),
-            'failed': failed,
-            'message': message}
-"""
+@view_config(route_name='home', renderer='templates/home.pt',
+             request_method='GET')
+@site_layout('nudibranch:templates/layout.pt')
+def home(request):
+    if request.user:
+        url = request.route_path('user_view', username=request.user.username)
+        return HTTPFound(location=url)
+    return {'page_title': 'Home'}
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
@@ -172,7 +131,5 @@ def user_list(request):
 @site_layout('nudibranch:templates/layout.pt')
 def user_view(request):
     session = Session()
-    person = User.fetch_by_name(request.matchdict['username'])
-    return {'page_title': 'User Home',
-            'username': person.name,
-            'admin': person.is_admin}
+    user = User.fetch_by_name(request.matchdict['username'])
+    return {'page_title': 'User Home', 'user': user}

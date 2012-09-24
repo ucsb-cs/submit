@@ -15,6 +15,14 @@
     ADMIN BAR: <a href="${_R('class_list')}">Classes</a> |
     <a href="${_R('user_list')}">Users</a>
   </div>
+  <div tal:condition="request.user" style="background: #0C0">
+    <form name="logout" action="${_R('session')}"
+          onsubmit="return form_request(this, 'delete');">
+      Hello <a href="${_R('user_view', username=request.user.username)}">
+        ${request.user.username}</a>!
+      <input type="submit" name="submit" value="Logout" />
+    </form>
+  </div>
   <div metal:define-slot="content">
   </div>
 </body>
