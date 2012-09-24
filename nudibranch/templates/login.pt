@@ -6,7 +6,8 @@
               onsubmit="return form_request(this, 'put');">
             <p>
                 <label for="username">Username</label><br/>
-                <input type="text" name="username" id="username"/><br/>
+                <input type="text" name="username" id="username"
+                       value="${username}" /><br/>
                 <label for="password">Password</label><br/>
                 <input type="password" name="password" id="password" />
             </p>

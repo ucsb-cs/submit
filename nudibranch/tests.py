@@ -254,7 +254,9 @@ class UserTests(BaseAPITest):
         request = self.make_request('user', json_body=json_data)
         info = user_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        self.assertEqual(self.ROUTES['home'], info['redir_location'])
+        expected_url = '{0}?username={1}'.format(self.ROUTES['session'],
+                                                 'user2')
+        self.assertEqual(expected_url, info['redir_location'])
         username = json_data['username']
         user = Session.query(User).filter_by(username=username).first()
         self.assertEqual(json_data['email'], user.email)

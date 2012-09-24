@@ -113,7 +113,8 @@ def session_destroy(request):
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
 def session_edit(request):
-    return {'page_title': 'Login'}
+    username = request.GET.get('username', '')
+    return {'page_title': 'Login', 'username': username}
 
 
 @view_config(route_name='user', renderer='json', request_method='PUT')
@@ -132,7 +133,9 @@ def user_create(request, name, username, password, email):
     except IntegrityError:
         return http_conflict(request,
                              'Username {0!r} already exists'.format(username))
-    return http_created(request, redir_location=request.route_path('home'))
+    redir_location = request.route_path('session',
+                                        _query={'username': username})
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='user', renderer='templates/create_user.pt',
