@@ -20,7 +20,7 @@ class BaseAPITest(unittest.TestCase):
     ROUTES = {'class': '/test_class',
               'home': '/test_home',
               'session': '/test_session',
-              'user': '/test_user',
+              'user_create': '/test_user_create',
               'user_view': '/test_user_view'}
 
     def make_request(self, path, **kwargs):
@@ -80,7 +80,7 @@ class ClassTests(BaseAPITest):
         json_data = {}
         for item in ['', 'a' * 2]:
             json_data['name'] = item
-            request = self.make_request('user', json_body=json_data)
+            request = self.make_request('user_create', json_body=json_data)
             info = class_create(request)
             self.assertEqual(HTTPBadRequest.code, request.response.status_code)
             self.assertEqual('Invalid request', info['error'])
@@ -100,7 +100,7 @@ class ClassTests(BaseAPITest):
         from .views import class_create
         from pyramid.httpexceptions import HTTPCreated
         json_data = {'name': 'Foobar'}
-        request = self.make_request('user', json_body=json_data)
+        request = self.make_request('user_create', json_body=json_data)
         info = class_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         self.assertEqual(self.ROUTES['class'], info['redir_location'])
@@ -175,7 +175,7 @@ class UserTests(BaseAPITest):
 
         json_data = {'email': 'foo@bar.com', 'name': 'Foobar',
                      'password': 'Foobar', 'username': 'user1'}
-        request = self.make_request('user', json_body=json_data)
+        request = self.make_request('user_create', json_body=json_data)
         info = user_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
         self.assertEqual('Username \'user1\' already exists', info['message'])
@@ -188,7 +188,7 @@ class UserTests(BaseAPITest):
                      'username': 'foobar'}
         for item in ['', 'a' * 5]:
             json_data['email'] = item
-            request = self.make_request('user', json_body=json_data)
+            request = self.make_request('user_create', json_body=json_data)
             info = user_create(request)
             self.assertEqual(HTTPBadRequest.code, request.response.status_code)
             self.assertEqual('Invalid request', info['error'])
@@ -202,7 +202,7 @@ class UserTests(BaseAPITest):
                      'username': 'foobar'}
         for item in ['', 'a' * 2]:
             json_data['name'] = item
-            request = self.make_request('user', json_body=json_data)
+            request = self.make_request('user_create', json_body=json_data)
             info = user_create(request)
             self.assertEqual(HTTPBadRequest.code, request.response.status_code)
             self.assertEqual('Invalid request', info['error'])
@@ -216,7 +216,7 @@ class UserTests(BaseAPITest):
                      'username': 'foobar'}
         for item in ['', 'a' * 5]:
             json_data['password'] = item
-            request = self.make_request('user', json_body=json_data)
+            request = self.make_request('user_create', json_body=json_data)
             info = user_create(request)
             self.assertEqual(HTTPBadRequest.code, request.response.status_code)
             self.assertEqual('Invalid request', info['error'])
@@ -230,7 +230,7 @@ class UserTests(BaseAPITest):
                      'password': 'foobar'}
         for item in ['', 'a' * 2, 'a' * 17]:
             json_data['username'] = item
-            request = self.make_request('user', json_body=json_data)
+            request = self.make_request('user_create', json_body=json_data)
             info = user_create(request)
             self.assertEqual(HTTPBadRequest.code, request.response.status_code)
             self.assertEqual('Invalid request', info['error'])
@@ -239,7 +239,7 @@ class UserTests(BaseAPITest):
     def test_user_create_no_params(self):
         from .views import user_create
         from pyramid.httpexceptions import HTTPBadRequest
-        request = self.make_request('user', json_body={})
+        request = self.make_request('user_create', json_body={})
         info = user_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid request', info['error'])
@@ -251,7 +251,7 @@ class UserTests(BaseAPITest):
         from pyramid.httpexceptions import HTTPCreated
         json_data = {'email': 'foo@bar.com', 'name': 'Foobar',
                      'password': 'Foobar', 'username': 'user2'}
-        request = self.make_request('user', json_body=json_data)
+        request = self.make_request('user_create', json_body=json_data)
         info = user_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         expected_url = '{0}?username={1}'.format(self.ROUTES['session'],
@@ -266,7 +266,7 @@ class UserTests(BaseAPITest):
     def test_user_edit(self):
         from .views import user_edit
         from pyramid.httpexceptions import HTTPOk
-        request = self.make_request('user')
+        request = self.make_request('user_create')
         info = user_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Create User', info['page_title'])

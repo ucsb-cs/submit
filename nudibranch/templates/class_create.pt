@@ -9,11 +9,9 @@
                 <input type="text" name="Class_Name" id="name"/><br/>
 
             </p>
-            
-            <input type="submit" name="submit" value="Create"/>        
+            <input type="submit" name="submit" value="Create"/>
         </form>
     <br/><br/>
     <a href="${_R('home')}">Home</a><br/>
   </div>
 </div>
-

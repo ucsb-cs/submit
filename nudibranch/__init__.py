@@ -34,10 +34,14 @@ def main(global_config, **settings):
 
     # Application routes
     config.add_route('home', '/')
-    config.add_route('class', '/class')
+    config.add_route('class_list', '/class')
+    config.add_route('class_create', '/class/edit')
     config.add_route('class_view', '/class/{class_name}')
+    config.add_route('class_edit', '/class/{class_name}/edit')
     config.add_route('session', '/session')
-    config.add_route('user', '/user')
+    config.add_route('user_list', '/user')
+    config.add_route('user_create', '/user/edit')
     config.add_route('user_view', '/user/{username}')
+    config.add_route('user_edit', '/user/{username}/edit')
     config.scan()
     return config.make_wsgi_app()

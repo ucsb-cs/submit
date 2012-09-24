@@ -26,7 +26,7 @@ def home(request):
     return {'page_title': 'Home'}
 
 
-@view_config(route_name='class', renderer='json', request_method='PUT',
+@view_config(route_name='class_create', renderer='json', request_method='PUT',
              permission='admin')
 @validated_form(name=String('name', min_length=3))
 def class_create(request, name):
@@ -41,12 +41,17 @@ def class_create(request, name):
     return http_created(request, redir_location=request.route_path('class'))
 
 
-@view_config(route_name='class_view',
-             permission='admin',
-             renderer='templates/edit_class.pt')
+@view_config(route_name='class_list', request_method='GET', permission='admin',
+             renderer='templates/class_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
-def class_edit(request):
+def class_list(request):
     session = Session()
+    classes = session.query(Class).all()
+    return {'page_title': 'Login', 'classes': classes}
+
+
+
+"""
     failed = False
     message = []
     for course in session.query(Class):
@@ -84,6 +89,7 @@ def class_edit(request):
             'action_path': request.route_path('edit_class'),
             'failed': failed,
             'message': message}
+"""
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
@@ -117,16 +123,15 @@ def session_edit(request):
     return {'page_title': 'Login', 'username': username}
 
 
-@view_config(route_name='user', renderer='json', request_method='PUT')
+@view_config(route_name='user_create', renderer='json', request_method='PUT')
 @validated_form(name=String('name', min_length=3),
                 username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6))
 def user_create(request, name, username, password, email):
-    admin = False
     session = Session()
     user = User(name=name, username=username, password=password,
-                email=email, is_admin=admin)
+                email=email, is_admin=False)
     session.add(user)
     try:
         transaction.commit()
@@ -138,15 +143,24 @@ def user_create(request, name, username, password, email):
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='user', renderer='templates/create_user.pt',
+@view_config(route_name='user_create', renderer='templates/user_create.pt',
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):
     return {'page_title': 'Create User'}
 
 
+@view_config(route_name='user_list', request_method='GET', permission='admin',
+             renderer='templates/user_list.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def user_list(request):
+    session = Session()
+    users = session.query(User).all()
+    return {'page_title': 'User List', 'users': users}
+
+
 @view_config(route_name='user_view',
-             renderer='templates/userhome.pt',
+             renderer='templates/user_view.pt',
              permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def user_view(request):

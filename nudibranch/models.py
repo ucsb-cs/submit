@@ -2,7 +2,7 @@ from pyramid_addons.helpers import load_settings
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
                         Table, Unicode, desc, engine_from_config)
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from zope.sqlalchemy import ZopeTransactionExtension
@@ -71,16 +71,27 @@ class User(UserMixin, Base):
             self.email, self.name, self.username)
 
     def __str__(self):
-        return 'Name: {0} Username: {1} Email: {2}'.format(self.name,
-                                                           self.username,
-                                                           self.email)
+        admin_str = '(admin)' if self.is_admin else ''
+        return 'Name: {0} Username: {1} Email: {2} {3}'.format(self.name,
+                                                               self.username,
+                                                               self.email,
+                                                               admin_str)
 
 
 def initialize_sql(engine):
     Session.configure(bind=engine)
     Base.metadata.bind = engine
     Base.metadata.create_all(engine)
+    populate_database()
 
 
-def reset_database(engine):
-    Base.metadata.drop_all(engine)
+def populate_database():
+    import transaction
+    admin = User(email='root@localhost', name='Administrator',
+                 username='admin', password='password', is_admin=True)
+    Session.add(admin)
+    try:
+        transaction.commit()
+        print('Admin user created')
+    except IntegrityError:
+        pass

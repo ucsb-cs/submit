@@ -1,15 +1,9 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div>Hello ${username}!</div>
-  <p tal:condition="admin"> Group: Admin <br/></p>
-  <p tal:condition="not: admin"> Group: Student <br/></p>
-  <p tal:condition="admin"> <a href="${_R('create_class')}">Create New Class</a><br/>
-        <a href="${_R('edit_class')}">Edit Classes</a>
-  </p>
   <form name="logout" action="${_R('session')}"
         onsubmit="return form_request(this, 'delete');">
     <input type="submit" name="submit" value="Logout" />
   </form>
 </div>
 </div>
-

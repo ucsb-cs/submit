@@ -11,7 +11,11 @@
   <script tal:repeat="js javascripts" src="${_S('nudibranch:static/' + js)}"></script>
 </head>
 <body>
-     <div metal:define-slot="content">
-     </div>
+  <div tal:condition="request.user and request.user.is_admin" style="background: #CCC">
+    ADMIN BAR: <a href="${_R('class_list')}">Classes</a> |
+    <a href="${_R('user_list')}">Users</a>
+  </div>
+  <div metal:define-slot="content">
+  </div>
 </body>
 </html>
