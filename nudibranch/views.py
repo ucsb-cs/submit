@@ -18,7 +18,7 @@ def not_found(request):
 
 @view_config(route_name='class_create', request_method='PUT',
              permission='admin', renderer='json')
-@validated_form(name=String('name', min_length=3))
+@validated_form(name=String('name', invalid_re='^edit$', min_length=3))
 def class_create(request, name):
     session = Session()
     klass = Class(name=name)
@@ -91,7 +91,8 @@ def session_edit(request):
 
 @view_config(route_name='user_create', renderer='json', request_method='PUT')
 @validated_form(name=String('name', min_length=3),
-                username=String('username', min_length=3, max_length=16),
+                username=String('username', invalid_re='^edit$',
+                                min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6))
 def user_create(request, name, username, password, email):

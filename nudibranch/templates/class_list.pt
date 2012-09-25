@@ -2,7 +2,7 @@
 <div metal:fill-slot="content">
   <p><a href="${_R('class_create')}">Create new class</a></p>
   <div tal:repeat="klass classes">
-    <a href="${_R('class_view')}">${klass.name}</a>
+    <a href="${_R('class_view', class_name=klass.name)}">${klass.name}</a>
   </div>
 </div>
 </div>
