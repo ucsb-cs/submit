@@ -12,14 +12,13 @@
 </head>
 <body>
   <div tal:condition="request.user and request.user.is_admin" style="background: #CCC">
-    ADMIN BAR: <a href="${_R('class')}">Classes</a> |
-    <a href="${_R('user')}">Users</a>
+    ADMIN BAR: <a href="${_R('user')}">Users</a>
   </div>
   <div tal:condition="request.user" style="background: #0C0">
     <form name="logout" action="${_R('session')}"
           onsubmit="return form_request(this, 'delete');">
       Hello <a href="${_R('user_item', username=request.user.username)}">
-        ${request.user.username}</a>!
+        ${request.user.username}</a>! | <a href="${_R('class')}">Classes</a>
       <input type="submit" name="submit" value="Logout" />
     </form>
   </div>

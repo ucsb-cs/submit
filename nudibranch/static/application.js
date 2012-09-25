@@ -6,6 +6,9 @@ function form_request(form, method) {
         if (xhr.readyState == this.DONE) {
             data = JSON.parse(xhr.responseText);
             switch(xhr.status) {
+            case 200:  // Ok
+                alert(data['message'])
+                break;
             case 201:  // Created
                 window.location = data['redir_location'];
                 break;

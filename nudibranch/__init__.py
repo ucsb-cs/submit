@@ -37,6 +37,7 @@ def main(global_config, **settings):
     config.add_route('class', '/class')
     config.add_route('class_new_form', '/class/edit')
     config.add_route('class_item', '/class/{class_name}')
+    config.add_route('class_join', '/class/{class_name}/{username}')
     config.add_route('class_edit_form', '/class/{class_name}/edit')
     config.add_route('session', '/session')
     config.add_route('user', '/user')

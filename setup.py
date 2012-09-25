@@ -7,7 +7,7 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 
 requires = [
     'pyramid>=1.3',
-    'pyramid_addons>=0.2',
+    'pyramid_addons>=0.3',
     'sqla_mixins>=0.1',
     'sqlalchemy>=0.7.8',
     'zope.sqlalchemy>=0.7.1']

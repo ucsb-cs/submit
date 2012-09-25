@@ -1,5 +1,11 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-     <p>Info for ${klass.name}</p>
+  <p>Info for ${klass.name}</p>
+
+  <form name="input" action="${_R('class_join', class_name=klass.name,
+                             username=request.user.username)}"
+        onsubmit="return form_request(this, 'POST');">
+    <input type="submit" name="submit" value="Join"/>
+  </form>
 </div>
 </div>

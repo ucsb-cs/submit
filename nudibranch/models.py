@@ -39,7 +39,7 @@ class User(UserMixin, Base):
     name = Column(Unicode, nullable=False)
     email = Column(Unicode, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
-#classes = relationship('Classes', secondary=user_to_class, backref="users")
+    classes = relationship(Class, secondary=user_to_class, backref="users")
 
     @staticmethod
     def fetch_by_id(user_id):

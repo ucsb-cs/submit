@@ -1,6 +1,7 @@
 import transaction
 from sqlalchemy.exc import IntegrityError
-from pyramid_addons.helpers import (http_conflict, http_created, http_gone,
+from pyramid_addons.helpers import (http_bad_request, http_conflict,
+                                    http_created, http_gone, http_ok,
                                     site_layout)
 from pyramid_addons.validation import String, WhiteSpaceString, validated_form
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
@@ -26,6 +27,7 @@ def class_create(request, name):
     try:
         transaction.commit()
     except IntegrityError:
+        transaction.abort()
         return http_conflict(request,
                              'Class {0!r} already exists'.format(name))
     return http_created(request, redir_location=request.route_path('class'))
@@ -38,8 +40,26 @@ def class_edit(request):
     return {'page_title': 'Create Class'}
 
 
-@view_config(route_name='class', request_method='GET', permission='admin',
-             renderer='templates/class_list.pt')
+@view_config(route_name='class_join', request_method='POST',
+             permission='authenticated', renderer='json')
+@validated_form()
+def class_join(request):
+    class_name = request.matchdict['class_name']
+    username = request.matchdict['username']
+    if request.user.username != username:
+        return http_bad_request(request, 'Invalid user')
+    session = Session()
+    klass = Session.query(Class).filter_by(name=class_name).first()
+    if not klass:
+        return http_bad_request(request, 'Invalid class')
+    request.user.classes.append(klass)
+    session.add(request.user)
+    transaction.commit()
+    return http_ok(request, 'Class joined')
+
+
+@view_config(route_name='class', request_method='GET',
+             permission='authenticated', renderer='templates/class_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def class_list(request):
     session = Session()
@@ -53,6 +73,8 @@ def class_list(request):
 def class_view(request):
     session = Session()
     klass = Class.fetch_by_name(request.matchdict['class_name'])
+    if not klass:
+        return HTTPNotFound()
     return {'page_title': 'Class Page', 'klass': klass}
 
 
@@ -111,6 +133,7 @@ def user_create(request, name, username, password, email):
     try:
         transaction.commit()
     except IntegrityError:
+        transaction.abort()
         return http_conflict(request,
                              'Username {0!r} already exists'.format(username))
     redir_location = request.route_path('session',
@@ -140,4 +163,6 @@ def user_list(request):
 def user_view(request):
     session = Session()
     user = User.fetch_by_name(request.matchdict['username'])
+    if not user:
+        return HTTPNotFound()
     return {'page_title': 'User Page', 'user': user}
