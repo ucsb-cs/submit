@@ -19,6 +19,7 @@ class BaseAPITest(unittest.TestCase):
     """Base test class for all API method (or controller) tests."""
     ROUTES = {'class_create': '/test_class_create',
               'class_list': '/test_class_list',
+              'class_view': '/test_class_view',
               'home': '/test_home',
               'session': '/test_session',
               'user_create': '/test_user_create',
@@ -119,6 +120,16 @@ class ClassTests(BaseAPITest):
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual(1, len(info['classes']))
         self.assertEqual('Test 101', info['classes'][0].name)
+
+    def test_class_view(self):
+        from .views import class_view
+        from pyramid.httpexceptions import HTTPOk
+        request = self.make_request('class_view',
+                                    matchdict={'class_name': 'Test 101'})
+        info = class_view(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Test 101', info['klass'].name)
+
 
 
 
@@ -292,3 +303,12 @@ class UserTests(BaseAPITest):
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual(1, len(info['users']))
         self.assertEqual('user1', info['users'][0].username)
+
+    def test_user_view(self):
+        from .views import user_view
+        from pyramid.httpexceptions import HTTPOk
+        request = self.make_request('user_view',
+                                    matchdict={'username': 'user1'})
+        info = user_view(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('user1', info['user'].username)

@@ -1,0 +1,5 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+     <p>Info for ${klass.name}</p>
+</div>
+</div>

@@ -48,6 +48,16 @@ def class_list(request):
     return {'page_title': 'Login', 'classes': classes}
 
 
+@view_config(route_name='class_view',
+             renderer='templates/class_view.pt',
+             permission='authenticated')
+@site_layout('nudibranch:templates/layout.pt')
+def class_view(request):
+    session = Session()
+    klass = Class.fetch_by_name(request.matchdict['class_name'])
+    return {'page_title': 'Class Page', 'klass': klass}
+
+
 @view_config(route_name='home', renderer='templates/home.pt',
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
@@ -133,4 +143,4 @@ def user_list(request):
 def user_view(request):
     session = Session()
     user = User.fetch_by_name(request.matchdict['username'])
-    return {'page_title': 'User Home', 'user': user}
+    return {'page_title': 'User Page', 'user': user}
