@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div class="header">Create New User</div>
-  <form name="input" action="${_R('user_create')}"
+  <form name="input" action="${_R('user')}"
         onsubmit="return form_request(this, 'put');">
     <p>
       <label for="name">Name</label><br/>

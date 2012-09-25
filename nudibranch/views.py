@@ -16,7 +16,7 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-@view_config(route_name='class_create', request_method='PUT',
+@view_config(route_name='class', request_method='PUT',
              permission='admin', renderer='json')
 @validated_form(name=String('name', invalid_re='^edit$', min_length=3))
 def class_create(request, name):
@@ -28,18 +28,17 @@ def class_create(request, name):
     except IntegrityError:
         return http_conflict(request,
                              'Class {0!r} already exists'.format(name))
-    return http_created(request,
-                        redir_location=request.route_path('class_list'))
+    return http_created(request, redir_location=request.route_path('class'))
 
 
-@view_config(route_name='class_create', renderer='templates/class_create.pt',
+@view_config(route_name='class_new_form', renderer='templates/class_create.pt',
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
 def class_edit(request):
     return {'page_title': 'Create Class'}
 
 
-@view_config(route_name='class_list', request_method='GET', permission='admin',
+@view_config(route_name='class', request_method='GET', permission='admin',
              renderer='templates/class_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def class_list(request):
@@ -48,9 +47,8 @@ def class_list(request):
     return {'page_title': 'Login', 'classes': classes}
 
 
-@view_config(route_name='class_view',
-             renderer='templates/class_view.pt',
-             permission='authenticated')
+@view_config(route_name='class_item', request_method='GET',
+             renderer='templates/class_view.pt', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def class_view(request):
     session = Session()
@@ -63,7 +61,7 @@ def class_view(request):
 @site_layout('nudibranch:templates/layout.pt')
 def home(request):
     if request.user:
-        url = request.route_path('user_view', username=request.user.username)
+        url = request.route_path('user_item', username=request.user.username)
         return HTTPFound(location=url)
     return {'page_title': 'Home'}
 
@@ -75,7 +73,7 @@ def session_create(request, username, password):
     user = User.login(username, password)
     if user:
         headers = remember(request, user.id)
-        url = request.route_path('user_view', username=user.username)
+        url = request.route_path('user_item', username=user.username)
         retval = http_created(request, redir_location=url, headers=headers)
     else:
         retval = http_conflict(request, 'Invalid login')
@@ -99,7 +97,7 @@ def session_edit(request):
     return {'page_title': 'Login', 'username': username}
 
 
-@view_config(route_name='user_create', renderer='json', request_method='PUT')
+@view_config(route_name='user', renderer='json', request_method='PUT')
 @validated_form(name=String('name', min_length=3),
                 username=String('username', invalid_re='^edit$',
                                 min_length=3, max_length=16),
@@ -120,14 +118,14 @@ def user_create(request, name, username, password, email):
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='user_create', renderer='templates/user_create.pt',
+@view_config(route_name='user_new_form', renderer='templates/user_create.pt',
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):
     return {'page_title': 'Create User'}
 
 
-@view_config(route_name='user_list', request_method='GET', permission='admin',
+@view_config(route_name='user', request_method='GET', permission='admin',
              renderer='templates/user_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def user_list(request):
@@ -136,9 +134,8 @@ def user_list(request):
     return {'page_title': 'User List', 'users': users}
 
 
-@view_config(route_name='user_view',
-             renderer='templates/user_view.pt',
-             permission='authenticated')
+@view_config(route_name='user_item', request_method='GET',
+             renderer='templates/user_view.pt', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def user_view(request):
     session = Session()

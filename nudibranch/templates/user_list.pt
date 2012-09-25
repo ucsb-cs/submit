@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div tal:repeat="user users">
-    <a href="${_R('user_view', username=user.username)}">${user.name}</a>
+    <a href="${_R('user_item', username=user.username)}">${user.name}</a>
     (${user.email})
   </div>
 </div>
