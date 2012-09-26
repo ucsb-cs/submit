@@ -18,6 +18,7 @@ user_to_class = Table('association', Base.metadata,
 
 class Class(Base):
     name = Column(Unicode, nullable=False, unique=True)
+    projects = relationship('Project', backref='klass')
 
     @staticmethod
     def fetch_by_name(name):
@@ -30,6 +31,11 @@ class Class(Base):
 
     def __str__(self):
         return 'Class Name: {0}'.format(self.name)
+
+
+class Project(Base):
+    name = Column(Unicode, nullable=False)
+    class_id = Column(Integer, ForeignKey('class.id'))
 
 
 class User(UserMixin, Base):

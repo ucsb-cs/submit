@@ -15,6 +15,26 @@ class Root(object):
         self.request = request
 
 
+def add_routes(config):
+    # Application routes
+    config.add_route('home', '/')
+    config.add_route('class', '/class')
+    config.add_route('class_item', '/class/{class_name}')
+    config.add_route('project', '/class/{class_name}/{project_id}')
+    config.add_route('session', '/session')
+    config.add_route('user', '/user')
+    config.add_route('user_class_join', '/user/{username}/{class_name}')
+    config.add_route('user_item', '/user/{username}')
+
+    # Form view routes
+    config.add_route('class_new', '/form/class')
+    config.add_route('class_edit', '/form/class/{class_name}')
+    config.add_route('project_new', '/form/class/{class_name}/project')
+    config.add_route('project_edit', '/form/project/{project_id}')
+    config.add_route('user_new', '/form/user')
+    config.add_route('user_edit', '/form/user/{username}')
+
+
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
@@ -32,17 +52,8 @@ def main(global_config, **settings):
     # Add user attribute to request
     config.set_request_property(get_user, 'user', reify=True)
 
-    # Application routes
-    config.add_route('home', '/')
-    config.add_route('class', '/class')
-    config.add_route('class_new_form', '/class/edit')
-    config.add_route('class_item', '/class/{class_name}')
-    config.add_route('class_join', '/class/{class_name}/{username}')
-    config.add_route('class_edit_form', '/class/{class_name}/edit')
-    config.add_route('session', '/session')
-    config.add_route('user', '/user')
-    config.add_route('user_new_form', '/user/edit')
-    config.add_route('user_item', '/user/{username}')
-    config.add_route('user_edit_form', '/user/{username}/edit')
+    add_routes(config)
+
+
     config.scan()
     return config.make_wsgi_app()
