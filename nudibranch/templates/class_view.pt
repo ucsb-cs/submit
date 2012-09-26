@@ -8,7 +8,9 @@
 
   <p>Projects</p>
   <ul>
-    <li tal:repeat="project klass.projects">${project.name}</li>
+    <li tal:repeat="project klass.projects">
+      <a href="${_R('project_item', class_name=project.klass.name, project_id=project.id)}">
+        ${project.name}</a></li>
   </ul>
 
   <form name="input" action="${_R('user_class_join', class_name=klass.name,

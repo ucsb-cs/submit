@@ -5,9 +5,9 @@ from nudibranch import add_routes
 from nudibranch.models import Class, Project, Session, User, initialize_sql
 from nudibranch.views import (class_create, class_edit, class_list, class_view,
                               home, session_create, project_create,
-                              project_edit, project_view, session_edit,
-                              user_class_join, user_create, user_edit,
-                              user_list, user_view)
+                              project_edit, project_new, project_update,
+                              project_view, session_edit, user_class_join,
+                              user_create, user_edit, user_list, user_view)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPNotFound, HTTPOk)
@@ -26,6 +26,7 @@ def _init_testing_db():
     Session.add_all(items)
     Session.flush()
     Session.add(Project(name='Project 1', class_id=klass.id))
+    Session.add(Project(name='Project 2', class_id=klass.id))
 
 
 class BaseAPITest(unittest.TestCase):
@@ -157,14 +158,6 @@ class ClassJoinTests(BaseAPITest):
 
 
 class ProjectTests(BaseAPITest):
-    def test_edit(self):
-        klass = Session.query(Class).first()
-        request = self.make_request(matchdict={'class_name': klass.name})
-        info = project_edit(request)
-        self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Create Project', info['page_title'])
-        self.assertEqual(klass.id, info['class_id'])
-
     def test_create_invalid_duplicate_name(self):
         klass = Session.query(Class).first()
         json_data = {'name': 'Project 1', 'class_id': str(klass.id)}
@@ -202,12 +195,85 @@ class ProjectTests(BaseAPITest):
         request = self.make_request(json_body=json_data)
         info = project_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        expected_prefix = route_path('project_item', request,
+        expected_prefix = route_path('project_edit', request,
                                      class_name=class_name, project_id=0)[:-1]
         self.assertTrue(info['redir_location'].startswith(expected_prefix))
         project_id = int(info['redir_location'].rsplit('/', 1)[1])
         project = Session.query(Project).filter_by(id=project_id).first()
         self.assertEqual(json_data['name'], project.name)
+
+    def test_edit(self):
+        project = Session.query(Project).first()
+        request = self.make_request(matchdict={'project_id': project.id})
+        info = project_edit(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Edit Project', info['page_title'])
+        self.assertEqual(project.klass.id, info['class_id'])
+
+    def test_new(self):
+        klass = Session.query(Class).first()
+        request = self.make_request(matchdict={'class_name': klass.name})
+        info = project_new(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Create Project', info['page_title'])
+        self.assertEqual(klass.id, info['class_id'])
+
+    def test_update_duplicate(self):
+        proj = Session.query(Project).first()
+        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
+        json_data = {'name': 'Project 2', 'class_id': str(proj.klass.id)}
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_update(request)
+        self.assertEqual(HTTPConflict.code, request.response.status_code)
+        self.assertEqual('Project name already exists for the class',
+                         info['message'])
+
+    def test_update_invalid_product_id(self):
+        proj = Session.query(Project).first()
+        matchdict = {'class_name': proj.klass.name, 'project_id': 100}
+        json_data = {'name': 'Project 2', 'class_id': str(proj.klass.id)}
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid project_id', info['messages'])
+
+    def test_update_inconsistent_class_id(self):
+        proj = Session.query(Project).first()
+        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
+        json_data = {'name': 'Project 2', 'class_id': str(100)}
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Inconsistent class specification', info['messages'])
+
+    def test_update_inconsistent_class_name(self):
+        proj = Session.query(Project).first()
+        matchdict = {'class_name': 'Invalid name', 'project_id': proj.id}
+        json_data = {'name': 'Project 2', 'class_id': str(proj.klass.id)}
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Inconsistent class specification', info['messages'])
+
+    def test_update_no_change(self):
+        proj = Session.query(Project).first()
+        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
+        json_data = {'name': 'Project 1', 'class_id': str(proj.klass.id)}
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_update(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Nothing to change', info['message'])
+
+    def test_update_valid(self):
+        proj = Session.query(Project).first()
+        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
+        json_data = {'name': 'Foobar', 'class_id': str(proj.klass.id)}
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_update(request)
+        proj = Session.merge(proj)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Project updated', info['message'])
+        self.assertEqual('Foobar', proj.name)
 
     def test_view(self):
         proj = Session.query(Project).first()

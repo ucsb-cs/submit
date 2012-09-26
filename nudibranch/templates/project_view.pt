@@ -1,5 +1,6 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <p>Info for ${project.name}</p>
+  <p>Info for ${project.name}
+    (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
 </div>
 </div>

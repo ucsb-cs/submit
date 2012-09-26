@@ -87,21 +87,69 @@ def project_create(request, name, class_id):
         transaction.abort()
         return http_conflict(request,
                              'Project name already exists for the class')
-    redir_location = request.route_path('project_item', class_name=klass.name,
+
+    redir_location = request.route_path('project_edit', class_name=klass.name,
                                         project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='project_new', renderer='templates/project_create.pt',
+@view_config(route_name='project_edit', renderer='templates/project_edit.pt',
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
 def project_edit(request):
-    session = Session()
+    project = Project.fetch_by_id(request.matchdict['project_id'])
+    if not project:
+        return HTTPNotFound()
+    action = request.route_path('project_item', class_name=project.klass.name,
+                                project_id=project.id)
+    return {'page_title': 'Edit Project', 'class_id': project.klass.id,
+            'project_name': project.name, 'method': 'post', 'action': action,
+            'submit_text': 'Update'}
+
+
+@view_config(route_name='project_new', renderer='templates/project_edit.pt',
+             request_method='GET', permission='admin')
+@site_layout('nudibranch:templates/layout.pt')
+def project_new(request):
     klass = Class.fetch_by_name(request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
-    return {'page_title': 'Create Project', 'class_id': klass.id}
+    return {'page_title': 'Create Project', 'class_id': klass.id,
+            'project_name': '', 'action': request.route_path('project'),
+            'method': 'put', 'submit_text': 'Create'}
+
+
+@view_config(route_name='project_item', request_method='POST',
+             permission='admin', renderer='json')
+@validated_form(name=String('name', min_length=2),
+                class_id=TextNumber('class_id', min_value=0))
+def project_update(request, name, class_id):
+    project_id = request.matchdict['project_id']
+    class_name = request.matchdict['class_name']
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+    if class_id != project.klass.id or project.klass.name != class_name:
+        return http_bad_request(request, 'Inconsistent class specification')
+
+    changed = False
+    if name != project.name:
+        project.name = name
+        changed = True
+
+    if not changed:
+        return http_ok(request, 'Nothing to change')
+
+    session = Session()
+    session.add(project)
+    try:
+        transaction.commit()
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'Project name already exists for the class')
+    return http_ok(request, 'Project updated')
 
 
 @view_config(route_name='project_item', request_method='GET',
