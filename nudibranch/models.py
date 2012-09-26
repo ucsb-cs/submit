@@ -47,6 +47,12 @@ class Project(Base):
     name = Column(Unicode, nullable=False)
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
 
+    @staticmethod
+    def fetch_by_id(project_id):
+        session = Session()
+        project = session.query(Project).filter_by(id=project_id).first()
+        return project
+
 
 class User(UserMixin, Base):
     """The UserMixin provides the `username` and `password` attributes.

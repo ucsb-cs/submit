@@ -54,7 +54,6 @@ def class_list(request):
              renderer='templates/class_view.pt', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def class_view(request):
-    session = Session()
     klass = Class.fetch_by_name(request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
@@ -90,6 +89,7 @@ def project_create(request, name, class_id):
                              'Project name already exists for the class')
     redir_location = request.route_path('project_item', class_name=klass.name,
                                         project_id=project.id)
+    transaction.commit()
     return http_created(request, redir_location=redir_location)
 
 
@@ -102,6 +102,17 @@ def project_edit(request):
     if not klass:
         return HTTPNotFound()
     return {'page_title': 'Create Project', 'class_id': klass.id}
+
+
+@view_config(route_name='project_item', request_method='GET',
+             renderer='templates/project_view.pt', permission='authenticated')
+@site_layout('nudibranch:templates/layout.pt')
+def project_view(request):
+    project = Project.fetch_by_id(request.matchdict['project_id'])
+    class_name = request.matchdict['class_name']
+    if not project or project.klass.name != class_name:
+        return HTTPNotFound()
+    return {'page_title': 'Project Page', 'project': project}
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
@@ -194,7 +205,6 @@ def user_list(request):
              renderer='templates/user_view.pt', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def user_view(request):
-    session = Session()
     user = User.fetch_by_name(request.matchdict['username'])
     if not user:
         return HTTPNotFound()

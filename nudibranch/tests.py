@@ -5,8 +5,9 @@ from nudibranch import add_routes
 from nudibranch.models import Class, Project, Session, User, initialize_sql
 from nudibranch.views import (class_create, class_edit, class_list, class_view,
                               home, session_create, project_create,
-                              project_edit, session_edit, user_class_join,
-                              user_create, user_edit, user_list, user_view)
+                              project_edit, project_view, session_edit,
+                              user_class_join, user_create, user_edit,
+                              user_list, user_view)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPNotFound, HTTPOk)
@@ -196,16 +197,38 @@ class ProjectTests(BaseAPITest):
 
     def test_create_valid(self):
         klass = Session.query(Class).first()
+        class_name = klass.name
         json_data = {'name': 'Foobar', 'class_id': str(klass.id)}
         request = self.make_request(json_body=json_data)
         info = project_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         expected_prefix = route_path('project_item', request,
-                                     class_name=klass.name, project_id=0)[:-1]
+                                     class_name=class_name, project_id=0)[:-1]
         self.assertTrue(info['redir_location'].startswith(expected_prefix))
         project_id = int(info['redir_location'].rsplit('/', 1)[1])
         project = Session.query(Project).filter_by(id=project_id).first()
         self.assertEqual(json_data['name'], project.name)
+
+    def test_view(self):
+        proj = Session.query(Project).first()
+        request = self.make_request(matchdict={'class_name': proj.klass.name,
+                                               'project_id': proj.id})
+        info = project_view(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Project 1', info['project'].name)
+
+    def test_view_incorrect_class_name(self):
+        proj = Session.query(Project).first()
+        request = self.make_request(matchdict={'class_name': 'Test Invalid',
+                                               'project_id': proj.id})
+        info = project_view(request)
+        self.assertIsInstance(info, HTTPNotFound)
+
+    def test_view_invalid_id(self):
+        request = self.make_request(matchdict={'class_name': 'Test Invalid',
+                                               'project_id': 100})
+        info = project_view(request)
+        self.assertIsInstance(info, HTTPNotFound)
 
 
 class SessionTests(BaseAPITest):
