@@ -1,9 +1,10 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-     <p>Info for ${user.name}</p>
-     <p>Classes</p>
-     <ul>
-       <li tal:repeat="klass user.classes">${klass.name}</li>
-     </ul>
+  <p>Info for ${user.name}</p>
+  <p>Classes</p>
+  <ul>
+    <li tal:repeat="klass user.classes">
+      <a href="${_R('class_item', class_name=klass.name)}">${klass.name}</a></li>
+  </ul>
 </div>
 </div>

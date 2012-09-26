@@ -70,6 +70,17 @@ def home(request):
     return {'page_title': 'Home'}
 
 
+@view_config(route_name='project_new', renderer='templates/project_create.pt',
+             request_method='GET', permission='admin')
+@site_layout('nudibranch:templates/layout.pt')
+def project_edit(request):
+    session = Session()
+    klass = Class.fetch_by_name(request.matchdict['class_name'])
+    if not klass:
+        return HTTPNotFound()
+    return {'page_title': 'Create Project', 'class_id': klass.id}
+
+
 @view_config(route_name='session', renderer='json', request_method='PUT')
 @validated_form(username=String('username'),
                 password=WhiteSpaceString('password'))

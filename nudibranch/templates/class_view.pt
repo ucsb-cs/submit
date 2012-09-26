@@ -2,6 +2,15 @@
 <div metal:fill-slot="content">
   <p>Info for ${klass.name}</p>
 
+  <p tal:condition="request.user.is_admin">
+    <a href="${_R('project_new', class_name=klass.name)}">Add project</a>
+  </p>
+
+  <p>Projects</p>
+  <ul>
+    <li tal:repeat="project klass.projects">${project.name}</li>
+  </ul>
+
   <form name="input" action="${_R('user_class_join', class_name=klass.name,
                              username=request.user.username)}"
         onsubmit="return form_request(this, 'POST');">

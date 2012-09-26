@@ -4,7 +4,7 @@ from chameleon.zpt.template import Macro
 from nudibranch import add_routes
 from nudibranch.models import Class, Session, User, initialize_sql
 from nudibranch.views import (class_create, class_edit, class_list, class_view,
-                              home, session_create, session_edit,
+                              home, session_create, project_edit, session_edit,
                               user_class_join, user_create, user_edit,
                               user_list, user_view)
 from pyramid import testing
@@ -149,6 +149,16 @@ class ClassJoinTests(BaseAPITest):
         info = user_class_join(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Class joined', info['message'])
+
+
+class ProjectTests(BaseAPITest):
+    def test_project_edit(self):
+        klass = Session.query(Class).first()
+        request = self.make_request(matchdict={'class_name': klass.name})
+        info = project_edit(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Create Project', info['page_title'])
+        self.assertEqual(klass.id, info['class_id'])
 
 
 class SessionTests(BaseAPITest):
