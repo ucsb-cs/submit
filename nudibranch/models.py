@@ -5,6 +5,7 @@ from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
+from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 
 Base = declarative_base(cls=BasicBase)
@@ -12,13 +13,21 @@ Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 
 
 user_to_class = Table('association', Base.metadata,
-                      Column('user_id', Integer, ForeignKey('user.id')),
-                      Column('class_id', Integer, ForeignKey('class.id')))
+                      Column('user_id', Integer, ForeignKey('user.id'),
+                             nullable=False),
+                      Column('class_id', Integer, ForeignKey('class.id'),
+                             nullable=False))
 
 
 class Class(Base):
     name = Column(Unicode, nullable=False, unique=True)
     projects = relationship('Project', backref='klass')
+
+    @staticmethod
+    def fetch_by_id(class_id):
+        session = Session()
+        klass = session.query(Class).filter_by(id=class_id).first()
+        return klass
 
     @staticmethod
     def fetch_by_name(name):
@@ -34,8 +43,9 @@ class Class(Base):
 
 
 class Project(Base):
+    __table_args__ = (UniqueConstraint('name', 'class_id'),)
     name = Column(Unicode, nullable=False)
-    class_id = Column(Integer, ForeignKey('class.id'))
+    class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
 
 
 class User(UserMixin, Base):

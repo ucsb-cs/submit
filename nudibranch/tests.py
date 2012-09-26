@@ -2,11 +2,11 @@ import transaction
 import unittest
 from chameleon.zpt.template import Macro
 from nudibranch import add_routes
-from nudibranch.models import Class, Session, User, initialize_sql
+from nudibranch.models import Class, Project, Session, User, initialize_sql
 from nudibranch.views import (class_create, class_edit, class_list, class_view,
-                              home, session_create, project_edit, session_edit,
-                              user_class_join, user_create, user_edit,
-                              user_list, user_view)
+                              home, session_create, project_create,
+                              project_edit, session_edit, user_class_join,
+                              user_create, user_edit, user_list, user_view)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPNotFound, HTTPOk)
@@ -19,9 +19,12 @@ def _init_testing_db():
     engine = create_engine('sqlite://')
     initialize_sql(engine)
 
-    items = [Class(name='Test 101'),
+    klass = Class(name='Test 101')
+    items = [klass,
              User(email='', name='User', username='user1', password='pswd1')]
     Session.add_all(items)
+    Session.flush()
+    Session.add(Project(name='Project 1', class_id=klass.id))
 
 
 class BaseAPITest(unittest.TestCase):
@@ -123,14 +126,6 @@ class ClassTests(BaseAPITest):
 
 class ClassJoinTests(BaseAPITest):
     """Test the API methods involved in joining a class."""
-    def test_invalid_user(self):
-        user = Session.query(User).filter_by(username='user1').first()
-        request = self.make_request(json_body={}, user=user,
-                                    matchdict={'class_name': 'Test 101',
-                                               'username': 'admin'})
-        info = user_class_join(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid user', info['messages'])
 
     def test_invalid_class(self):
         user = Session.query(User).filter_by(username='user1').first()
@@ -140,6 +135,15 @@ class ClassJoinTests(BaseAPITest):
         info = user_class_join(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid class', info['messages'])
+
+    def test_invalid_user(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        request = self.make_request(json_body={}, user=user,
+                                    matchdict={'class_name': 'Test 101',
+                                               'username': 'admin'})
+        info = user_class_join(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid user', info['messages'])
 
     def test_valid(self):
         user = Session.query(User).filter_by(username='user1').first()
@@ -152,13 +156,56 @@ class ClassJoinTests(BaseAPITest):
 
 
 class ProjectTests(BaseAPITest):
-    def test_project_edit(self):
+    def test_edit(self):
         klass = Session.query(Class).first()
         request = self.make_request(matchdict={'class_name': klass.name})
         info = project_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Create Project', info['page_title'])
         self.assertEqual(klass.id, info['class_id'])
+
+    def test_create_invalid_duplicate_name(self):
+        klass = Session.query(Class).first()
+        json_data = {'name': 'Project 1', 'class_id': str(klass.id)}
+        request = self.make_request(json_body=json_data)
+        info = project_create(request)
+        self.assertEqual(HTTPConflict.code, request.response.status_code)
+        self.assertEqual('Project name already exists for the class',
+                         info['message'])
+
+    def test_create_invalid_id_str(self):
+        klass = Session.query(Class).first()
+        json_data = {'name': 'Foobar', 'class_id': klass.id}
+        request = self.make_request(json_body=json_data)
+        info = project_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(1, len(info['messages']))
+
+    def test_create_invalid_id_value(self):
+        json_data = {'name': 'Foobar', 'class_id': '1337'}
+        request = self.make_request(json_body=json_data)
+        info = project_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid class_id', info['messages'])
+
+    def test_create_no_params(self):
+        request = self.make_request(json_body={})
+        info = project_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(2, len(info['messages']))
+
+    def test_create_valid(self):
+        klass = Session.query(Class).first()
+        json_data = {'name': 'Foobar', 'class_id': str(klass.id)}
+        request = self.make_request(json_body=json_data)
+        info = project_create(request)
+        self.assertEqual(HTTPCreated.code, request.response.status_code)
+        expected_prefix = route_path('project_item', request,
+                                     class_name=klass.name, project_id=0)[:-1]
+        self.assertTrue(info['redir_location'].startswith(expected_prefix))
+        project_id = int(info['redir_location'].rsplit('/', 1)[1])
+        project = Session.query(Project).filter_by(id=project_id).first()
+        self.assertEqual(json_data['name'], project.name)
 
 
 class SessionTests(BaseAPITest):

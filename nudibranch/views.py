@@ -3,13 +3,14 @@ from sqlalchemy.exc import IntegrityError
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     site_layout)
-from pyramid_addons.validation import String, WhiteSpaceString, validated_form
+from pyramid_addons.validation import (String, TextNumber, WhiteSpaceString,
+                                       validated_form)
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import (Authenticated, forget, remember)
 from pyramid.view import notfound_view_config, view_config
 from urllib.parse import urljoin
-from .models import Class, Session, User
+from .models import Class, Project, Session, User
 
 
 @notfound_view_config()
@@ -17,9 +18,9 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-@view_config(route_name='class', request_method='PUT',
-             permission='admin', renderer='json')
-@validated_form(name=String('name', invalid_re='^edit$', min_length=3))
+@view_config(route_name='class', request_method='PUT', permission='admin',
+             renderer='json')
+@validated_form(name=String('name', min_length=3))
 def class_create(request, name):
     session = Session()
     klass = Class(name=name)
@@ -68,6 +69,28 @@ def home(request):
         url = request.route_path('user_item', username=request.user.username)
         return HTTPFound(location=url)
     return {'page_title': 'Home'}
+
+
+@view_config(route_name='project', request_method='PUT', permission='admin',
+             renderer='json')
+@validated_form(name=String('name', min_length=2),
+                class_id=TextNumber('class_id', min_value=0))
+def project_create(request, name, class_id):
+    session = Session()
+    klass = Class.fetch_by_id(class_id)
+    if not klass:
+        return http_bad_request(request, 'Invalid class_id')
+    project = Project(name=name, class_id=class_id)
+    session.add(project)
+    try:
+        session.flush()  # Cannot commit the transaction here
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'Project name already exists for the class')
+    redir_location = request.route_path('project_item', class_name=klass.name,
+                                        project_id=project.id)
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='project_new', renderer='templates/project_create.pt',
@@ -132,8 +155,7 @@ def user_class_join(request):
 
 @view_config(route_name='user', renderer='json', request_method='PUT')
 @validated_form(name=String('name', min_length=3),
-                username=String('username', invalid_re='^edit$',
-                                min_length=3, max_length=16),
+                username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6))
 def user_create(request, name, username, password, email):
