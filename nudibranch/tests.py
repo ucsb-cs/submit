@@ -3,9 +3,10 @@ import unittest
 from chameleon.zpt.template import Macro
 from nudibranch import add_routes
 from nudibranch.models import Class, Session, User, initialize_sql
-from nudibranch.views import (class_create, class_edit, class_join, class_list,
-                              class_view, home, session_create, session_edit,
-                              user_create, user_edit, user_list, user_view)
+from nudibranch.views import (class_create, class_edit, class_list, class_view,
+                              home, session_create, session_edit,
+                              user_class_join, user_create, user_edit,
+                              user_list, user_view)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPNotFound, HTTPOk)
@@ -127,7 +128,7 @@ class ClassJoinTests(BaseAPITest):
         request = self.make_request(json_body={}, user=user,
                                     matchdict={'class_name': 'Test 101',
                                                'username': 'admin'})
-        info = class_join(request)
+        info = user_class_join(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid user', info['messages'])
 
@@ -136,7 +137,7 @@ class ClassJoinTests(BaseAPITest):
         request = self.make_request(json_body={}, user=user,
                                     matchdict={'class_name': 'Test Invalid',
                                                'username': 'user1'})
-        info = class_join(request)
+        info = user_class_join(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid class', info['messages'])
 
@@ -145,7 +146,7 @@ class ClassJoinTests(BaseAPITest):
         request = self.make_request(json_body={}, user=user,
                                     matchdict={'class_name': 'Test 101',
                                                'username': 'user1'})
-        info = class_join(request)
+        info = user_class_join(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Class joined', info['message'])
 

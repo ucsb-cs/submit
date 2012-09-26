@@ -33,29 +33,11 @@ def class_create(request, name):
     return http_created(request, redir_location=request.route_path('class'))
 
 
-@view_config(route_name='class_new_form', renderer='templates/class_create.pt',
+@view_config(route_name='class_new', renderer='templates/class_create.pt',
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
 def class_edit(request):
     return {'page_title': 'Create Class'}
-
-
-@view_config(route_name='class_join', request_method='POST',
-             permission='authenticated', renderer='json')
-@validated_form()
-def class_join(request):
-    class_name = request.matchdict['class_name']
-    username = request.matchdict['username']
-    if request.user.username != username:
-        return http_bad_request(request, 'Invalid user')
-    session = Session()
-    klass = Session.query(Class).filter_by(name=class_name).first()
-    if not klass:
-        return http_bad_request(request, 'Invalid class')
-    request.user.classes.append(klass)
-    session.add(request.user)
-    transaction.commit()
-    return http_ok(request, 'Class joined')
 
 
 @view_config(route_name='class', request_method='GET',
@@ -119,6 +101,24 @@ def session_edit(request):
     return {'page_title': 'Login', 'username': username}
 
 
+@view_config(route_name='user_class_join', request_method='POST',
+             permission='authenticated', renderer='json')
+@validated_form()
+def user_class_join(request):
+    class_name = request.matchdict['class_name']
+    username = request.matchdict['username']
+    if request.user.username != username:
+        return http_bad_request(request, 'Invalid user')
+    session = Session()
+    klass = Session.query(Class).filter_by(name=class_name).first()
+    if not klass:
+        return http_bad_request(request, 'Invalid class')
+    request.user.classes.append(klass)
+    session.add(request.user)
+    transaction.commit()
+    return http_ok(request, 'Class joined')
+
+
 @view_config(route_name='user', renderer='json', request_method='PUT')
 @validated_form(name=String('name', min_length=3),
                 username=String('username', invalid_re='^edit$',
@@ -141,7 +141,7 @@ def user_create(request, name, username, password, email):
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='user_new_form', renderer='templates/user_create.pt',
+@view_config(route_name='user_new', renderer='templates/user_create.pt',
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):

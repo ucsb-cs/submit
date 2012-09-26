@@ -53,7 +53,5 @@ def main(global_config, **settings):
     config.set_request_property(get_user, 'user', reify=True)
 
     add_routes(config)
-
-
     config.scan()
     return config.make_wsgi_app()
