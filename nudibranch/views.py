@@ -70,6 +70,16 @@ def class_view(request):
                 project_id=TextNumber('project_id', min_value=0))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, project_id):
+    # Additional verification
+    if max_size is not None and max_size < min_size:
+        return http_bad_request(request, 'min_size cannot be > max_size')
+    if max_lines is not None and max_lines < min_lines:
+        return http_bad_request(request, 'min_lines cannot be > max_lines')
+    if min_size < min_lines:
+        return http_bad_request(request, 'min_lines cannot be > min_size')
+    if max_size is not None and max_lines is not None and max_size < max_lines:
+        return http_bad_request(request, 'max_lines cannot be > max_size')
+
     session = Session()
     project = Project.fetch_by_id(project_id)
     if not project:
@@ -91,7 +101,6 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                                         project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
-
 
 
 @view_config(route_name='home', renderer='templates/home.pt',

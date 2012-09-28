@@ -167,6 +167,49 @@ class FileVerifierTests(BaseAPITest):
         self.assertEqual('That filename already exists for the project',
                          info['message'])
 
+    def test_create_invalid_lines(self):
+        project = Session.query(Project).first()
+        json_data = {'filename': 'File 1', 'min_lines': '10', 'max_lines': '9',
+                     'min_size': '0', 'project_id': str(project.id)}
+        request = self.make_request(json_body=json_data)
+        info = file_verifier_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('min_lines cannot be > max_lines', info['messages'])
+
+    def test_create_invalid_maxes(self):
+        project = Session.query(Project).first()
+        json_data = {'filename': 'File 1', 'min_lines': '0', 'min_size': '0',
+                     'max_lines': '10', 'max_size': '9',
+                     'project_id': str(project.id)}
+        request = self.make_request(json_body=json_data)
+        info = file_verifier_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('max_lines cannot be > max_size', info['messages'])
+
+    def test_create_invalid_mins(self):
+        project = Session.query(Project).first()
+        json_data = {'filename': 'File 1', 'min_lines': '1', 'min_size': '0',
+                     'project_id': str(project.id)}
+        request = self.make_request(json_body=json_data)
+        info = file_verifier_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('min_lines cannot be > min_size', info['messages'])
+
+    def test_create_invalid_size(self):
+        project = Session.query(Project).first()
+        json_data = {'filename': 'File 1', 'min_size': '10', 'max_size': '9',
+                     'min_lines': '0', 'project_id': str(project.id)}
+        request = self.make_request(json_body=json_data)
+        info = file_verifier_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('min_size cannot be > max_size', info['messages'])
+
+    def test_create_no_params(self):
+        request = self.make_request(json_body={})
+        info = file_verifier_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(4, len(info['messages']))
+
     def test_create_valid(self):
         project = Session.query(Project).first()
         json_data = {'filename': 'File 2', 'min_size': '0', 'min_lines': '0',
