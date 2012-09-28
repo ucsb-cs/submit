@@ -42,10 +42,21 @@ class Class(Base):
         return 'Class Name: {0}'.format(self.name)
 
 
+class FileVerifier(Base):
+    __table_args__ = (UniqueConstraint('filename', 'project_id'),)
+    filename = Column(Unicode, nullable=False)
+    min_size = Column(Integer, nullable=False)
+    max_size = Column(Integer)
+    min_lines = Column(Integer, nullable=False)
+    max_lines = Column(Integer)
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+
+
 class Project(Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
     name = Column(Unicode, nullable=False)
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
+    file_verifiers = relationship('FileVerifier', backref='project')
 
     @staticmethod
     def fetch_by_id(project_id):

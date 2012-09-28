@@ -10,7 +10,7 @@ from pyramid.response import Response
 from pyramid.security import (Authenticated, forget, remember)
 from pyramid.view import notfound_view_config, view_config
 from urllib.parse import urljoin
-from .models import Class, Project, Session, User
+from .models import Class, FileVerifier, Project, Session, User
 
 
 @notfound_view_config()
@@ -60,6 +60,40 @@ def class_view(request):
     return {'page_title': 'Class Page', 'klass': klass}
 
 
+@view_config(route_name='file_verifier', request_method='PUT',
+             permission='admin', renderer='json')
+@validated_form(filename=String('filename', min_length=1),
+                min_size=TextNumber('min_size', min_value=0),
+                max_size=TextNumber('max_size', min_value=0, optional=True),
+                min_lines=TextNumber('min_lines', min_value=0),
+                max_lines=TextNumber('max_lines', min_value=0, optional=True),
+                project_id=TextNumber('project_id', min_value=0))
+def file_verifier_create(request, filename, min_size, max_size, min_lines,
+                         max_lines, project_id):
+    session = Session()
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+
+    filev = FileVerifier(filename=filename, min_size=min_size,
+                         max_size=max_size, min_lines=min_lines,
+                         max_lines=max_lines, project_id=project_id)
+    session.add(filev)
+    try:
+        session.flush()  # Cannot commit the transaction here
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'That filename already exists for the project')
+
+    redir_location = request.route_path('project_edit',
+                                        class_name=project.klass.name,
+                                        project_id=project.id)
+    transaction.commit()
+    return http_created(request, redir_location=redir_location)
+
+
+
 @view_config(route_name='home', renderer='templates/home.pt',
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
@@ -103,9 +137,8 @@ def project_edit(request):
         return HTTPNotFound()
     action = request.route_path('project_item', class_name=project.klass.name,
                                 project_id=project.id)
-    return {'page_title': 'Edit Project', 'class_id': project.klass.id,
-            'project_name': project.name, 'method': 'post', 'action': action,
-            'submit_text': 'Update'}
+    return {'page_title': 'Edit Project', 'project': project,
+            'method': 'post', 'action': action, 'submit_text': 'Update'}
 
 
 @view_config(route_name='project_new', renderer='templates/project_edit.pt',

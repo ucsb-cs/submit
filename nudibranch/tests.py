@@ -2,12 +2,8 @@ import transaction
 import unittest
 from chameleon.zpt.template import Macro
 from nudibranch import add_routes
-from nudibranch.models import Class, Project, Session, User, initialize_sql
-from nudibranch.views import (class_create, class_edit, class_list, class_view,
-                              home, session_create, project_create,
-                              project_edit, project_new, project_update,
-                              project_view, session_edit, user_class_join,
-                              user_create, user_edit, user_list, user_view)
+from nudibranch.models import *
+from nudibranch.views import *
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPNotFound, HTTPOk)
@@ -25,8 +21,11 @@ def _init_testing_db():
              User(email='', name='User', username='user1', password='pswd1')]
     Session.add_all(items)
     Session.flush()
-    Session.add(Project(name='Project 1', class_id=klass.id))
-    Session.add(Project(name='Project 2', class_id=klass.id))
+    project = Project(name='Project 1', class_id=klass.id)
+    Session.add_all([project, Project(name='Project 2', class_id=klass.id)])
+    Session.flush()
+    Session.add(FileVerifier(filename='File 1', min_size=0, min_lines=0,
+                             project_id=project.id))
 
 
 class BaseAPITest(unittest.TestCase):
@@ -155,6 +154,32 @@ class ClassJoinTests(BaseAPITest):
         info = user_class_join(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Class joined', info['message'])
+
+
+class FileVerifierTests(BaseAPITest):
+    def test_create_invalid_duplicate_name(self):
+        project = Session.query(Project).first()
+        json_data = {'filename': 'File 1', 'min_size': '0', 'min_lines': '0',
+                     'project_id': str(project.id)}
+        request = self.make_request(json_body=json_data)
+        info = file_verifier_create(request)
+        self.assertEqual(HTTPConflict.code, request.response.status_code)
+        self.assertEqual('That filename already exists for the project',
+                         info['message'])
+
+    def test_create_valid(self):
+        project = Session.query(Project).first()
+        json_data = {'filename': 'File 2', 'min_size': '0', 'min_lines': '0',
+                     'project_id': str(project.id)}
+        request = self.make_request(json_body=json_data)
+        info = file_verifier_create(request)
+
+        project = Session.query(Project).first()
+        expected = route_path('project_edit', request, project_id=project.id,
+                              class_name=project.klass.name)
+        self.assertEqual(expected, info['redir_location'])
+        file_verifier = project.file_verifiers[-1]
+        self.assertEqual(json_data['filename'], file_verifier.filename)
 
 
 class ProjectTests(BaseAPITest):

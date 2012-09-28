@@ -1,5 +1,8 @@
-function form_request(form, method) {
-    var jsonified_form = JSON.stringify(form2js(form, '.', false));
+function form_request(form, method, skip_empty) {
+    if (typeof skip_empty == 'undefined' || skip_empty == null)
+        skip_empty = false;
+
+    var jsonified_form = JSON.stringify(form2js(form, '.', skip_empty));
     var xhr = new XMLHttpRequest();
     xhr.open(method, form.action);
     xhr.onreadystatechange = function() {
