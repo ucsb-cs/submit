@@ -6,7 +6,7 @@ from nudibranch.models import *
 from nudibranch.views import *
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
-                                    HTTPNotFound, HTTPOk)
+                                    HTTPForbidden, HTTPNotFound, HTTPOk)
 from pyramid.url import route_path
 from sqlalchemy import create_engine
 
@@ -16,16 +16,24 @@ def _init_testing_db():
     engine = create_engine('sqlite://')
     initialize_sql(engine)
 
+    # Add a class
     klass = Class(name='Test 101')
-    items = [klass,
-             User(email='', name='User', username='user1', password='pswd1')]
-    Session.add_all(items)
+    Session.add(klass)
     Session.flush()
+
+    # Add two projects and a user associated with the class
     project = Project(name='Project 1', class_id=klass.id)
-    Session.add_all([project, Project(name='Project 2', class_id=klass.id)])
+    Session.add_all([project, Project(name='Project 2', class_id=klass.id),
+                     User(email='', name='User', username='user1',
+                          password='pswd1', classes=[klass])])
     Session.flush()
+
+    # Add a file to the project
     Session.add(FileVerifier(filename='File 1', min_size=0, min_lines=0,
                              project_id=project.id))
+
+    # Add a nonassociated user
+    Session.add(User(email='', name='User', username='user2', password='0000'))
 
 
 class BaseAPITest(unittest.TestCase):
@@ -276,7 +284,7 @@ class ProjectTests(BaseAPITest):
         info = project_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Edit Project', info['page_title'])
-        self.assertEqual(project.klass.id, info['class_id'])
+        self.assertEqual(project.klass.id, info['project'].klass.id)
 
     def test_new(self):
         klass = Session.query(Class).first()
@@ -344,22 +352,37 @@ class ProjectTests(BaseAPITest):
         self.assertEqual('Foobar', proj.name)
 
     def test_view(self):
+        user = Session.query(User).filter_by(username='user1').first()
         proj = Session.query(Project).first()
-        request = self.make_request(matchdict={'class_name': proj.klass.name,
+        request = self.make_request(user=user,
+                                    matchdict={'class_name': proj.klass.name,
                                                'project_id': proj.id})
         info = project_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Project 1', info['project'].name)
 
     def test_view_incorrect_class_name(self):
+        user = Session.query(User).filter_by(username='user1').first()
         proj = Session.query(Project).first()
-        request = self.make_request(matchdict={'class_name': 'Test Invalid',
+        request = self.make_request(user=user,
+                                    matchdict={'class_name': 'Test Invalid',
                                                'project_id': proj.id})
         info = project_view(request)
         self.assertIsInstance(info, HTTPNotFound)
 
+    def test_view_user_not_part_of_class(self):
+        user = User.fetch_by_name('user2')
+        proj = Session.query(Project).first()
+        request = self.make_request(user=user,
+                                    matchdict={'class_name': proj.klass.name,
+                                               'project_id': proj.id})
+        info = project_view(request)
+        self.assertIsInstance(info, HTTPForbidden)
+
     def test_view_invalid_id(self):
-        request = self.make_request(matchdict={'class_name': 'Test Invalid',
+        user = Session.query(User).filter_by(username='user1').first()
+        request = self.make_request(user=user,
+                                    matchdict={'class_name': 'Test Invalid',
                                                'project_id': 100})
         info = project_view(request)
         self.assertIsInstance(info, HTTPNotFound)

@@ -5,7 +5,7 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     site_layout)
 from pyramid_addons.validation import (String, TextNumber, WhiteSpaceString,
                                        validated_form)
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound
+from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import (Authenticated, forget, remember)
 from pyramid.view import notfound_view_config, view_config
@@ -194,7 +194,7 @@ def project_update(request, name, class_id):
     return http_ok(request, 'Project updated')
 
 
-@view_config(route_name='project_item', request_method='GET',
+@view_config(route_name='project_item', request_method=('GET', 'HEAD'),
              renderer='templates/project_view.pt', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def project_view(request):
@@ -202,6 +202,11 @@ def project_view(request):
     class_name = request.matchdict['class_name']
     if not project or project.klass.name != class_name:
         return HTTPNotFound()
+
+    # Verify user is a member of the class
+    if not request.user.is_admin and project.klass not in request.user.classes:
+        return HTTPForbidden()
+
     return {'page_title': 'Project Page', 'project': project}
 
 
