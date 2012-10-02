@@ -6,6 +6,7 @@ import sys
 from argparse import ArgumentParser, FileType
 from urllib.parse import urljoin
 
+
 class Nudibranch(object):
     BASE_URL = 'https://borg.cs.ucsb.edu'
     PATHS = {'auth': 'session',
@@ -63,7 +64,6 @@ class Nudibranch(object):
         # Submit each file and get submission id
         # Notify of completed submission
         return 0
-
 
     def verify_access(self, project):
         class_name, project_id = project.split(':')

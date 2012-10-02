@@ -1,3 +1,5 @@
+import errno
+import os
 from pyramid_addons.helpers import load_settings
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
@@ -26,20 +28,52 @@ class Class(Base):
     @staticmethod
     def fetch_by_id(class_id):
         session = Session()
-        klass = session.query(Class).filter_by(id=class_id).first()
-        return klass
+        return session.query(Class).filter_by(id=class_id).first()
 
     @staticmethod
     def fetch_by_name(name):
         session = Session()
-        course = session.query(Class).filter_by(name=name).first()
-        return course
+        return session.query(Class).filter_by(name=name).first()
 
     def __repr__(self):
         return 'Class(name={0})'.format(self.name)
 
     def __str__(self):
         return 'Class Name: {0}'.format(self.name)
+
+
+class File(Base):
+    lines = Column(Integer, nullable=False)
+    sha1 = Column(Unicode, nullable=False, unique=True)
+    size = Column(Integer, nullable=False)
+
+    @staticmethod
+    def fetch_by_sha1(sha1):
+        session = Session()
+        return session.query(File).filter_by(sha1=sha1).first()
+
+    @staticmethod
+    def file_path(base_path, sha1sum):
+        first = sha1sum[:2]
+        second = sha1sum[2:4]
+        return os.path.join(base_path, first, second, sha1sum[4:])
+
+    def __init__(self, base_path, data, sha1):
+        self.lines = 0
+        for byte in data:
+            if byte == '\n':
+                self.lines += 1
+        self.size = len(data)
+        self.sha1 = sha1
+        # save file
+        path = File.file_path(base_path, sha1)
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as error:
+            if error.errno != errno.EEXIST:
+                raise
+        with open(path, 'wb') as fp:
+            fp.write(data)
 
 
 class FileVerifier(Base):
@@ -51,6 +85,20 @@ class FileVerifier(Base):
     max_lines = Column(Integer)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
+    def verify(self, data):
+        msgs = []
+        size = len(data)
+        lines = data.count('\n')
+        if size < self.min_size:
+            msgs.append('file must be >= {0} bytes'.format(self.min_size))
+        elif size > self.max_size:
+            msgs.append('file must be <= {0} bytes'.format(self.max_size))
+        if lines < self.min_lines:
+            msgs.append('file must have >= {0} lines'.format(self.min_lines))
+        elif lines > self.max_lines:
+            msgs.append('file must have <= {0} lines'.format(self.max_lines))
+        return msgs
+
 
 class Project(Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
@@ -61,8 +109,14 @@ class Project(Base):
     @staticmethod
     def fetch_by_id(project_id):
         session = Session()
-        project = session.query(Project).filter_by(id=project_id).first()
-        return project
+        return session.query(Project).filter_by(id=project_id).first()
+
+    def verify_file(self, filename, data):
+        for file_verifier in self.file_verifiers:
+            if file_verifier.filename == filename:
+                return file_verifier.verify(data)
+        else:
+            return '{0} is not a valid filename'.format(filename)
 
 
 class User(UserMixin, Base):
@@ -77,14 +131,12 @@ class User(UserMixin, Base):
     @staticmethod
     def fetch_by_id(user_id):
         session = Session()
-        user = session.query(User).filter_by(id=user_id).first()
-        return user
+        return session.query(User).filter_by(id=user_id).first()
 
     @staticmethod
     def fetch_by_name(username):
         session = Session()
-        user = session.query(User).filter_by(username=username).first()
-        return user
+        return session.query(User).filter_by(username=username).first()
 
     @staticmethod
     def login(username, password):

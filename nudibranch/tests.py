@@ -47,7 +47,7 @@ class BaseAPITest(unittest.TestCase):
 
     def setUp(self):
         """Initialize the database and add routes."""
-        self.config = testing.setUp()
+        self.config = testing.setUp(settings={'file_directory': '/tmp/nbtest'})
         _init_testing_db()
         add_routes(self.config)
 
@@ -162,6 +162,55 @@ class ClassJoinTests(BaseAPITest):
         info = user_class_join(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Class joined', info['message'])
+
+
+class FileTests(BaseAPITest):
+    def test_create_invalid_filename(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        project = Session.query(Project).first()
+        json_data = {'b64data': '', 'filename': 'foobar',
+                     'project_id': str(project.id)}
+        matchdict = {'sha1sum': sha1(''.encode('ascii')).hexdigest()}
+        request = self.make_request(user=user, json_body=json_data,
+                                    matchdict=matchdict)
+        info = file_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('foobar is not a valid filename', info['messages'])
+
+    def test_create_sha1sum_mismatch(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        project = Session.query(Project).first()
+        json_data = {'b64data': '', 'filename': 'foobar',
+                     'project_id': str(project.id)}
+        request = self.make_request(user=user, json_body=json_data,
+                                    matchdict={'sha1sum': 'a' * 40})
+        info = file_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        msg = 'sha1sum does not match'
+        self.assertEqual(msg, info['messages'][:len(msg)])
+
+    def test_view_invalid_sha1sum_too_small(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        request = self.make_request(user=user,
+                                    matchdict={'sha1sum': 'a' * 39})
+        info = file_view(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid sha1sum', info['messages'])
+
+    def test_view_invalid_sha1sum_too_big(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        request = self.make_request(user=user,
+                                    matchdict={'sha1sum': 'a' * 41})
+        info = file_view(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid sha1sum', info['messages'])
+
+    def test_view_not_found(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        request = self.make_request(user=user,
+                                    matchdict={'sha1sum': 'a' * 40})
+        info = file_view(request)
+        self.assertIsInstance(info, HTTPNotFound)
 
 
 class FileVerifierTests(BaseAPITest):
@@ -498,11 +547,11 @@ class UserTests(BaseAPITest):
 
     def test_user_create_valid(self):
         json_data = {'email': 'foo@bar.com', 'name': 'Foobar',
-                     'password': 'Foobar', 'username': 'user2'}
+                     'password': 'Foobar', 'username': 'user3'}
         request = self.make_request(json_body=json_data)
         info = user_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        expected = route_path('session', request, _query={'username': 'user2'})
+        expected = route_path('session', request, _query={'username': 'user3'})
         self.assertEqual(expected, info['redir_location'])
         username = json_data['username']
         user = Session.query(User).filter_by(username=username).first()
@@ -520,7 +569,7 @@ class UserTests(BaseAPITest):
         request = self.make_request()
         info = user_list(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual(1, len(info['users']))
+        self.assertEqual(2, len(info['users']))
         self.assertEqual('user1', info['users'][0].username)
 
     def test_user_view(self):
