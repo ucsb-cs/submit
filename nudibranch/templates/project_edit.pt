@@ -33,7 +33,7 @@
   </div>
 
 
-  <form name="file_verifier" action="${_R('file_verifier')}"
+  <form tal:condition="project.file_verifiers is not None" name="file_verifier" action="${_R('file_verifier')}"
         onsubmit="return form_request(this, 'PUT', true);">
     <p>
       <label for="filename">Filename</label>

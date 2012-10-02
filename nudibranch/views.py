@@ -12,6 +12,7 @@ from pyramid.security import (Authenticated, forget, remember)
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
 from urllib.parse import urljoin
+from .helpers import DummyTemplateAttr
 from .models import Class, File, FileVerifier, Project, Session, User
 
 
@@ -64,17 +65,9 @@ def class_view(request):
 
 @view_config(route_name='file_item', request_method='PUT', renderer='json',
              permission='authenticated')
-@validated_form(filename=String('filename', min_length=1),
-                project_id=TextNumber('project_id', min_value=0),
-                b64data=WhiteSpaceString('b64data'))
-def file_create(request, filename, project_id, b64data):
+@validated_form(b64data=WhiteSpaceString('b64data'))
+def file_create(request, b64data):
     sha1sum = request.matchdict['sha1sum']
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return HTTPNotFound()
-    # Verify user is a member of the class
-    if not request.user.is_admin and project.klass not in request.user.classes:
-        return HTTPForbidden()
     data = b64decode(b64data.encode('ascii'))
     # Verify the sha1 matches
     expected_sha1 = sha1(data).hexdigest()
@@ -82,12 +75,12 @@ def file_create(request, filename, project_id, b64data):
         msg = 'sha1sum does not match expected: {0}'.format(expected_sha1)
         return http_bad_request(request, msg)
 
-    # save the file
+    # fetch or create (and save to disk) the file
+    session = Session()
     the_file = File.fetch_by_sha1(sha1sum)
     if not the_file:
         base_path = request.registry.settings['file_directory']
         the_file = File(base_path=base_path, data=data, sha1=sha1sum)
-        session = Session()
         session.add(the_file)
         try:
             session.flush()  # Cannot commit the transaction here
@@ -95,23 +88,26 @@ def file_create(request, filename, project_id, b64data):
             transaction.abort()
             return http_conflict(request, 'Unknown error')
 
-    #try:
-    #transaction.commit()
+    # associate user with the file
+    request.user.files.append(the_file)
+    session.add(request.user)
 
-    # Verify the file
-    messages = project.verify_file(filename, data)
-    if messages:
-        return http_bad_request(request, messages)
-    return http_created(request)
+    file_id = the_file.id
+    transaction.commit()
+    return {'file_id': file_id}
 
 
-@view_config(route_name='file_item', request_method='HEAD',
-             permission='authenticated')
+@view_config(route_name='file_item', request_method=('GET', 'HEAD'),
+             permission='authenticated', renderer='json')
 def file_view(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, 'Invalid sha1sum')
-    return HTTPNotFound()
+    the_file = File.fetch_by_sha1(sha1sum)
+    # return not found when the file has not been uploaded by the user
+    if not the_file or the_file not in request.user.files:
+        return HTTPNotFound()
+    return {'file_id': the_file.id}
 
 
 @view_config(route_name='file_verifier', request_method='PUT',
@@ -211,8 +207,11 @@ def project_new(request):
     klass = Class.fetch_by_name(request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
-    return {'page_title': 'Create Project', 'class_id': klass.id,
-            'project_name': '', 'action': request.route_path('project'),
+    dummy_project = DummyTemplateAttr(None)
+    dummy_project.klass = klass
+
+    return {'page_title': 'Create Project', 'project': dummy_project,
+            'action': request.route_path('project'),
             'method': 'put', 'submit_text': 'Create'}
 
 

@@ -17,8 +17,11 @@ function form_request(form, method, skip_empty) {
                 break;
             case 400:  // BadRequest
                 msg = data['error']
-                for (i in data['messages'])
-                    msg += '\n' + data['messages'][i]
+                if (typeof data['messages'] === 'string')
+                    msg += '\n' + data['messages']
+                else
+                    for (i in data['messages'])
+                        msg += '\n' + data['messages'][i]
                 alert(msg);
                 break;
             case 409:  // Conflict

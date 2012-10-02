@@ -14,11 +14,17 @@ Base = declarative_base(cls=BasicBase)
 Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 
 
-user_to_class = Table('association', Base.metadata,
+user_to_class = Table('user_to_class', Base.metadata,
                       Column('user_id', Integer, ForeignKey('user.id'),
                              nullable=False),
                       Column('class_id', Integer, ForeignKey('class.id'),
                              nullable=False))
+
+user_to_file = Table('user_to_file', Base.metadata,
+                     Column('user_id', Integer, ForeignKey('user.id'),
+                            nullable=False),
+                     Column('file_id', Integer, ForeignKey('file.id'),
+                            nullable=False))
 
 
 class Class(Base):
@@ -127,6 +133,7 @@ class User(UserMixin, Base):
     email = Column(Unicode, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     classes = relationship(Class, secondary=user_to_class, backref="users")
+    files = relationship(File, secondary=user_to_file, backref="users")
 
     @staticmethod
     def fetch_by_id(user_id):

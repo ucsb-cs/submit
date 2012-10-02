@@ -10,6 +10,8 @@ from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
 from pyramid.url import route_path
 from sqlalchemy import create_engine
 
+FILE_DIR = '/tmp/nudibranch_test'
+
 
 def _init_testing_db():
     """Create an in-memory database for testing."""
@@ -23,14 +25,25 @@ def _init_testing_db():
 
     # Add two projects and a user associated with the class
     project = Project(name='Project 1', class_id=klass.id)
+    user = User(email='', name='User', username='user1',
+                password='pswd1', classes=[klass])
     Session.add_all([project, Project(name='Project 2', class_id=klass.id),
-                     User(email='', name='User', username='user1',
-                          password='pswd1', classes=[klass])])
+                     user])
     Session.flush()
 
-    # Add a file to the project
+    # Add a file verifier to the project
     Session.add(FileVerifier(filename='File 1', min_size=0, min_lines=0,
                              project_id=project.id))
+
+    # Add a file to the system
+    the_file = File(base_path=FILE_DIR, data=b'',
+                    sha1='da39a3ee5e6b4b0d3255bfef95601890afd80709')
+    Session.add(the_file)
+    Session.flush()
+
+    # Associate user and file
+    user.files.append(the_file)
+    Session.add(user)
 
     # Add a nonassociated user
     Session.add(User(email='', name='User', username='user2', password='0000'))
@@ -47,7 +60,7 @@ class BaseAPITest(unittest.TestCase):
 
     def setUp(self):
         """Initialize the database and add routes."""
-        self.config = testing.setUp(settings={'file_directory': '/tmp/nbtest'})
+        self.config = testing.setUp(settings={'file_directory': FILE_DIR})
         _init_testing_db()
         add_routes(self.config)
 
@@ -165,23 +178,10 @@ class ClassJoinTests(BaseAPITest):
 
 
 class FileTests(BaseAPITest):
-    def test_create_invalid_filename(self):
-        user = Session.query(User).filter_by(username='user1').first()
-        project = Session.query(Project).first()
-        json_data = {'b64data': '', 'filename': 'foobar',
-                     'project_id': str(project.id)}
-        matchdict = {'sha1sum': sha1(''.encode('ascii')).hexdigest()}
-        request = self.make_request(user=user, json_body=json_data,
-                                    matchdict=matchdict)
-        info = file_create(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('foobar is not a valid filename', info['messages'])
-
     def test_create_sha1sum_mismatch(self):
         user = Session.query(User).filter_by(username='user1').first()
         project = Session.query(Project).first()
-        json_data = {'b64data': '', 'filename': 'foobar',
-                     'project_id': str(project.id)}
+        json_data = {'b64data': ''}
         request = self.make_request(user=user, json_body=json_data,
                                     matchdict={'sha1sum': 'a' * 40})
         info = file_create(request)
@@ -205,12 +205,30 @@ class FileTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid sha1sum', info['messages'])
 
-    def test_view_not_found(self):
+    def test_view_file_not_found(self):
         user = Session.query(User).filter_by(username='user1').first()
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': 'a' * 40})
         info = file_view(request)
         self.assertIsInstance(info, HTTPNotFound)
+
+    def test_view_user_did_not_upload_file(self):
+        user = Session.query(User).filter_by(username='user2').first()
+        sha1sum = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+        request = self.make_request(user=user,
+                                    matchdict={'sha1sum': sha1sum})
+        info = file_view(request)
+        self.assertIsInstance(info, HTTPNotFound)
+
+    def test_view_found(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        sha1sum = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+        request = self.make_request(user=user,
+                                    matchdict={'sha1sum': sha1sum})
+        info = file_view(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        expected_file = File.fetch_by_sha1(sha1sum)
+        self.assertEqual(expected_file.id, info['file_id'])
 
 
 class FileVerifierTests(BaseAPITest):
@@ -341,7 +359,7 @@ class ProjectTests(BaseAPITest):
         info = project_new(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Create Project', info['page_title'])
-        self.assertEqual(klass.id, info['class_id'])
+        self.assertEqual(klass.id, info['project'].klass.id)
 
     def test_update_duplicate(self):
         proj = Session.query(Project).first()
@@ -582,6 +600,25 @@ class UserTests(BaseAPITest):
         request = self.make_request(matchdict={'username': 'Invalid'})
         info = user_view(request)
         self.assertIsInstance(info, HTTPNotFound)
+
+
+### Non-view tests
+class DummyTemplateTest(unittest.TestCase):
+    def test_default_attribute_values(self):
+        a = DummyTemplateAttr()
+        self.assertEqual(None, a.bar)
+        self.assertEqual(None, a.foo)
+
+    def test_explicit_default_attribute_values(self):
+        a = DummyTemplateAttr('a')
+        self.assertEqual('a', a.bar)
+        self.assertEqual('a', a.foo)
+
+    def test_set_attribute(self):
+        a = DummyTemplateAttr()
+        a.foo = 'foo'
+        self.assertEqual(None, a.bar)
+        self.assertEqual('foo', a.foo)
 
 
 if __name__ == '__main__':
