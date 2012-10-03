@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import base64
 import getpass
 import hashlib
@@ -11,9 +11,10 @@ from urllib.parse import urljoin
 
 class Nudibranch(object):
     BASE_URL = 'https://borg.cs.ucsb.edu'
-    PATHS = {'auth': 'session',
-             'file_item': 'file/{sha1sum}',
-             'project_item': 'class/{class_name}/{project_id}'}
+    PATHS = {'auth':         'session',
+             'file_item':    'file/{sha1sum}',
+             'project_item': 'class/{class_name}/{project_id}',
+             'submission':   'submission'}
 
     @classmethod
     def url(cls, resource, **kwargs):
@@ -22,11 +23,6 @@ class Nudibranch(object):
     def __init__(self):
         self.debug = True
         self.session = requests.session()
-
-    def msg(self, message):
-        """Output a debugging message."""
-        if self.debug:
-            print('\t' + message)
 
     def login(self, username=None, password=None):
         """Login to establish a valid session."""
@@ -45,6 +41,29 @@ class Nudibranch(object):
             else:
                 print(response.json['message'])
                 username = password = None
+
+    def msg(self, message):
+        """Output a debugging message."""
+        if self.debug:
+            print('\t' + message)
+
+    def make_submission(self, project, file_mapping):
+        _, project_id = project.split(':')
+        file_ids = []
+        filenames = []
+        for file_id, filename in file_mapping:
+            file_ids.append(str(file_id))
+            filenames.append(filename)
+        response = self.request(self.url('submission'), 'PUT',
+                                project_id=project_id, file_ids=file_ids,
+                                filenames=filenames)
+        self.msg('Make submission: {}'.format(response.status_code))
+        if response.status_code == 201:
+            url = urljoin(self.BASE_URL, response.json['redir_location'])
+            print('Submission successful')
+            print('Results will be available at: {0}'.format(url))
+            return 0
+        return 3
 
     def request(self, url, method='get', **data):
         method = method.lower()
@@ -95,9 +114,7 @@ class Nudibranch(object):
         if not success:
             print('Submission aborted')
             return 2
-
-        # Submit each file and get submission id
-        return 0
+        return self.make_submission(project, file_mapping)
 
     def verify_access(self, project):
         class_name, project_id = project.split(':')
@@ -117,7 +134,6 @@ def main():
     client = Nudibranch()
     return client.submit(args.project, args.files)
 
-    return 0
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -4,8 +4,8 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     site_layout)
-from pyramid_addons.validation import (String, TextNumber, WhiteSpaceString,
-                                       validated_form)
+from pyramid_addons.validation import (List, String, TextNumber,
+                                       WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import (Authenticated, forget, remember)
@@ -13,7 +13,8 @@ from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
 from urllib.parse import urljoin
 from .helpers import DummyTemplateAttr
-from .models import Class, File, FileVerifier, Project, Session, User
+from .models import (Class, File, FileVerifier, Project, Session, Submission,
+                     SubmissionToFile, User)
 
 
 @notfound_view_config()
@@ -292,6 +293,46 @@ def session_destroy(request):
 def session_edit(request):
     username = request.GET.get('username', '')
     return {'page_title': 'Login', 'username': username}
+
+
+@view_config(route_name='submission', renderer='json', request_method='PUT',
+             permission='authenticated')
+@validated_form(project_id=TextNumber('project_id', min_value=0),
+                file_ids=List('file_ids', TextNumber('', min_value=0),
+                              min_elements=1),
+                filenames=List('filenames', String('', min_length=1),
+                               min_elements=1))
+def submission_create(request, project_id, file_ids, filenames):
+    # Additional input verification
+    if len(file_ids) != len(filenames):
+        return http_bad_request(request, '# file_ids must match # filenames')
+
+    # Verify user permission on project and files
+    session = Session()
+    project = Project.fetch_by_id(project_id)
+    msgs = []
+    if not project:
+        msgs.append('Invalid project_id')
+    user_file_ids = [x.id for x in request.user.files]
+    for i, file_id in enumerate(file_ids):
+        if file_id not in user_file_ids:
+            msg.append('Invalid file "{0}"'.format(filename[i]))
+    if msgs:
+        return http_bad_request(request, msgs)
+
+    # Make a submission
+    submission = Submission(project_id=project.id, user_id=request.user.id)
+    assoc = []
+    for file_id, filename in zip(file_ids, filenames):
+        assoc.append(SubmissionToFile(file_id=file_id, filename=filename))
+    submission.files.extend(assoc)
+    session.add(submission)
+    session.add_all(assoc)
+    session.flush()
+    redir_location = request.route_path('submission_item',
+                                        submission_id=submission.id)
+    transaction.commit()
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='user_class_join', request_method='POST',

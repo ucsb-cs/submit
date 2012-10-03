@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 
-Base = declarative_base(cls=BasicBase)
+Base = declarative_base()
 Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 
 
@@ -27,7 +27,7 @@ user_to_file = Table('user_to_file', Base.metadata,
                             nullable=False))
 
 
-class Class(Base):
+class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
     projects = relationship('Project', backref='klass')
 
@@ -48,7 +48,7 @@ class Class(Base):
         return 'Class Name: {0}'.format(self.name)
 
 
-class File(Base):
+class File(BasicBase, Base):
     lines = Column(Integer, nullable=False)
     sha1 = Column(Unicode, nullable=False, unique=True)
     size = Column(Integer, nullable=False)
@@ -82,7 +82,7 @@ class File(Base):
             fp.write(data)
 
 
-class FileVerifier(Base):
+class FileVerifier(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
     filename = Column(Unicode, nullable=False)
     min_size = Column(Integer, nullable=False)
@@ -106,11 +106,12 @@ class FileVerifier(Base):
         return msgs
 
 
-class Project(Base):
+class Project(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
     name = Column(Unicode, nullable=False)
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     file_verifiers = relationship('FileVerifier', backref='project')
+    submissions = relationship('Submission', backref='project')
 
     @staticmethod
     def fetch_by_id(project_id):
@@ -125,15 +126,31 @@ class Project(Base):
             return '{0} is not a valid filename'.format(filename)
 
 
-class User(UserMixin, Base):
+class Submission(BasicBase, Base):
+    files = relationship('SubmissionToFile', backref='submissions')
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+
+
+class SubmissionToFile(Base):
+    __tablename__ = 'submissiontofile'
+    submission_id = Column(Integer, ForeignKey('submission.id'),
+                           primary_key=True)
+    file_id = Column(Integer, ForeignKey('file.id'), primary_key=True)
+    filename = Column(Unicode, nullable=False)
+    the_file = relationship(File, backref='submission_assocs')
+
+
+class User(UserMixin, BasicBase, Base):
     """The UserMixin provides the `username` and `password` attributes.
     `password` is a write-only attribute and can be verified using the
     `verify_password` function."""
     name = Column(Unicode, nullable=False)
     email = Column(Unicode, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
-    classes = relationship(Class, secondary=user_to_class, backref="users")
-    files = relationship(File, secondary=user_to_file, backref="users")
+    classes = relationship(Class, secondary=user_to_class, backref='users')
+    files = relationship(File, secondary=user_to_file, backref='users')
+    submissions = relationship('Submission', backref='user')
 
     @staticmethod
     def fetch_by_id(user_id):

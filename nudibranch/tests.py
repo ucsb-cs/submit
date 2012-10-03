@@ -45,6 +45,12 @@ def _init_testing_db():
     user.files.append(the_file)
     Session.add(user)
 
+    # Make a submission
+    submission = Submission(project_id=project.id, user_id=user.id)
+    s2f = SubmissionToFile(filename='File 1', the_file=the_file)
+    submission.files.append(s2f)
+    Session.add_all([submission, s2f])
+
     # Add a nonassociated user
     Session.add(User(email='', name='User', username='user2', password='0000'))
 
@@ -188,6 +194,30 @@ class FileTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         msg = 'sha1sum does not match'
         self.assertEqual(msg, info['messages'][:len(msg)])
+
+    def test_create_already_exists(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        project = Session.query(Project).first()
+        json_data = {'b64data': ''}
+        sha1sum = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+        request = self.make_request(user=user, json_body=json_data,
+                                    matchdict={'sha1sum': sha1sum})
+        info = file_create(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        expected_file = File.fetch_by_sha1(sha1sum)
+        self.assertEqual(expected_file.id, info['file_id'])
+
+    def test_create_success(self):
+        user = Session.query(User).filter_by(username='user1').first()
+        project = Session.query(Project).first()
+        json_data = {'b64data': 'aGVsbG8gd29ybGQK'}
+        sha1sum = '22596363b3de40b06f981fb85d82312e8c0ed511'
+        request = self.make_request(user=user, json_body=json_data,
+                                    matchdict={'sha1sum': sha1sum})
+        info = file_create(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        expected_file = File.fetch_by_sha1(sha1sum)
+        self.assertEqual(expected_file.id, info['file_id'])
 
     def test_view_invalid_sha1sum_too_small(self):
         user = Session.query(User).filter_by(username='user1').first()
