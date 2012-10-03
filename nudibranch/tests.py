@@ -531,6 +531,55 @@ class SessionTests(BaseAPITest):
         self.assertEqual('Login', info['page_title'])
 
 
+class SubmissionTests(BaseAPITest):
+    """Test the API methods involved with Submissions."""
+    @staticmethod
+    def get_objects():
+        user = Session.query(User).filter_by(username='user1').first()
+        project = Session.query(Project).first()
+        the_file = Session.query(File).first()
+        json_data = {'file_ids': [str(the_file.id)], 'filenames': ['File 1'],
+                     'project_id': str(project.id)}
+        return user, json_data
+
+    def test_create_invalid_file(self):
+        user, json_data = self.get_objects()
+        json_data['file_ids'][0] = '100'
+        request = self.make_request(user=user, json_body=json_data)
+        info = submission_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue(info['messages'][0].startswith('Invalid file'))
+
+    def test_create_invalid_project(self):
+        user, json_data = self.get_objects()
+        json_data['project_id'] = '100'
+        request = self.make_request(user=user, json_body=json_data)
+        info = submission_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(1, len(info['messages']))
+        self.assertEqual('Invalid project_id', info['messages'][0])
+
+    def test_create_list_mismatch(self):
+        user, json_data = self.get_objects()
+        json_data['file_ids'].append('1')
+        request = self.make_request(user=user, json_body=json_data)
+        info = submission_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(1, len(info['messages']))
+        self.assertEqual('# file_ids must match # filenames',
+                         info['messages'][0])
+
+    def test_create_valid(self):
+        user, json_data = self.get_objects()
+        request = self.make_request(user=user, json_body=json_data)
+        info = submission_create(request)
+        self.assertEqual(HTTPCreated.code, request.response.status_code)
+        expected_prefix = route_path('submission', request,
+                                     submission_id=0)[:-1]
+        self.assertTrue(info['redir_location'].startswith(expected_prefix))
+
+
 class UserTests(BaseAPITest):
     """The the API methods involved with modifying user information."""
 

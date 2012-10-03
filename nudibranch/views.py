@@ -83,11 +83,7 @@ def file_create(request, b64data):
         base_path = request.registry.settings['file_directory']
         the_file = File(base_path=base_path, data=data, sha1=sha1sum)
         session.add(the_file)
-        try:
-            session.flush()  # Cannot commit the transaction here
-        except IntegrityError:
-            transaction.abort()
-            return http_conflict(request, 'Unknown error')
+        session.flush()  # Cannot commit the transaction here
 
     # associate user with the file
     request.user.files.append(the_file)
@@ -305,7 +301,7 @@ def session_edit(request):
 def submission_create(request, project_id, file_ids, filenames):
     # Additional input verification
     if len(file_ids) != len(filenames):
-        return http_bad_request(request, '# file_ids must match # filenames')
+        return http_bad_request(request, ['# file_ids must match # filenames'])
 
     # Verify user permission on project and files
     session = Session()
@@ -316,7 +312,7 @@ def submission_create(request, project_id, file_ids, filenames):
     user_file_ids = [x.id for x in request.user.files]
     for i, file_id in enumerate(file_ids):
         if file_id not in user_file_ids:
-            msg.append('Invalid file "{0}"'.format(filename[i]))
+            msgs.append('Invalid file "{0}"'.format(filenames[i]))
     if msgs:
         return http_bad_request(request, msgs)
 
