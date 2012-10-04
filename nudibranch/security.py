@@ -1,9 +1,8 @@
 from pyramid.security import unauthenticated_userid
-from .models import Session, User
+from .models import User
 
 
 def get_user(request):
-    session = Session()
     user_id = unauthenticated_userid(request)
     if user_id is not None:
         return User.fetch_by_id(user_id)

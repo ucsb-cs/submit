@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import transaction
 from base64 import b64decode
 from hashlib import sha1
@@ -8,10 +10,9 @@ from pyramid_addons.validation import (List, String, TextNumber,
                                        WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
-from pyramid.security import (Authenticated, forget, remember)
+from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
-from urllib.parse import urljoin
 from .helpers import DummyTemplateAttr
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, User)
@@ -34,7 +35,7 @@ def class_create(request, name):
     except IntegrityError:
         transaction.abort()
         return http_conflict(request,
-                             'Class {0!r} already exists'.format(name))
+                             'Class \'{0}\' already exists'.format(name))
     return http_created(request, redir_location=request.route_path('class'))
 
 
@@ -364,7 +365,7 @@ def user_create(request, name, username, password, email):
     except IntegrityError:
         transaction.abort()
         return http_conflict(request,
-                             'Username {0!r} already exists'.format(username))
+                             'User \'{0}\' already exists'.format(username))
     redir_location = request.route_path('session',
                                         _query={'username': username})
     return http_created(request, redir_location=redir_location)

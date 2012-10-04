@@ -6,8 +6,10 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
                            'README.md')).read()
 
 requires = [
+    'pika>=0.9.5',
     'pyramid>=1.3',
-    'pyramid_addons>=0.6',
+    'pyramid_addons>=0.7.1',
+    'python-daemon>=1.5.5',
     'sqla_mixins>=0.1',
     'sqlalchemy>=0.7.8',
     'zope.sqlalchemy>=0.7.1']

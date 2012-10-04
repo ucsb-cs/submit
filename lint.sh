@@ -12,6 +12,21 @@ if [ -n "$output" ]; then
     failure=1
 fi
 
-# pyflakes does not work with python 3 yet
+# pylint
+#output=$(pylint --rcfile=$dir/.pylintrc $dir/nudibranch 2> /dev/null)
+output=""
+if [ -n "$output" ]; then
+    echo "---pylint---"
+    echo -e "$output"
+    failure=1
+fi
+
+# pyflakes
+output=$(find $dir/nudibranch -name [A-Za-z_]\*.py -exec pyflakes {} \;)
+if [ -n "$output" ]; then
+    echo "---pyflakes---"
+    echo -e "$output"
+    failure=1
+fi
 
 exit $failure

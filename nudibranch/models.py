@@ -1,9 +1,7 @@
 import errno
 import os
-from pyramid_addons.helpers import load_settings
 from sqla_mixins import BasicBase, UserMixin
-from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
-                        Table, Unicode, desc, engine_from_config)
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, Table, Unicode
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
@@ -166,7 +164,6 @@ class User(UserMixin, BasicBase, Base):
     def login(username, password):
         """Return the user if successful, None otherwise"""
         retval = None
-        session = Session()
         try:
             user = User.fetch_by_name(username)
             if user and user.verify_password(password):
