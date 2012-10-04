@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
-
+import json
+import pika
 import transaction
 from base64 import b64decode
 from hashlib import sha1
@@ -326,9 +327,22 @@ def submission_create(request, project_id, file_ids, filenames):
     session.add(submission)
     session.add_all(assoc)
     session.flush()
-    redir_location = request.route_path('submission_item',
-                                        submission_id=submission.id)
+    submission_id = submission.id
     transaction.commit()
+    # TODO: create a connection manager so we don't have to establish a
+    # rabbitmq connection each time
+    server = request.registry.settings['queue_server']
+    queue = request.registry.settings['queue_verification']
+    conn = pika.BlockingConnection(pika.ConnectionParameters(host=server))
+    channel = conn.channel()
+    # Create the verification job (this will result in all future jobs)
+    queue_msg = json.dumps({'submission_id': submission_id})
+    channel.basic_publish(exchange='', body=queue_msg, routing_key=queue,
+                          properties=pika.BasicProperties(delivery_mode=2))
+    conn.close()
+    # Redirect to submission result page
+    redir_location = request.route_path('submission_item',
+                                        submission_id=submission_id)
     return http_created(request, redir_location=redir_location)
 
 

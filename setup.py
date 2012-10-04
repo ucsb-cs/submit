@@ -41,5 +41,7 @@ setup(name='Nudibranch',
       entry_points="""\
       [paste.app_factory]
       main = nudibranch:main
+      [console_scripts]
+      worker_verification = nudibranch.workers.verification:main
       """,
       )
