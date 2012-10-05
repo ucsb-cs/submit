@@ -1,14 +1,26 @@
 import ConfigParser
+import transaction
 from argparse import ArgumentParser, FileType
 from pyramid_addons.helpers import load_settings
-from nudibranch.models import initialize_sql
+from nudibranch.models import Session, Submission, initialize_sql
 from sqlalchemy import engine_from_config
 from . import QueueProcessor
 
 
-def do_work(message):
-    print(message)
-    return 'new message'
+def do_work(submission_id):
+    session = Session()
+    submission = Submission.fetch_by_id(submission_id)
+    if not submission:
+        print('Invalid submission id: {0}'.format(submission_id))
+        return
+    # Verify and update submission
+    if submission.verify():
+        retval = {'submission_id': submission_id}
+    else:
+        retval = None
+    session.add(submission)
+    transaction.commit()
+    return retval
 
 
 def main():
@@ -29,5 +41,6 @@ def main():
 
     queue_processor = QueueProcessor(settings['queue_server'],
                                      settings['queue_verification'],
-                                     do_work, args.daemon)
+                                     do_work, daemon=args.daemon,
+                                     next_queue=settings['queue_tell_worker'])
     queue_processor.start()

@@ -80,18 +80,18 @@ def file_create(request, b64data):
 
     # fetch or create (and save to disk) the file
     session = Session()
-    the_file = File.fetch_by_sha1(sha1sum)
-    if not the_file:
+    file = File.fetch_by_sha1(sha1sum)
+    if not file:
         base_path = request.registry.settings['file_directory']
-        the_file = File(base_path=base_path, data=data, sha1=sha1sum)
-        session.add(the_file)
+        file = File(base_path=base_path, data=data, sha1=sha1sum)
+        session.add(file)
         session.flush()  # Cannot commit the transaction here
 
     # associate user with the file
-    request.user.files.append(the_file)
+    request.user.files.append(file)
     session.add(request.user)
 
-    file_id = the_file.id
+    file_id = file.id
     transaction.commit()
     return {'file_id': file_id}
 
@@ -102,11 +102,11 @@ def file_view(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, 'Invalid sha1sum')
-    the_file = File.fetch_by_sha1(sha1sum)
+    file = File.fetch_by_sha1(sha1sum)
     # return not found when the file has not been uploaded by the user
-    if not the_file or the_file not in request.user.files:
+    if not file or file not in request.user.files:
         return HTTPNotFound()
-    return {'file_id': the_file.id}
+    return {'file_id': file.id}
 
 
 @view_config(route_name='file_verifier', request_method='PUT',

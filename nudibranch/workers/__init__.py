@@ -1,5 +1,6 @@
 import daemon
 import errno
+import json
 import os
 import pika
 import socket
@@ -11,11 +12,13 @@ import traceback
 class QueueProcessor(object):
     MAX_SLEEP_TIME = 64
 
-    def __init__(self, server, queue, worker_func, daemon=False, log_dir=None):
+    def __init__(self, server, queue, worker_func, next_queue=None,
+                 daemon=False, log_dir=None):
         self.server = server
         self.queue = queue
+        self.next_queue = next_queue
         self.worker_func = worker_func
-        self.connection = None
+        self.connection = self.channel = self.next_channel = None
         self.daemon = daemon
         self.log_dir = log_dir
         if not daemon and log_dir:
@@ -53,9 +56,12 @@ class QueueProcessor(object):
                     self.connection = None
 
     def consume_callback(self, channel, method, properties, message):
-        return_message = self.worker_func(message)
-        if return_message:
-            print(return_message)
+        return_message = self.worker_func(**json.loads(message))
+        if return_message is not None:
+            message = json.dumps(return_message)
+            self.next_channel.basic_publish(
+                exchange='', body=message, routing_key=self.next_queue,
+                properties=pika.BasicProperties(delivery_mode=2))
         channel.basic_ack(delivery_tag=method.delivery_tag)
 
     def initialize_connection(self):
@@ -64,6 +70,10 @@ class QueueProcessor(object):
             pika.ConnectionParameters(host=self.server))
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=self.queue, durable=True)
+        if self.next_queue:
+            self.next_channel = self.connection.channel()
+            self.next_channel.queue_declare(queue=self.next_queue,
+                                            durable=True)
         self.channel.basic_qos(prefetch_count=1)
         print('Connected')
 

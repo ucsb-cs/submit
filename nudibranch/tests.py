@@ -56,7 +56,7 @@ def _init_testing_db():
 
     # Make a submission
     submission = Submission(project_id=project.id, user_id=user.id)
-    s2f = SubmissionToFile(filename='File 1', the_file=the_file)
+    s2f = SubmissionToFile(filename='File 1', file=the_file)
     submission.files.append(s2f)
     Session.add_all([submission, s2f])
 
@@ -75,7 +75,9 @@ class BaseAPITest(unittest.TestCase):
 
     def setUp(self):
         """Initialize the database and add routes."""
-        self.config = testing.setUp(settings={'file_directory': FILE_DIR})
+        self.config = testing.setUp(settings={'file_directory': FILE_DIR,
+                                              'queue_server': 'badhost',
+                                              'queue_verification': 'NA'})
         _init_testing_db()
         add_routes(self.config)
 

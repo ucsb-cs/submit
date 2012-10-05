@@ -1,15 +1,25 @@
+from __future__ import unicode_literals
 import errno
 import os
+import sys
 from sqla_mixins import BasicBase, UserMixin
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, Table, Unicode
+from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer,
+                        PickleType, Table, Unicode, func)
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 
+if sys.version_info < (3, 0):
+    builtins = __import__('__builtin__')
+else:
+    import builtins
+
 Base = declarative_base()
 Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
+# Make Session available to sqla_mixins
+builtins._sqla_mixins_session = Session
 
 
 user_to_class = Table('user_to_class', Base.metadata,
@@ -28,11 +38,6 @@ user_to_file = Table('user_to_file', Base.metadata,
 class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
     projects = relationship('Project', backref='klass')
-
-    @staticmethod
-    def fetch_by_id(class_id):
-        session = Session()
-        return session.query(Class).filter_by(id=class_id).first()
 
     @staticmethod
     def fetch_by_name(name):
@@ -89,19 +94,20 @@ class FileVerifier(BasicBase, Base):
     max_lines = Column(Integer)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
-    def verify(self, data):
+    def verify(self, file):
         msgs = []
-        size = len(data)
-        lines = data.count('\n')
-        if size < self.min_size:
-            msgs.append('file must be >= {0} bytes'.format(self.min_size))
-        elif size > self.max_size:
-            msgs.append('file must be <= {0} bytes'.format(self.max_size))
-        if lines < self.min_lines:
-            msgs.append('file must have >= {0} lines'.format(self.min_lines))
-        elif lines > self.max_lines:
-            msgs.append('file must have <= {0} lines'.format(self.max_lines))
-        return msgs
+        if file.size < self.min_size:
+            msgs.append('must be >= {0} bytes'.format(self.min_size))
+        elif self.max_size and file.size > self.max_size:
+            msgs.append('must be <= {0} bytes'.format(self.max_size))
+        if file.lines < self.min_lines:
+            msgs.append('must have >= {0} lines'.format(self.min_lines))
+        elif self.max_lines and file.lines > self.max_lines:
+            msgs.append('must have <= {0} lines'.format(self.max_lines))
+        if msgs:
+            return False, msgs
+        else:
+            return True, None
 
 
 class Project(BasicBase, Base):
@@ -111,32 +117,46 @@ class Project(BasicBase, Base):
     file_verifiers = relationship('FileVerifier', backref='project')
     submissions = relationship('Submission', backref='project')
 
-    @staticmethod
-    def fetch_by_id(project_id):
-        session = Session()
-        return session.query(Project).filter_by(id=project_id).first()
-
-    def verify_file(self, filename, data):
-        for file_verifier in self.file_verifiers:
-            if file_verifier.filename == filename:
-                return file_verifier.verify(data)
-        else:
-            return '{0} is not a valid filename'.format(filename)
+    def verify_submission(self, submission):
+        results = {'missing': [], 'passed': [], 'failed': []}
+        file_mapping = dict((x.filename, x) for x in submission.files)
+        valid = True
+        for fv in self.file_verifiers:
+            name = fv.filename
+            if name in file_mapping:
+                passed, messages = fv.verify(file_mapping[name].file)
+                valid |= passed
+                if passed:
+                    results['passed'].append(name)
+                else:
+                    results['failed'].append((name, messages))
+            else:
+                results['missing'].append(name)
+            del file_mapping[name]
+        results['extra'] = list(file_mapping.keys())
+        submission.verification_results = results
+        submission.verified_at = func.now()
+        return valid
 
 
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submissions')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    verification_results = Column(PickleType)
+    verified_at = Column(DateTime, index=True)
+
+    def verify(self):
+        return self.project.verify_submission(self)
 
 
 class SubmissionToFile(Base):
     __tablename__ = 'submissiontofile'
-    submission_id = Column(Integer, ForeignKey('submission.id'),
-                           primary_key=True)
+    file = relationship(File, backref='submission_assocs')
     file_id = Column(Integer, ForeignKey('file.id'), primary_key=True)
     filename = Column(Unicode, nullable=False)
-    the_file = relationship(File, backref='submission_assocs')
+    submission_id = Column(Integer, ForeignKey('submission.id'),
+                           primary_key=True)
 
 
 class User(UserMixin, BasicBase, Base):
@@ -149,11 +169,6 @@ class User(UserMixin, BasicBase, Base):
     classes = relationship(Class, secondary=user_to_class, backref='users')
     files = relationship(File, secondary=user_to_file, backref='users')
     submissions = relationship('Submission', backref='user')
-
-    @staticmethod
-    def fetch_by_id(user_id):
-        session = Session()
-        return session.query(User).filter_by(id=user_id).first()
 
     @staticmethod
     def fetch_by_name(username):
@@ -194,9 +209,28 @@ def initialize_sql(engine, populate=False):
 
 def populate_database():
     import transaction
+
+    if User.fetch_by_name('admin'):
+        return
+
+    # Admin user
     admin = User(email='root@localhost', name='Administrator',
                  username='admin', password='password', is_admin=True)
-    Session.add(admin)
+    # Class
+    klass = Class(name='CS32')
+    Session.add(klass)
+    Session.flush()
+
+    # Project
+    project = Project(name='Project 1', class_id=klass.id)
+    Session.add(project)
+    Session.flush()
+
+    # File verification
+    fv = FileVerifier(filename='README', min_size=3, min_lines=1,
+                      project_id=project.id)
+
+    Session.add_all([admin, fv])
     try:
         transaction.commit()
         print('Admin user created')

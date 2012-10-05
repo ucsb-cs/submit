@@ -10,7 +10,7 @@ requires = [
     'pyramid>=1.3',
     'pyramid_addons>=0.7.1',
     'python-daemon>=1.5.5',
-    'sqla_mixins>=0.1',
+    'sqla_mixins>=0.2',
     'sqlalchemy>=0.7.8',
     'zope.sqlalchemy>=0.7.1']
 
