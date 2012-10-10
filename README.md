@@ -7,11 +7,11 @@ independently installed. All other requirements will be installed as part of
 the development process:
 
  * git
- * python3
+ * python2.6+ (not python3 yet)
  * virtualenv
 
 Install these packages however you prefer for your operating system. Make sure
-that you can create python virtual environments with a python3.2 binary.
+that you can create python virtual environments with a python2.6+ binary.
 
 ## Configure and become familiar with git
 
@@ -32,9 +32,10 @@ combination. Also, if you are not familiar with git, please go through the
     These examples use `~/.venv` as the virtual environment location,
     however, feel free to use whatever you prefer.
 
-        virtualenv -p /path/to/python/3/bin ~/.venv/nudibranch
-        # If python3 is the default for your virtualenv you can leave off the
-        # -p /path/to/python/3/bin arguments
+        virtualenv ~/.venv/nudibranch
+
+        # If python2 is not the default for your virtualenv you will want to
+        # add -p /path/to/python/2/bin
 
 0. Load the virtual environment (Note: you will need to run this everytime you
 open a new terminal to run the project's commands)
@@ -130,7 +131,34 @@ remote repository. Doing so will likely cause a git train wreck.
         git push
 
 
-# Production Installation Notes
+# Configuring the worker machines
 
-Python 3.2 has an issue with paste and requires a temporary fix described
-[here](http://stackoverflow.com/a/11679842/176978).
+Each worker should be configured to run in its own account in order to provide
+the best possible data isolation between submissions from various students.
+
+Below are the instructions for setting up a worker account. Note that you can
+use whatever naming schema you want. The following are just an example.
+
+
+0. Create a ssh keypair for all the workers (this need only be done once)
+
+        ssh-keygen -C "nudibranch worker" -N "" -f nb_worker_rsa
+        # Save nb_worker_rsa in a secure location (you'll need its path for the
+        # ini file).
+
+0. Create a user account
+
+        sudo adduser --disabled-password nb_worker0
+
+0. Set umask 077 (700 permissisions) for the new account
+
+        echo umask 077 | sudo -u nb_worker0 -i tee -a .profile
+
+0. Configure passwordless ssh access to the account using the ssh key
+
+        sudo -u nb_worker0 -i mkdir .ssh
+        cat nb_worker_rsa.pub | sudo -u nb_worker0 -i tee -a .ssh/authorized_keys
+
+0. Test passwordless ssh access
+
+        ssh -i nb_worker_rsa nb_worker0@localhost

@@ -6,6 +6,7 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
                            'README.md')).read()
 
 requires = [
+    'amqp_worker>=0.0.2',
     'pika>=0.9.5',
     'pyramid>=1.3',
     'pyramid_addons>=0.7.1',
@@ -43,5 +44,6 @@ setup(name='Nudibranch',
       main = nudibranch:main
       [console_scripts]
       worker_verification = nudibranch.workers.verification:main
+      worker_sync_files = nudibranch.workers.sync_files:main
       """,
       )
