@@ -55,6 +55,7 @@ class SubmissionHandler(object):
                          complete_file='sync_files',
                          submission_id=submission_id)
         print('Files synced: {0}'.format(submission_id))
+        print(os.listdir('.'))
         # Make submission
         # Run tests
         self.communicate(queue=self.settings['queue_fetch_results'],
