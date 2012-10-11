@@ -21,10 +21,12 @@ class SubmissionHandler(object):
                 os.unlink(filename)
 
     @staticmethod
-    def _file_wait(filename):
+    def _file_wait(filename, submission_id):
         start = time.time()
         while True:
             if os.path.isfile(filename):
+                if open(filename).read() != str(submission_id):
+                    raise Exception('Found wrong submission')
                 print('file_wait took {0} seconds'.format(time.time() - start))
                 return
             time.sleep(1)
@@ -39,14 +41,14 @@ class SubmissionHandler(object):
     def communicate(self, queue, complete_file, submission_id):
         hostname = socket.gethostbyaddr(socket.gethostname())[0]
         username = pwd.getpwuid(os.getuid())[0]
-        data = {'complete_file': complete_file, 'working_dir': os.getcwd(),
+        data = {'complete_file': complete_file, 'remote_dir': os.getcwd(),
                 'user': username, 'host': hostname,
                 'submission_id': submission_id}
         self.worker.channel.queue_declare(queue=queue, durable=True)
         self.worker.channel.basic_publish(
             exchange='', body=json.dumps(data), routing_key=queue,
             properties=pika.BasicProperties(delivery_mode=2))
-        self._file_wait(complete_file)
+        self._file_wait(complete_file, submission_id)
 
     def do_work(self, submission_id):
         self._cleanup()
