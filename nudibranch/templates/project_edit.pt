@@ -11,6 +11,16 @@
     <input type="submit" name="submit" value="${submit_text}"/>
   </form>
 
+  <form name="makefile" class="uploader" action="${_R('file_item', sha1sum='_REPLACE_')}">
+    <fieldset>
+      <legend>Makefile</legend>
+      <div>
+        <label for="makefile">Select a Makefile: </label>
+        <input name="makefile" id="makefile" type="file" />
+      </div>
+    </fieldset>
+  </form>
+
   <div tal:repeat="fv project.file_verifiers">
     <form name="file_verifier" action="${_R('file_verifier_item', file_verifier_id=fv.id)}"
           onsubmit="return form_request(this, 'POST', true);">

@@ -53,6 +53,7 @@ class Class(BasicBase, Base):
 
 class File(BasicBase, Base):
     lines = Column(Integer, nullable=False)
+    makefile_for = relationship('Project', backref='makefile')
     sha1 = Column(Unicode, nullable=False, unique=True)
     size = Column(Integer, nullable=False)
 
@@ -116,6 +117,7 @@ class Project(BasicBase, Base):
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     file_verifiers = relationship('FileVerifier', backref='project')
     submissions = relationship('Submission', backref='project')
+    makefile_id = Column(Integer, ForeignKey('file.id'))
 
     def verify_submission(self, submission):
         results = {'missing': [], 'passed': [], 'failed': []}
