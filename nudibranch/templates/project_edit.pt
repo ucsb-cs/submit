@@ -1,13 +1,14 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div class="header">${page_title}</div>
-  <form name="input" action="${action}"
-        onsubmit="return form_request(this, '${method}');">
+  <form id="project_form" name="input" action="${action}"
+        onsubmit="return form_request(this, '${method}', true);">
     <p>
       <label for="name">Name</label><br/>
       <input type="text" name="name" id="name" value="${project.name}"/><br/>
     </p>
     <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}"/>
+    <input type="hidden" name="makefile_id" id="makefile_id" value="${project.makefile_id}"/>
     <input type="submit" name="submit" value="${submit_text}"/>
   </form>
 
@@ -15,6 +16,7 @@
     <fieldset>
       <legend>Makefile</legend>
       <div>
+        <p tal:condition="project.makefile"><a href="#">Existing Makefile</a></p>
         <label for="makefile">Select a Makefile: </label>
         <input name="makefile" id="makefile" type="file" />
       </div>

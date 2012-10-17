@@ -217,8 +217,10 @@ def project_new(request):
 @view_config(route_name='project_item', request_method='POST',
              permission='admin', renderer='json')
 @validated_form(name=String('name', min_length=2),
-                class_id=TextNumber('class_id', min_value=0))
-def project_update(request, name, class_id):
+                class_id=TextNumber('class_id', min_value=0),
+                makefile_id=TextNumber('makefile_id', min_value=0,
+                                       optional=True))
+def project_update(request, name, class_id, makefile_id):
     project_id = request.matchdict['project_id']
     class_name = request.matchdict['class_name']
     project = Project.fetch_by_id(project_id)
@@ -230,6 +232,13 @@ def project_update(request, name, class_id):
     changed = False
     if name != project.name:
         project.name = name
+        changed = True
+    if makefile_id != project.makefile_id:
+        if makefile_id:
+            makefile = File.fetch_by_id(makefile_id)
+            if not makefile or makefile not in request.user.files:
+                return http_bad_request(request, 'Invalid makefile_id')
+        project.makefile_id = makefile_id
         changed = True
 
     if not changed:

@@ -1,11 +1,3 @@
-function file_upload(form, file) {
-    console.log(form);
-    jsonified_form = JSON.stringify({b64data: file.base64});
-    $.ajax({url: form.action, data: jsonified_form, type: 'PUT',
-            complete: handle_response});
-    return false;
-}
-
 function handle_response(xhr) {
     data = JSON.parse(xhr.responseText);
     switch(xhr.status) {
@@ -50,6 +42,12 @@ function FileToUpload(file, input) {
     this.sha1 = this.base64 = null;
 }
 
+FileToUpload.prototype.associate_makefile = function(response) {
+    var data = $.parseJSON(response);
+    $('#makefile_id')[0].value = data['file_id'];
+    $('#project_form').submit();
+}
+
 FileToUpload.prototype.calculate_sha1 = function(data) {
     this.base64 = window.btoa(data);
     this.sha1 = hex_sha1(data);
@@ -63,18 +61,28 @@ FileToUpload.prototype.calculate_sha1 = function(data) {
 FileToUpload.prototype.check_for_file = function(xhr) {
     var status = xhr.status;
     if (status == 404) {
-        var el = document.createElement('input')
+        var el = document.createElement('input');
         el.type = el.value = 'submit';
     }
     else {
+        this.associate_makefile(xhr.responseText);
         var el = document.createElement('span')
         el.innerHTML = 'file already uploaded';
     }
     this.input.parentNode.insertBefore(el, this.input.nextSibling);
     var $this = this;
-    this.input.form.onsubmit = function() {return file_upload(this, $this);};
+    this.input.form.onsubmit = function() {return $this.upload();};
 }
 
+FileToUpload.prototype.handle_upload = function(xhr) {
+    var status = xhr.status;
+    if (status == 200) {
+        this.associate_makefile(xhr.responseText);
+    }
+    else {
+        alert('Error uploading file: ' + xhr.status);
+    }
+}
 
 FileToUpload.prototype.on_file_load = function(event) {
     var $this = this;
@@ -86,6 +94,14 @@ FileToUpload.prototype.process = function() {
     var $this = this;
     reader.onload = function(event){$this.on_file_load(event);};
     reader.readAsBinaryString(this.file);
+}
+
+FileToUpload.prototype.upload = function() {
+    jsonified_form = JSON.stringify({b64data: this.base64});
+    var $this = this;
+    $.ajax({url: this.input.form.action, data: jsonified_form, type: 'PUT',
+            complete: function(xhr) {$this.handle_upload(xhr);}});
+    return false;
 }
 
 function file_select_handler(event) {

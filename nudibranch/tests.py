@@ -36,7 +36,7 @@ def _init_testing_db():
     # Add two projects and a user associated with the class
     project = Project(name='Project 1', class_id=klass.id)
     user = User(email='', name='User', username='user1',
-                password='pswd1', classes=[klass])
+                password='pswd1', classes=[klass], is_admin=True)
     Session.add_all([project, Project(name='Project 2', class_id=klass.id),
                      user])
     Session.flush()
@@ -465,6 +465,14 @@ class ProjectTests(BaseAPITest):
         self.assertEqual('Project name already exists for the class',
                          info['message'])
 
+    def test_update_invalid_makefile_id(self):
+        from nudibranch.views import project_update
+        matchdict, json_data = self.get_update_objects(makefile_id='100')
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid makefile_id', info['messages'])
+
     def test_update_invalid_product_id(self):
         from nudibranch.views import project_update
         matchdict, json_data = self.get_update_objects({'project_id': 100})
@@ -499,8 +507,10 @@ class ProjectTests(BaseAPITest):
 
     def test_update_valid(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects()
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        matchdict, json_data = self.get_update_objects(makefile_id='1')
+        user = Session.query(User).filter_by(username='user1').first()
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = project_update(request)
         proj = Session.query(Project).first()
         self.assertEqual(HTTPOk.code, request.response.status_code)
