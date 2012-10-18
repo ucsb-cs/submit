@@ -9,6 +9,7 @@ import shutil
 import socket
 import sys
 import time
+from subprocess import Popen, PIPE, STDOUT
 
 
 class SubmissionHandler(object):
@@ -57,13 +58,23 @@ class SubmissionHandler(object):
                          complete_file='sync_files',
                          submission_id=submission_id)
         print('Files synced: {0}'.format(submission_id))
-        print(os.listdir('.'))
+        os.mkdir('results')
+        self.make_project()
         # Make submission
         # Run tests
         self.communicate(queue=self.settings['queue_fetch_results'],
                          complete_file='results_fetched',
                          submission_id=submission_id)
         print('Results fetched: {0}'.format(submission_id))
+
+    def make_project(self):
+        if not os.path.isfile('Makefile'):
+            return True
+        command = 'make -f ../Makefile -C src'
+        with open(os.path.join('results', 'make'), 'w') as fp:
+            pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
+            pipe.wait()
+        return pipe.returncode == 0
 
 
 def main():

@@ -1,4 +1,3 @@
-import ConfigParser
 import amqp_worker
 import transaction
 from nudibranch.models import Session, Submission, initialize_sql

@@ -1,4 +1,3 @@
-import ConfigParser
 import amqp_worker
 import os
 import shutil
@@ -25,6 +24,7 @@ def complete_file(func):
         command = 'echo -n {0} | ssh -i {1} {2}@{3} tee -a {4}'.format(
             submission_id, PRIVATE_KEY_FILE, user, host, complete_file)
         os.system(command)
+        return retval
     return wrapped
 
 
@@ -34,7 +34,23 @@ def fetch_results():
 
 @complete_file
 def fetch_results_worker(submission_id, user, host, remote_dir):
-    return
+    session = Session()
+    submission = Submission.fetch_by_id(submission_id)
+    if not submission:
+        raise Exception('Invalid submission id: {0}'.format(submission_id))
+
+    # Rsync to retrieve results
+    cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3} .'.format(
+        PRIVATE_KEY_FILE, user, host, os.path.join(remote_dir, 'results/'))
+    os.system(cmd)
+
+    print os.listdir('.')
+
+    # Store Makefile results
+    if os.path.isfile('make'):
+        submission.update_makefile_results(open('make').read().decode('utf-8'))
+    session.add(submission)
+    transaction.commit()
 
 
 def start_communicator(queue_conf, work_func):
@@ -59,15 +75,22 @@ def sync_files():
 
 @complete_file
 def sync_files_worker(submission_id, user, host, remote_dir):
-    session = Session()
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
         raise Exception('Invalid submission id: {0}'.format(submission_id))
 
-    # Make symlinks for all files to current directory
+    project = submission.project
+
+    # Make symlinks for all submission files to src directory
+    os.mkdir('src')
     for file_assoc in submission.files:
         source = File.file_path(BASE_FILE_PATH, file_assoc.file.sha1)
-        os.symlink(source, file_assoc.filename)
+        os.symlink(source, os.path.join('src', file_assoc.filename))
+
+    # Copy Makefile to current directory
+    if project.makefile:
+        source = File.file_path(BASE_FILE_PATH, project.makefile.sha1)
+        os.symlink(source, 'Makefile')
 
     # Rsync files
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv . {1}@{2}:{3}'.format(

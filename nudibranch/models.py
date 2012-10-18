@@ -4,7 +4,7 @@ import os
 import sys
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer,
-                        PickleType, Table, Unicode, func)
+                        PickleType, Table, Unicode, UnicodeText, func)
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
@@ -127,14 +127,15 @@ class Project(BasicBase, Base):
             name = fv.filename
             if name in file_mapping:
                 passed, messages = fv.verify(file_mapping[name].file)
-                valid |= passed
+                valid &= passed
                 if passed:
                     results['passed'].append(name)
                 else:
                     results['failed'].append((name, messages))
+                del file_mapping[name]
             else:
+                valid = False
                 results['missing'].append(name)
-            del file_mapping[name]
         results['extra'] = list(file_mapping.keys())
         submission.verification_results = results
         submission.verified_at = func.now()
@@ -143,6 +144,8 @@ class Project(BasicBase, Base):
 
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submissions')
+    made_at = Column(DateTime, index=True)
+    make_results = Column(UnicodeText)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     verification_results = Column(PickleType)
@@ -150,6 +153,10 @@ class Submission(BasicBase, Base):
 
     def verify(self):
         return self.project.verify_submission(self)
+
+    def update_makefile_results(self, data):
+        self.made_at = func.now()
+        self.make_results = data
 
 
 class SubmissionToFile(Base):

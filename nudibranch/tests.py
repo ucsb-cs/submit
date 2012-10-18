@@ -490,7 +490,6 @@ class ProjectTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid makefile_id', info['messages'])
 
-
     def test_update_invalid_product_id(self):
         from nudibranch.views import project_update
         matchdict, json_data = self.get_update_objects({'project_id': 100})
@@ -687,7 +686,7 @@ class SubmissionTests(BaseAPITest):
     def test_create_valid(self):
         import nudibranch.views
         nudibranch.views.pika = MagicMock()
-        from nudibranch.views import pika, submission_create
+        from nudibranch.views import submission_create
         user, json_data = self.get_objects()
         request = self.make_request(user=user, json_body=json_data)
         info = submission_create(request)

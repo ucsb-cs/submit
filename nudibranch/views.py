@@ -6,7 +6,7 @@ from base64 import b64decode
 from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
-                                    site_layout)
+                                    pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, TextNumber,
                                        WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
@@ -353,6 +353,18 @@ def submission_create(request, project_id, file_ids, filenames):
     redir_location = request.route_path('submission_item',
                                         submission_id=submission_id)
     return http_created(request, redir_location=redir_location)
+
+
+@view_config(route_name='submission_item', request_method='GET',
+             renderer='templates/submission_view.pt',
+             permission='authenticated')
+@site_layout('nudibranch:templates/layout.pt')
+def submission_view(request):
+    submission = Submission.fetch_by_id(request.matchdict['submission_id'])
+    if not submission:
+        return HTTPNotFound()
+    return {'page_title': 'Submission Page', 'submission': submission,
+            '_pd': pretty_date}
 
 
 @view_config(route_name='user_class_join', request_method='POST',
