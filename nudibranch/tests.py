@@ -28,41 +28,45 @@ def _init_testing_db():
     engine = create_engine('sqlite://')
     initialize_sql(engine)
 
-    # Add a class
-    klass = Class(name='Test 101')
-    Session.add(klass)
+    # Add an admin user, two users, and two classes
+    admin = User(email='', name='admin', username='admin', password='password',
+                 is_admin=True)
+    user1 = User(email='', name='User 1', username='user1', password='pswd1')
+    user2 = User(email='', name='User 2', username='user2', password='pswd2')
+    klass1 = Class(name='Class 1')
+    klass2 = Class(name='Class 2')
+    Session.add_all([admin, user1, user2, klass1, klass2])
     Session.flush()
 
-    # Add two projects and a user associated with the class
-    project = Project(name='Project 1', class_id=klass.id)
-    user = User(email='', name='User', username='user1',
-                password='pswd1', classes=[klass], is_admin=True)
-    Session.add_all([project, Project(name='Project 2', class_id=klass.id),
-                     user])
+    # Add two projects associated with klass1
+    project1 = Project(name='Project 1', class_id=klass1.id)
+    project2 = Project(name='Project 2', class_id=klass1.id)
+    Session.add_all([project1, project2])
     Session.flush()
 
-    # Add a file verifier to the project
-    Session.add(FileVerifier(filename='File 1', min_size=0, min_lines=0,
-                             project_id=project.id))
-
-    # Add a file to the system
-    the_file = File(base_path=FILE_DIR, data=b'',
-                    sha1='da39a3ee5e6b4b0d3255bfef95601890afd80709')
-    Session.add(the_file)
+    # Add two files and a file verifier to project1
+    file1 = File(base_path=FILE_DIR, data=b'',
+                 sha1='da39a3ee5e6b4b0d3255bfef95601890afd80709')
+    file2 = File(base_path=FILE_DIR, data=b'all:\n\tls',
+                 sha1='5a874c84b1abdd164ce1ac6cdaa901575d3d7612')
+    filev = FileVerifier(filename='File 1', min_size=0, min_lines=0,
+                         project_id=project1.id)
+    Session.add_all([file1, file2, filev])
     Session.flush()
 
-    # Associate user and file
-    user.files.append(the_file)
-    Session.add(user)
+    # Make associatations
+    user1.classes.append(klass1)
+    user1.files.append(file1)
+    admin.files.append(file2)
+    project2.makefile = file2
+    Session.add_all([user1, user2, project2])
+    Session.flush()
 
     # Make a submission
-    submission = Submission(project_id=project.id, user_id=user.id)
-    s2f = SubmissionToFile(filename='File 1', file=the_file)
+    submission = Submission(project_id=project1.id, user_id=user1.id)
+    s2f = SubmissionToFile(filename='File 1', file=file1)
     submission.files.append(s2f)
     Session.add_all([submission, s2f])
-
-    # Add a nonassociated user
-    Session.add(User(email='', name='User', username='user2', password='0000'))
 
 
 class BaseAPITest(unittest.TestCase):
@@ -109,11 +113,11 @@ class ClassTests(BaseAPITest):
 
     def test_class_create_duplicate_name(self):
         from nudibranch.views import class_create
-        json_data = {'name': 'Test 101'}
+        json_data = {'name': 'Class 1'}
         request = self.make_request(json_body=json_data)
         info = class_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
-        self.assertEqual('Class \'Test 101\' already exists', info['message'])
+        self.assertEqual('Class \'Class 1\' already exists', info['message'])
 
     def test_class_create_invalid_name(self):
         from nudibranch.views import class_create
@@ -157,15 +161,15 @@ class ClassTests(BaseAPITest):
         request = self.make_request()
         info = class_list(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual(1, len(info['classes']))
-        self.assertEqual('Test 101', info['classes'][0].name)
+        self.assertEqual(2, len(info['classes']))
+        self.assertEqual('Class 1', info['classes'][0].name)
 
     def test_class_view(self):
         from nudibranch.views import class_view
-        request = self.make_request(matchdict={'class_name': 'Test 101'})
+        request = self.make_request(matchdict={'class_name': 'Class 1'})
         info = class_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Test 101', info['klass'].name)
+        self.assertEqual('Class 1', info['klass'].name)
 
     def test_class_view_invalid(self):
         from nudibranch.views import class_view
@@ -194,7 +198,7 @@ class ClassJoinTests(BaseAPITest):
         from nudibranch.views import user_class_join
         user, json_data = self.get_objects()
         request = self.make_request(json_body=json_data, user=user,
-                                    matchdict={'class_name': 'Test 101',
+                                    matchdict={'class_name': 'Class 1',
                                                'username': 'admin'})
         info = user_class_join(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
@@ -204,7 +208,7 @@ class ClassJoinTests(BaseAPITest):
         from nudibranch.views import user_class_join
         user, json_data = self.get_objects()
         request = self.make_request(json_body=json_data, user=user,
-                                    matchdict={'class_name': 'Test 101',
+                                    matchdict={'class_name': 'Class 1',
                                                'username': 'user1'})
         info = user_class_join(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
@@ -376,8 +380,11 @@ class ProjectTests(BaseAPITest):
         return json_data
 
     @staticmethod
-    def get_update_objects(md_update=None, **kwargs):
-        proj = Session.query(Project).first()
+    def get_update_objects(md_update=None, first_project=True, **kwargs):
+        if first_project:
+            proj = Session.query(Project).first()
+        else:
+            proj = Session.query(Project).all()[1]
         matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
         json_data = {'name': 'Foobar', 'class_id': text_type(proj.klass.id)}
         if md_update:
@@ -432,7 +439,7 @@ class ProjectTests(BaseAPITest):
         info = project_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         expected_prefix = route_path('project_edit', request,
-                                     class_name='Test 101', project_id=0)[:-1]
+                                     class_name='Class 1', project_id=0)[:-1]
         self.assertTrue(info['redir_location'].startswith(expected_prefix))
         project_id = int(info['redir_location'].rsplit('/', 1)[1])
         project = Session.query(Project).filter_by(id=project_id).first()
@@ -473,6 +480,17 @@ class ProjectTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid makefile_id', info['messages'])
 
+    def test_update_invalid_makefile_id_perms(self):
+        from nudibranch.views import project_update
+        user = Session.query(User).filter_by(username='admin').first()
+        matchdict, json_data = self.get_update_objects(makefile_id='1')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = project_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid makefile_id', info['messages'])
+
+
     def test_update_invalid_product_id(self):
         from nudibranch.views import project_update
         matchdict, json_data = self.get_update_objects({'project_id': 100})
@@ -505,12 +523,36 @@ class ProjectTests(BaseAPITest):
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Nothing to change', info['message'])
 
-    def test_update_valid(self):
+    def test_update_valid_add_makefile(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects(makefile_id='1')
-        user = Session.query(User).filter_by(username='user1').first()
+        matchdict, json_data = self.get_update_objects(name='Project 1',
+                                                       makefile_id='2')
+        user = Session.query(User).filter_by(username='admin').first()
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
+        info = project_update(request)
+        proj = Session.query(Project).first()
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Project updated', info['message'])
+        self.assertEqual(2, proj.makefile_id)
+
+    def test_update_valid_remove_makefile(self):
+        from nudibranch.views import project_update
+        matchdict, json_data = self.get_update_objects(first_project=False,
+                                                       name='Project 2')
+        user = Session.query(User).filter_by(username='admin').first()
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = project_update(request)
+        proj = Session.query(Project).first()
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Project updated', info['message'])
+        self.assertEqual(None, proj.makefile)
+
+    def test_update_valid_update_name(self):
+        from nudibranch.views import project_update
+        matchdict, json_data = self.get_update_objects()
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
         info = project_update(request)
         proj = Session.query(Project).first()
         self.assertEqual(HTTPOk.code, request.response.status_code)
@@ -750,8 +792,8 @@ class UserTests(BaseAPITest):
         request = self.make_request()
         info = user_list(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual(2, len(info['users']))
-        self.assertEqual('user1', info['users'][0].username)
+        self.assertEqual(3, len(info['users']))
+        self.assertEqual('user1', info['users'][1].username)
 
     def test_user_view(self):
         from nudibranch.views import user_view
