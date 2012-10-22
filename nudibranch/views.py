@@ -195,11 +195,10 @@ def project_edit(request):
         return HTTPNotFound()
     action = request.route_path('project_item', class_name=project.klass.name,
                                 project_id=project.id)
-    return {'page_title': 'Edit Project', 'project': project,
-            'method': 'post', 'action': action, 'submit_text': 'Update'}
+    return {'page_title': 'Edit Project', 'project': project, 'action': action}
 
 
-@view_config(route_name='project_new', renderer='templates/project_edit.pt',
+@view_config(route_name='project_new', renderer='templates/project_new.pt',
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
 def project_new(request):
@@ -208,10 +207,7 @@ def project_new(request):
         return HTTPNotFound()
     dummy_project = DummyTemplateAttr(None)
     dummy_project.klass = klass
-
-    return {'page_title': 'Create Project', 'project': dummy_project,
-            'action': request.route_path('project'),
-            'method': 'put', 'submit_text': 'Create'}
+    return {'page_title': 'Create Project', 'project': dummy_project}
 
 
 @view_config(route_name='project_item', request_method='POST',

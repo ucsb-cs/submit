@@ -2,14 +2,14 @@
 <div metal:fill-slot="content">
   <div class="header">${page_title}</div>
   <form id="project_form" name="input" action="${action}"
-        onsubmit="return form_request(this, '${method}', true);">
+        onsubmit="return form_request(this, 'POST', true);">
     <p>
       <label for="name">Name</label><br/>
       <input type="text" name="name" id="name" value="${project.name}"/><br/>
     </p>
     <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}"/>
     <input type="hidden" name="makefile_id" id="makefile_id" value="${project.makefile_id}"/>
-    <input type="submit" name="submit" value="${submit_text}"/>
+    <input type="submit" name="submit" value="Update"/>
   </form>
 
   <form name="makefile" class="uploader" action="${_R('file_item', sha1sum='_REPLACE_')}">
@@ -23,46 +23,68 @@
     </fieldset>
   </form>
 
-  <div tal:repeat="fv project.file_verifiers">
-    <form name="file_verifier" action="${_R('file_verifier_item', file_verifier_id=fv.id)}"
+  <fieldset>
+    <legend>File Verifiers</legend>
+    <form tal:repeat="fv project.file_verifiers" name="file_verifier"
+          action="${_R('file_verifier_item', file_verifier_id=fv.id)}"
           onsubmit="return form_request(this, 'POST', true);">
       <p>
-        <label for="filename">Filename</label>
-        <input type="text" name="filename" id="filename" value="${fv.filename}"/><br/>
-        <label for="min_size">Min Size</label>
-        <input type="text" name="min_size" id="min_size" value="${fv.min_size}"/>
-        <label for="max_size">Max Size</label>
-        <input type="text" name="max_size" id="max_size"
-               class="form_optional" placeholder="system max" value="${fv.max_size}"/><br/>
-        <label for="min_lines">Min Lines</label>
-        <input type="text" name="min_lines" id="min_lines" value="${fv.min_lines}"/>
-        <label for="max_lines">Max Lines</label>
-        <input type="text" name="max_lines" id="max_lines"
-               class="form_optional" placeholder="system max" value="${fv.max_lines}"/><br/>
+        <label for="filename_${repeat.fv.index}">Filename</label>
+        <input type="text" name="filename" id="filename_${repeat.fv.index}"
+               value="${fv.filename}"/><br/>
+        <label for="min_size_${repeat.fv.index}">Min Size</label>
+        <input type="text" name="min_size" id="min_size_${repeat.fv.index}"
+               value="${fv.min_size}"/>
+        <label for="max_size_${repeat.fv.index}">Max Size</label>
+        <input type="text" name="max_size" id="max_size_${repeat.fv.index}"
+               class="form_optional" placeholder="system max"
+               value="${fv.max_size}"/><br/>
+        <label for="min_lines_${repeat.fv.index}">Min Lines</label>
+        <input type="text" name="min_lines" id="min_lines_${repeat.fv.index}"
+               value="${fv.min_lines}"/>
+        <label for="max_lines_${repeat.fv.index}">Max Lines</label>
+        <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
+               class="form_optional" placeholder="system max"
+               value="${fv.max_lines}"/><br/>
       </p>
       <input type="submit" name="submit" value="update file"/>
     </form>
-  </div>
+    <form name="file_verifier" action="${_R('file_verifier')}"
+          onsubmit="return form_request(this, 'PUT', true);">
+      <p>
+        <label for="filename_new">Filename</label>
+        <input type="text" name="filename" id="filename_new" value=""/><br/>
+        <label for="min_size_new">Min Size</label>
+        <input type="text" name="min_size" id="min_size_new" value="0"/>
+        <label for="max_size_new">Max Size</label>
+        <input type="text" name="max_size" id="max_size_new"
+               class="form_optional" placeholder="system max" value=""/><br/>
+        <label for="min_lines_new">Min Lines</label>
+        <input type="text" name="min_lines" id="min_lines_new" value="0"/>
+        <label for="max_lines_new">Max Lines</label>
+        <input type="text" name="max_lines" id="max_lines_new"
+               class="form_optional" placeholder="system max" value=""/><br/>
+      </p>
+      <input type="hidden" name="project_id" value="${project.id}" />
+      <input type="submit" name="submit" value="add file verifier"/>
+    </form>
+  </fieldset>
 
-
-  <form tal:condition="project.file_verifiers is not None" name="file_verifier" action="${_R('file_verifier')}"
-        onsubmit="return form_request(this, 'PUT', true);">
-    <p>
-      <label for="filename">Filename</label>
-      <input type="text" name="filename" id="filename" value=""/><br/>
-      <label for="min_size">Min Size</label>
-      <input type="text" name="min_size" id="min_size" value="0"/>
-      <label for="max_size">Max Size</label>
-      <input type="text" name="max_size" id="max_size"
-             class="form_optional" placeholder="system max" value=""/><br/>
-      <label for="min_lines">Min Lines</label>
-      <input type="text" name="min_lines" id="min_lines" value="0"/>
-      <label for="max_lines">Max Lines</label>
-      <input type="text" name="max_lines" id="max_lines"
-             class="form_optional" placeholder="system max" value=""/><br/>
-    </p>
-    <input type="hidden" name="project_id" value="${project.id}" />
-    <input type="submit" name="submit" value="add file"/>
-  </form>
+  <fieldset>
+    <legend>Test Cases</legend>
+    <form name="test_case" action=""
+          onsubmit="return form_request(this, 'PUT', true);">
+      <p>
+        <label for="name_new">Test Name</label>
+        <input type="text" name="name" id="name_new"/><br/>
+        <label for="args_new">Execution line</label>
+        <input type="text" name="args" id="args_new" placeholder="a.out"/><br/>
+        <label for="points_new">Points</label>
+        <input type="text" name="points" id="points_new" value="1"/><br/>
+      </p>
+      <input type="hidden" name="project_id" value="${project.id}" />
+      <input type="submit" name="submit" value="add test case"/>
+    </form>
+  </fieldset>
 </div>
 </div>

@@ -1,6 +1,6 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <p>Submission made ${_pd(submission.created_at)}</p>
+  <p>Submitted ${_pd(submission.created_at)}</p>
   <div tal:condition="submission.verified_at">
     <p>Submission verified ${_pd(submission.verified_at)}</p>
     <pre>${submission.verification_results}</pre>

@@ -53,7 +53,6 @@ class Class(BasicBase, Base):
 
 class File(BasicBase, Base):
     lines = Column(Integer, nullable=False)
-    makefile_for = relationship('Project', backref='makefile')
     sha1 = Column(Unicode, nullable=False, unique=True)
     size = Column(Integer, nullable=False)
 
@@ -117,6 +116,7 @@ class Project(BasicBase, Base):
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     file_verifiers = relationship('FileVerifier', backref='project')
     submissions = relationship('Submission', backref='project')
+    makefile = relationship(File)
     makefile_id = Column(Integer, ForeignKey('file.id'))
 
     def verify_submission(self, submission):
@@ -166,6 +166,16 @@ class SubmissionToFile(Base):
     filename = Column(Unicode, nullable=False)
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            primary_key=True)
+
+
+class TestCase(BasicBase, Base):
+    args = Column(Unicode, nullable=False)
+    expected_id = Column(Integer, ForeignKey('file.id'))
+    name = Column(Unicode, nullable=False)
+    points = Column(Integer, nullable=False)
+    stdin_id = Column(Integer, ForeignKey('file.id'))
+    expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
+    stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id')
 
 
 class User(UserMixin, BasicBase, Base):
