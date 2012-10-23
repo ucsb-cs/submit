@@ -72,13 +72,29 @@
 
   <fieldset>
     <legend>Test Cases</legend>
-    <form name="test_case" action=""
+    <form tal:repeat="tc project.test_cases" name="test_case"
+          action="${_R('test_case_item', test_case_id=tc.id)}"
+          onsubmit="return form_request(this, 'POST', true);">
+      <p>
+        <label for="name_${repeat.tc.index}">Test Name</label>
+        <input type="text" name="name" id="name_${repeat.tc.index}"
+               value="${tc.name}"/><br/>
+        <label for="args_${repeat.tc.index}">Execution line</label>
+        <input type="text" name="args" id="args_${repeat.tc.index}"
+               value="${tc.args}"/><br/>
+        <label for="points_${repeat.tc.index}">Points</label>
+        <input type="text" name="points" id="points_${repeat.tc.index}"
+               value="${tc.points}"/><br/>
+      </p>
+      <input type="submit" name="submit" value="update test case"/>
+    </form>
+    <form name="test_case" action="${_R('test_case')}"
           onsubmit="return form_request(this, 'PUT', true);">
       <p>
         <label for="name_new">Test Name</label>
         <input type="text" name="name" id="name_new"/><br/>
         <label for="args_new">Execution line</label>
-        <input type="text" name="args" id="args_new" placeholder="a.out"/><br/>
+        <input type="text" name="args" id="args_new" value="a.out"/><br/>
         <label for="points_new">Points</label>
         <input type="text" name="points" id="points_new" value="1"/><br/>
       </p>

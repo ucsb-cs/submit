@@ -116,6 +116,7 @@ class Project(BasicBase, Base):
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     file_verifiers = relationship('FileVerifier', backref='project')
     submissions = relationship('Submission', backref='project')
+    test_cases = relationship('TestCase', backref='project')
     makefile = relationship(File)
     makefile_id = Column(Integer, ForeignKey('file.id'))
 
@@ -169,10 +170,12 @@ class SubmissionToFile(Base):
 
 
 class TestCase(BasicBase, Base):
+    __table_args__ = (UniqueConstraint('name', 'project_id'),)
     args = Column(Unicode, nullable=False)
     expected_id = Column(Integer, ForeignKey('file.id'))
     name = Column(Unicode, nullable=False)
     points = Column(Integer, nullable=False)
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     stdin_id = Column(Integer, ForeignKey('file.id'))
     expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id')

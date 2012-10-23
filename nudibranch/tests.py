@@ -6,7 +6,7 @@ from chameleon.zpt.template import Macro
 from mock import MagicMock
 from nudibranch import add_routes
 from nudibranch.models import (Class, File, FileVerifier, Project, Session,
-                               Submission, SubmissionToFile, User,
+                               Submission, SubmissionToFile, TestCase, User,
                                initialize_sql)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
@@ -44,14 +44,16 @@ def _init_testing_db():
     Session.add_all([project1, project2])
     Session.flush()
 
-    # Add two files and a file verifier to project1
+    # Add two files, a file verifier, and a test case to project1
     file1 = File(base_path=FILE_DIR, data=b'',
                  sha1='da39a3ee5e6b4b0d3255bfef95601890afd80709')
     file2 = File(base_path=FILE_DIR, data=b'all:\n\tls',
                  sha1='5a874c84b1abdd164ce1ac6cdaa901575d3d7612')
     filev = FileVerifier(filename='File 1', min_size=0, min_lines=0,
                          project_id=project1.id)
-    Session.add_all([file1, file2, filev])
+    test_case = TestCase(name='Test Case 1', args='a.out', points=1,
+                         project_id=project1.id)
+    Session.add_all([file1, file2, filev, test_case])
     Session.flush()
 
     # Make associatations
@@ -696,8 +698,47 @@ class SubmissionTests(BaseAPITest):
         self.assertTrue(info['redir_location'].startswith(expected_prefix))
 
 
+class TestCaseTests(BaseAPITest):
+    """Test the API methods involved with modifying test cases."""
+    @staticmethod
+    def get_objects(**kwargs):
+        project = Session.query(Project).first()
+        json_data = {'name': 'Test Case 2', 'args': 'a.out', 'points': '0',
+                     'project_id': text_type(project.id)}
+        json_data.update(kwargs)
+        return json_data
+
+    def test_create_invalid_duplicate_name(self):
+        from nudibranch.views import test_case_create
+        json_data = self.get_objects(name='Test Case 1')
+        request = self.make_request(json_body=json_data)
+        info = test_case_create(request)
+        self.assertEqual(HTTPConflict.code, request.response.status_code)
+        self.assertEqual('That name already exists for the project',
+                         info['message'])
+
+    def test_create_no_params(self):
+        from nudibranch.views import test_case_create
+        request = self.make_request(json_body={})
+        info = test_case_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(4, len(info['messages']))
+
+    def test_create_valid(self):
+        from nudibranch.views import test_case_create
+        json_data = self.get_objects()
+        request = self.make_request(json_body=json_data)
+        info = test_case_create(request)
+        project = Session.query(Project).first()
+        expected = route_path('project_edit', request, project_id=project.id,
+                              class_name=project.klass.name)
+        self.assertEqual(expected, info['redir_location'])
+        test_case = project.test_cases[-1]
+        self.assertEqual(json_data['name'], test_case.name)
+
+
 class UserTests(BaseAPITest):
-    """The the API methods involved with modifying user information."""
+    """Test the API methods involved with modifying user information."""
     @staticmethod
     def get_objects(**kwargs):
         json_data = {'email': 'foo@bar.com', 'name': 'Foobar',

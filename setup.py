@@ -6,6 +6,7 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
                            'README.md')).read()
 
 requires = [
+    'alembic>=0.4.0',
     'amqp_worker>=0.0.2',
     'mock>=1.0.0',
     'pika>=0.9.5',

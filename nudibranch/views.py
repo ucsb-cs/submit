@@ -16,7 +16,7 @@ from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
 from .helpers import DummyTemplateAttr
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
-                     SubmissionToFile, User)
+                     SubmissionToFile, TestCase, User)
 
 
 @notfound_view_config()
@@ -146,7 +146,6 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                              'That filename already exists for the project')
 
     redir_location = request.route_path('project_edit',
-                                        class_name=project.klass.name,
                                         project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
@@ -180,8 +179,7 @@ def project_create(request, name, class_id):
         return http_conflict(request,
                              'Project name already exists for the class')
 
-    redir_location = request.route_path('project_edit', class_name=klass.name,
-                                        project_id=project.id)
+    redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
 
@@ -361,6 +359,32 @@ def submission_view(request):
         return HTTPNotFound()
     return {'page_title': 'Submission Page', 'submission': submission,
             '_pd': pretty_date}
+
+
+@view_config(route_name='test_case', request_method='PUT', permission='admin',
+             renderer='json')
+@validated_form(name=String('name', min_length=1),
+                args=String('args', min_length=1),
+                points=TextNumber('points'),
+                project_id=TextNumber('project_id', min_value=0))
+def test_case_create(request, name, args, points, project_id):
+    session = Session()
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+
+    test_case = TestCase(name=name, args=args, points=points,
+                         project_id=project_id)
+    session.add(test_case)
+    try:
+        session.flush()  # Cannot commit the transaction here
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'That name already exists for the project')
+    redir_location = request.route_path('project_edit', project_id=project.id)
+    transaction.commit()
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='user_class_join', request_method='POST',
