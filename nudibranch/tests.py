@@ -736,6 +736,12 @@ class TestCaseTests(BaseAPITest):
         test_case = project.test_cases[-1]
         self.assertEqual(json_data['name'], test_case.name)
 
+    def test_serialize(self):
+        test_case = Session.query(TestCase).first()
+        data = test_case.serialize()
+        self.assertEqual(test_case.id, data['id'])
+        self.assertEqual(test_case.args, data['args'])
+
 
 class UserTests(BaseAPITest):
     """Test the API methods involved with modifying user information."""

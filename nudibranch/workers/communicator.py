@@ -1,4 +1,5 @@
 import amqp_worker
+import json
 import os
 import shutil
 import tempfile
@@ -49,6 +50,17 @@ def fetch_results_worker(submission_id, user, host, remote_dir):
     # Store Makefile results
     if os.path.isfile('make'):
         submission.update_makefile_results(open('make').read().decode('utf-8'))
+
+    # Read test case results
+    if os.path.isfile('test_cases'):
+        data = json.load(open('test_cases'))
+        for tc_id, results in data.items():
+            import pprint
+            pprint.pprint(results)
+            print('<OUTPUT>')
+            import sys
+            sys.stdout.write(open('tc_{}'.format(tc_id)).read())
+            print('</OUTPUT>')
     session.add(submission)
     transaction.commit()
 
@@ -87,10 +99,24 @@ def sync_files_worker(submission_id, user, host, remote_dir):
         source = File.file_path(BASE_FILE_PATH, file_assoc.file.sha1)
         os.symlink(source, os.path.join('src', file_assoc.filename))
 
-    # Copy Makefile to current directory
+    # Symlink Makefile to current directory
     if project.makefile:
         source = File.file_path(BASE_FILE_PATH, project.makefile.sha1)
         os.symlink(source, 'Makefile')
+
+    # Symlink test inputs and copy build test case specifications
+    os.mkdir('inputs')
+    test_cases = []
+    for test_case in project.test_cases:
+        test_cases.append(test_case.serialize())
+        if test_case.stdin:
+            destination = os.path.join('inputs', test_case.stdin.sha1)
+            if not os.path.isfile(destination):
+                source = File.file_path(BASE_FILE_PATH, test_case.stdin.sha1)
+                os.symlink(source, destination)
+    # Save test case specification
+    with open('test_cases', 'w') as fp:
+        json.dump(test_cases, fp)
 
     # Rsync files
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv . {1}@{2}:{3}'.format(
