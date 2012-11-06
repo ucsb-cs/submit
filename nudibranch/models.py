@@ -2,9 +2,10 @@ from __future__ import unicode_literals
 import errno
 import os
 import sys
+from hashlib import sha1
 from sqla_mixins import BasicBase, UserMixin
-from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer,
-                        PickleType, Table, Unicode, UnicodeText, func)
+from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
+                        PickleType, String, Table, Unicode, UnicodeText, func)
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
@@ -53,13 +54,25 @@ class Class(BasicBase, Base):
 
 class File(BasicBase, Base):
     lines = Column(Integer, nullable=False)
-    sha1 = Column(Unicode, nullable=False, unique=True)
+    sha1 = Column(String, nullable=False, unique=True)
     size = Column(Integer, nullable=False)
 
     @staticmethod
     def fetch_by_sha1(sha1):
         session = Session()
         return session.query(File).filter_by(sha1=sha1).first()
+
+    @staticmethod
+    def fetch_or_create(data, base_path, sha1sum=None):
+        if not sha1sum:
+            sha1sum = sha1(data).hexdigest()
+        file = File.fetch_by_sha1(sha1sum)
+        if not file:
+            file = File(base_path=base_path, data=data, sha1=sha1sum)
+            session = Session()
+            session.add(file)
+            session.flush()  # Cannot commit the transaction here
+        return file
 
     @staticmethod
     def file_path(base_path, sha1sum):
@@ -172,13 +185,14 @@ class SubmissionToFile(Base):
 class TestCase(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'project_id'),)
     args = Column(Unicode, nullable=False)
+    expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
     expected_id = Column(Integer, ForeignKey('file.id'))
     name = Column(Unicode, nullable=False)
     points = Column(Integer, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
-    stdin_id = Column(Integer, ForeignKey('file.id'))
-    expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id')
+    stdin_id = Column(Integer, ForeignKey('file.id'))
+    test_case_for = relationship('TestCaseResult', backref='test_case')
 
     def serialize(self):
         data = {x: getattr(self, x) for x in ('id', 'args')}
@@ -187,6 +201,35 @@ class TestCase(BasicBase, Base):
         else:
             data['stdin'] = None
         return data
+
+
+class TestCaseResult(Base):
+    """Stores information about a test case.
+
+    The extra field stores the exit status when the status is `success`, and
+    stores the signal number when the status is `signal`.
+    """
+    __tablename__ = 'testcaseresult'
+    diff = relationship(File)
+    diff_id = Column(Integer, ForeignKey('file.id'))
+    status = Enum('nonexistent_executable', 'signal', 'success', 'timed_out',
+                  nullable=False)
+    extra = Column(Integer)
+    submission_id = Column(Integer, ForeignKey('submission.id'),
+                           primary_key=True)
+    test_case_id = Column(Integer, ForeignKey('testcase.id'),
+                          primary_key=True)
+
+    @classmethod
+    def fetch_by_ids(cls, submission_id, test_case_id):
+        session = Session()
+        return session.query(cls).filter_by(
+            submission_id=submission_id, test_case_id=test_case_id).first()
+
+    def update(self, data):
+        for attr, val in data.items():
+            setattr(self, attr, val)
+        self.created_at = func.now()
 
 
 class User(UserMixin, BasicBase, Base):
@@ -257,7 +300,7 @@ def populate_database():
     Session.flush()
 
     # File verification
-    fv = FileVerifier(filename='README', min_size=3, min_lines=1,
+    fv = FileVerifier(filename='test.c', min_size=3, min_lines=1,
                       project_id=project.id)
 
     Session.add_all([admin, fv])

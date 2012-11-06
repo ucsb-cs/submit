@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import ConfigParser
 import amqp_worker
+import errno
 import json
 import os
 import pika
@@ -41,7 +42,7 @@ class SubmissionHandler(object):
             time.sleep(1)
 
     @staticmethod
-    def execute(command, stdout, stdin=None, time_limit=2.9999999, files=None,
+    def execute(command, stdout, stdin=None, time_limit=3, files=None,
                 capture_stderr=False):
         if not capture_stderr:
             stderr = open('/dev/null', 'w')
@@ -50,13 +51,17 @@ class SubmissionHandler(object):
 
         # Prefix path to command
         command = os.path.join(os.getcwd(), SRC_PATH, command)
+        args = command.split()
+
+        if not os.path.isfile(args[0]):
+            raise NonexistentExecutable()
 
         # Run command with a timelimit
         tmp_dir = tempfile.mkdtemp()
         try:
             poll = select.epoll()
-            main_pipe = Popen(command.split(), stdin=stdin, stdout=PIPE,
-                              stderr=stderr, cwd=tmp_dir)
+            main_pipe = Popen(args, stdin=stdin, stdout=PIPE, stderr=stderr,
+                              cwd=tmp_dir)
             poll.register(main_pipe.stdout, select.EPOLLIN | select.EPOLLHUP)
             do_poll = True
             start = time.time()
@@ -75,6 +80,11 @@ class SubmissionHandler(object):
             if main_status < 0:
                 raise SignalException(-1 * main_status)
             return main_status
+        except OSError as exc:
+            if exc.errno == errno.ENOENT:
+                raise NonexistentExecutable()
+            else:
+                raise
         finally:
             shutil.rmtree(tmp_dir)
 
@@ -128,17 +138,25 @@ class SubmissionHandler(object):
         results = {}
         for tc in test_cases:
             output_file = os.path.join(RESULTS_PATH, 'tc_{}'.format(tc['id']))
-            result = {'signal': None, 'status': None, 'timed_out': False}
+            result = {'extra': None}
             with open(output_file, 'wb') as fd:
                 try:
-                    result['status'] = self.execute(tc['args'], stdout=fd)
+                    result['extra'] = self.execute(tc['args'], stdout=fd)
+                    result['status'] = 'success'
+                except NonexistentExecutable:
+                    result['status'] = 'nonexistent_executable'
                 except SignalException as exc:
-                    result['signal'] = exc.signum
+                    result['extra'] = exc.signum
+                    result['status'] = 'signal'
                 except TimeoutException:
-                    result['timed_out'] = True
+                    result['status'] = 'timed_out'
             results[tc['id']] = result
         with open(os.path.join(RESULTS_PATH, 'test_cases'), 'w') as fp:
             json.dump(results, fp)
+
+
+class NonexistentExecutable(Exception):
+    """Indicate that the expected binary does not exist."""
 
 
 class SignalException(Exception):

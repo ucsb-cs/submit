@@ -4,7 +4,8 @@ import os
 import shutil
 import tempfile
 import transaction
-from nudibranch.models import File, Session, Submission, initialize_sql
+from nudibranch.models import (File, Session, Submission, TestCaseResult,
+                               initialize_sql)
 from sqlalchemy import engine_from_config
 
 BASE_FILE_PATH = None
@@ -35,7 +36,6 @@ def fetch_results():
 
 @complete_file
 def fetch_results_worker(submission_id, user, host, remote_dir):
-    session = Session()
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
         raise Exception('Invalid submission id: {0}'.format(submission_id))
@@ -51,18 +51,43 @@ def fetch_results_worker(submission_id, user, host, remote_dir):
     if os.path.isfile('make'):
         submission.update_makefile_results(open('make').read().decode('utf-8'))
 
-    # Read test case results
+    # Store test case results
     if os.path.isfile('test_cases'):
         data = json.load(open('test_cases'))
-        for tc_id, results in data.items():
-            import pprint
-            pprint.pprint(results)
-            print('<OUTPUT>')
-            import sys
-            sys.stdout.write(open('tc_{}'.format(tc_id)).read())
-            print('</OUTPUT>')
+        for test_case_id, results in data.items():
+            try:
+                update_or_create_result(submission_id, test_case_id, results)
+            except Exception as exc:
+                import traceback
+                traceback.print_exc()
+                raise
+    session = Session()
     session.add(submission)
     transaction.commit()
+
+
+def update_or_create_result(submission_id, test_case_id, results):
+    test_case = TestCaseResult.fetch_by_ids(submission_id, test_case_id)
+    if test_case:
+        test_case.update(results)
+    else:
+        results['submission_id'] = submission_id
+        results['test_case_id'] = test_case_id
+        test_case = TestCaseResult(**results)
+
+    # Store output as diff (for now)
+    # TODO: store pickled difflib output between expected and actual
+
+    # Kyle: This is where you want to perform the diff. data should be a
+    # string-representation of the pickled diff rather than simply the contents
+    # of the produced output file.
+    data = open('tc_{}'.format(test_case_id)).read()
+    file = File.fetch_or_create(data, BASE_FILE_PATH)
+    test_case.diff = file
+
+    session = Session()
+    session.add(test_case)
+    return test_case
 
 
 def start_communicator(queue_conf, work_func):
@@ -114,6 +139,7 @@ def sync_files_worker(submission_id, user, host, remote_dir):
             if not os.path.isfile(destination):
                 source = File.file_path(BASE_FILE_PATH, test_case.stdin.sha1)
                 os.symlink(source, destination)
+
     # Save test case specification
     with open('test_cases', 'w') as fp:
         json.dump(test_cases, fp)

@@ -79,16 +79,12 @@ def file_create(request, b64data):
         return http_bad_request(request, msg)
 
     # fetch or create (and save to disk) the file
-    session = Session()
-    file = File.fetch_by_sha1(sha1sum)
-    if not file:
-        base_path = request.registry.settings['file_directory']
-        file = File(base_path=base_path, data=data, sha1=sha1sum)
-        session.add(file)
-        session.flush()  # Cannot commit the transaction here
+    base_path = request.registry.settings['file_directory']
+    file = File.fetch_or_create(data, base_path, sha1sum=sha1sum)
 
     # associate user with the file
     request.user.files.append(file)
+    session = Session()
     session.add(request.user)
 
     file_id = file.id
