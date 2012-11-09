@@ -6,21 +6,13 @@
     <p>
       <label for="name">Name</label><br/>
       <input type="text" name="name" id="name" value="${project.name}"/><br/>
+      <p tal:condition="project.makefile"><a href="#">Existing Makefile</a></p>
+      <label for="makefile">Select a Makefile: </label>
+      <input name="makefile_id" id="makefile" type="file" />
     </p>
     <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}"/>
-    <input type="hidden" name="makefile_id" id="makefile_id" value="${project.makefile_id}"/>
+    <input type="hidden" name="makefile_id" id="class_id" value="${project.makefile_id}"/>
     <input type="submit" name="submit" value="Update"/>
-  </form>
-
-  <form name="makefile" class="uploader" action="${_R('file_item', sha1sum='_REPLACE_')}">
-    <fieldset>
-      <legend>Makefile</legend>
-      <div>
-        <p tal:condition="project.makefile"><a href="#">Existing Makefile</a></p>
-        <label for="makefile">Select a Makefile: </label>
-        <input name="makefile" id="makefile" type="file" />
-      </div>
-    </fieldset>
   </form>
 
   <fieldset>
@@ -72,7 +64,11 @@
 
   <fieldset>
     <legend>Test Cases</legend>
-    <form tal:repeat="tc project.test_cases" name="test_case"
+
+    <fieldset tal:repeat="tc project.test_cases">
+      <legend>Test Case</legend>
+
+    <form name="test_case"
           action="${_R('test_case_item', test_case_id=tc.id)}"
           onsubmit="return form_request(this, 'POST', true);">
       <p>
@@ -88,6 +84,30 @@
       </p>
       <input type="submit" name="submit" value="update test case"/>
     </form>
+
+
+    <fieldset>
+      <legend>Test Files</legend>
+      <form name="input_file" class="uploader" action="${_R('file_item', sha1sum='_REPLACE_')}">
+        <div>
+          <label for="input_file">Select an input file: </label>
+          <input name="intput_file" id="input_file" type="file" />
+        </div>
+      </form>
+      <form name="output_file" class="uploader" action="${_R('file_item', sha1sum='_REPLACE_')}">
+        <div>
+          <label for="output_file">Select an output file: </label>
+          <input name="output_file" id="output_file" type="file" />
+        </div>
+      </form>
+    </fieldset>
+
+
+    </fieldset>
+
+
+    <fieldset tal:repeat="tc project.test_cases">
+      <legend>Test Case</legend>
     <form name="test_case" action="${_R('test_case')}"
           onsubmit="return form_request(this, 'PUT', true);">
       <p>
@@ -101,6 +121,10 @@
       <input type="hidden" name="project_id" value="${project.id}" />
       <input type="submit" name="submit" value="add test case"/>
     </form>
+    </fieldset>
+
+
+
   </fieldset>
 </div>
 </div>

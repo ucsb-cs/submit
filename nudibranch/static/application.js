@@ -1,3 +1,29 @@
+function form_request(form, method, skip_empty) {
+    if (typeof skip_empty == 'undefined' || skip_empty == null)
+        skip_empty = false;
+    var files_to_upload = [];
+
+    var js_form = form2js(form, '.', skip_empty, function(node) {
+        /* Find any file input fields and add them to the files array */
+        if (!node.nodeName.match(/INPUT/i) || !node.type.match(/file/i))
+            return false;
+        if (node.files.length > 0)
+            files_to_upload.push({name: node.name, files: node.files});
+        return false;
+    });
+
+    file_handler = new FileHandler(files_to_upload, js_form, function() {
+        /* Only submit the form once all files have replaced by file_ids */
+        var jsonified_form = JSON.stringify(js_form);
+        console.log('About to submit');
+        console.log(js_form);
+        $.ajax({url: form.action, data: jsonified_form, type: method,
+                complete: handle_response});
+    });
+    return false;  // Ensure the form submission doesn't actually happen
+}
+
+
 function handle_response(xhr) {
     data = JSON.parse(xhr.responseText);
     switch(xhr.status) {
@@ -27,97 +53,57 @@ function handle_response(xhr) {
     }
 }
 
-function form_request(form, method, skip_empty) {
-    if (typeof skip_empty == 'undefined' || skip_empty == null)
-        skip_empty = false;
-    var jsonified_form = JSON.stringify(form2js(form, '.', skip_empty));
-    $.ajax({url: form.action, data: jsonified_form, type: method,
-            complete: handle_response});
-    return false;  // Ensure the form submission doesn't actually happen
+function FileHandler(to_replace, js_form, completed_callback) {
+    this.to_replace = to_replace;
+    this.js_form = js_form;
+    this.completed_callback = completed_callback;
+    this.current = null;
+    this.upload_or_submit();
 }
 
-function FileToUpload(file, input) {
-    this.file = file;
-    this.input = input;
-    this.sha1 = this.base64 = null;
-}
-
-FileToUpload.prototype.associate_makefile = function(response) {
-    var data = $.parseJSON(response);
-    $('#makefile_id')[0].value = data['file_id'];
-    $('#project_form').submit();
-}
-
-FileToUpload.prototype.calculate_sha1 = function(data) {
-    this.base64 = window.btoa(data);
-    this.sha1 = hex_sha1(data);
-    // Test to see if the file has already been uploaded
-    var url = this.input.form.action.replace('_REPLACE_', this.sha1);
-    this.input.form.action = url;
-    var $this = this;
-    $.ajax({url: url, complete: function(xhr) {$this.check_for_file(xhr);}});
-}
-
-FileToUpload.prototype.check_for_file = function(xhr) {
-    var status = xhr.status;
-    if (status == 404) {
-        var el = document.createElement('input');
-        el.type = el.value = 'submit';
+FileHandler.prototype.upload_or_submit = function() {
+    this.current = this.to_replace.pop();
+    if (this.current) {
+        console.log('Attempting to replace ' + this.current.name);
+        process_file(this);
     }
     else {
-        this.associate_makefile(xhr.responseText);
-        var el = document.createElement('span')
-        el.innerHTML = 'file already uploaded';
-    }
-    this.input.parentNode.insertBefore(el, this.input.nextSibling);
-    var $this = this;
-    this.input.form.onsubmit = function() {return $this.upload();};
-}
-
-FileToUpload.prototype.handle_upload = function(xhr) {
-    var status = xhr.status;
-    if (status == 200) {
-        this.associate_makefile(xhr.responseText);
-    }
-    else {
-        alert('Error uploading file: ' + xhr.status);
+        this.completed_callback();
     }
 }
 
-FileToUpload.prototype.on_file_load = function(event) {
-    var $this = this;
-    setTimeout(function(){$this.calculate_sha1(event.target.result)}, 0);
+FileHandler.prototype.replace_file = function(xhr_response) {
+    var file_id = $.parseJSON(xhr_response)['file_id'];
+    console.log(file_id);
+    this.js_form[this.current.name] = String(file_id);
+    this.upload_or_submit();
 }
 
-FileToUpload.prototype.process = function() {
+function process_file(handler) {
+    var file = handler.current.files[0];
     var reader = new FileReader();
-    var $this = this;
-    reader.onload = function(event){$this.on_file_load(event);};
-    reader.readAsBinaryString(this.file);
+    reader.onload = function(event){  // When the file is loaded
+        var data = event.target.result;
+        setTimeout(function() {  // Perform asynchronously
+            var base64 = window.btoa(data);
+            var sha1 = hex_sha1(data);
+            var url = '/file/' + sha1;
+            console.log('Checking if ' + sha1 + ' exists');
+            $.ajax({url: url, complete: function(xhr) {  // Test if file exists
+                if (xhr.status == 404) {
+                    console.log('Uploading file for ' + sha1);
+                    var form_json = JSON.stringify({b64data: base64});
+                    $.ajax({url: url, type: 'PUT', complete: function(xhr) {
+                        if (xhr.status == 200)
+                            handler.replace_file(xhr.responseText);
+                        else {
+                            console.log('Error uploading file: ' + xhr.status);
+                        }}, data: form_json});
+                }
+                else
+                    handler.replace_file(xhr.responseText);
+            }});
+        }, 0);
+    };
+    reader.readAsBinaryString(file);
 }
-
-FileToUpload.prototype.upload = function() {
-    jsonified_form = JSON.stringify({b64data: this.base64});
-    var $this = this;
-    $.ajax({url: this.input.form.action, data: jsonified_form, type: 'PUT',
-            complete: function(xhr) {$this.handle_upload(xhr);}});
-    return false;
-}
-
-function file_select_handler(event) {
-    var files = event.target.files || event.dataTransfer.files;
-    var input = event.target;
-    for (var i = 0; i < files.length; ++i) {
-        var to_upload = new FileToUpload(files[i], input);
-        to_upload.process();
-    }
-}
-
-
-function initialize() {
-    $('.uploader input[type=file]').change(file_select_handler);
-}
-
-$(document).ready(function() {
-    initialize();
-});
