@@ -3,16 +3,20 @@
   <div class="header">${page_title}</div>
   <form id="project_form" name="input" action="${action}"
         onsubmit="return form_request(this, 'POST', true);">
-    <p>
-      <label for="name">Name</label><br/>
-      <input type="text" name="name" id="name" value="${project.name}"/><br/>
-      <p tal:condition="project.makefile"><a href="#">Existing Makefile</a></p>
+    <fieldset>
+      <legend>Basic Settings</legend>
+      <label for="name">Name</label>
+      <br/>
+      <input type="text" name="name" id="name" value="${project.name}" />
+      <br/>
+      <div tal:condition="project.makefile"><a href="#">Existing Makefile</a></div>
       <label for="makefile">Select a Makefile: </label>
       <input name="makefile_id" id="makefile" type="file" />
-    </p>
-    <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}"/>
-    <input type="hidden" name="makefile_id" id="class_id" value="${project.makefile_id}"/>
-    <input type="submit" name="submit" value="Update"/>
+      <input type="hidden" name="makefile_id" value="${project.makefile_id}" />
+      <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}" />
+      <br/>
+      <input type="submit" name="submit" value="Update" />
+    </fieldset>
   </form>
 
   <fieldset>
@@ -21,115 +25,110 @@
       <legend>Verifier ${repeat.fv.number}</legend>
       <form name="file_verifier" onsubmit="return form_request(this, 'POST', true);"
             action="${_R('file_verifier_item', file_verifier_id=fv.id)}">
-        <p>
-          <label for="filename_${repeat.fv.index}">Filename</label>
-          <input type="text" name="filename" id="filename_${repeat.fv.index}"
-                 value="${fv.filename}"/><br/>
-          <label for="min_size_${repeat.fv.index}">Min Size</label>
-          <input type="text" name="min_size" id="min_size_${repeat.fv.index}"
-                 value="${fv.min_size}"/>
-          <label for="max_size_${repeat.fv.index}">Max Size</label>
-          <input type="text" name="max_size" id="max_size_${repeat.fv.index}"
-                 class="form_optional" placeholder="system max"
-                 value="${fv.max_size}"/><br/>
-          <label for="min_lines_${repeat.fv.index}">Min Lines</label>
-          <input type="text" name="min_lines" id="min_lines_${repeat.fv.index}"
-                 value="${fv.min_lines}"/>
-          <label for="max_lines_${repeat.fv.index}">Max Lines</label>
-          <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
-                 class="form_optional" placeholder="system max"
-                 value="${fv.max_lines}"/><br/>
-        </p>
-        <input type="submit" name="submit" value="update verifier"/>
+        <label for="filename_${repeat.fv.index}">Filename</label>
+        <input type="text" name="filename" id="filename_${repeat.fv.index}"
+               value="${fv.filename}" />
+        <br/>
+        <label for="min_size_${repeat.fv.index}">Min Size</label>
+        <input type="text" name="min_size" id="min_size_${repeat.fv.index}"
+               value="${fv.min_size}" />
+        <label for="max_size_${repeat.fv.index}">Max Size</label>
+        <input type="text" name="max_size" id="max_size_${repeat.fv.index}"
+               class="form_optional" placeholder="system max"
+               value="${fv.max_size}" />
+        <br/>
+        <label for="min_lines_${repeat.fv.index}">Min Lines</label>
+        <input type="text" name="min_lines" id="min_lines_${repeat.fv.index}"
+               value="${fv.min_lines}" />
+        <label for="max_lines_${repeat.fv.index}">Max Lines</label>
+        <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
+               class="form_optional" placeholder="system max"
+               value="${fv.max_lines}" />
+        <br/>
+        <input type="submit" name="submit" value="update verifier" />
       </form>
     </fieldset>
     <fieldset style="background: #ccf">
       <legend>New Verifier</legend>
       <form name="file_verifier" action="${_R('file_verifier')}"
             onsubmit="return form_request(this, 'PUT', true);">
-        <p>
-          <label for="filename_new">Filename</label>
-          <input type="text" name="filename" id="filename_new" value=""/><br/>
-          <label for="min_size_new">Min Size</label>
-          <input type="text" name="min_size" id="min_size_new" value="0"/>
-          <label for="max_size_new">Max Size</label>
-          <input type="text" name="max_size" id="max_size_new"
-                 class="form_optional" placeholder="system max" value=""/><br/>
-          <label for="min_lines_new">Min Lines</label>
-          <input type="text" name="min_lines" id="min_lines_new" value="0"/>
-          <label for="max_lines_new">Max Lines</label>
-          <input type="text" name="max_lines" id="max_lines_new"
-                 class="form_optional" placeholder="system max" value=""/><br/>
-        </p>
+        <label for="filename_new">Filename</label>
+        <input type="text" name="filename" id="filename_new" value="" />
+        <br/>
+        <label for="min_size_new">Min Size</label>
+        <input type="text" name="min_size" id="min_size_new" value="0" />
+        <label for="max_size_new">Max Size</label>
+        <input type="text" name="max_size" id="max_size_new"
+               class="form_optional" placeholder="system max" value="" />
+        <br/>
+        <label for="min_lines_new">Min Lines</label>
+        <input type="text" name="min_lines" id="min_lines_new" value="0" />
+        <label for="max_lines_new">Max Lines</label>
+        <input type="text" name="max_lines" id="max_lines_new"
+               class="form_optional" placeholder="system max" value="" />
         <input type="hidden" name="project_id" value="${project.id}" />
-        <input type="submit" name="submit" value="add file verifier"/>
+        <br/>
+        <input type="submit" name="submit" value="add file verifier" />
       </form>
     </fieldset>
   </fieldset>
 
   <fieldset>
     <legend>Test Cases</legend>
-
     <fieldset tal:repeat="tc project.test_cases">
-      <legend>Test Case</legend>
-
-    <form name="test_case"
-          action="${_R('test_case_item', test_case_id=tc.id)}"
-          onsubmit="return form_request(this, 'POST', true);">
-      <p>
+      <legend>Test Case ${repeat.tc.number}</legend>
+      <form name="test_case"
+            action="${_R('test_case_item', test_case_id=tc.id)}"
+            onsubmit="return form_request(this, 'POST', true);">
         <label for="name_${repeat.tc.index}">Test Name</label>
-        <input type="text" name="name" id="name_${repeat.tc.index}"
-               value="${tc.name}"/><br/>
+        <input type="text" name="name" id="name_${repeat.tc.index}" value="${tc.name}" />
+        <br/>
         <label for="args_${repeat.tc.index}">Execution line</label>
         <input type="text" name="args" id="args_${repeat.tc.index}"
-               value="${tc.args}"/><br/>
+               value="${tc.args}" />
+        <br/>
         <label for="points_${repeat.tc.index}">Points</label>
         <input type="text" name="points" id="points_${repeat.tc.index}"
-               value="${tc.points}"/><br/>
-      </p>
-      <input type="submit" name="submit" value="update test case"/>
-    </form>
-
-
-    <fieldset>
-      <legend>Test Files</legend>
-      <form name="input_file" class="uploader" action="${_R('file_item', sha1sum='_REPLACE_')}">
-        <div>
-          <label for="input_file">Select an input file: </label>
-          <input name="intput_file" id="input_file" type="file" />
-        </div>
-      </form>
-      <form name="output_file" class="uploader" action="${_R('file_item', sha1sum='_REPLACE_')}">
-        <div>
-          <label for="output_file">Select an output file: </label>
-          <input name="output_file" id="output_file" type="file" />
-        </div>
+               value="${tc.points}" />
+        <br/>
+        <div tal:condition="tc.stdin_id"><a href="#">Existing standard input file</a></div>
+        <label for="input_${repeat.tc.index}">Select a new standard input file: </label>
+        <input name="stdin_id" id="input_${repeat.tc.index}" type="file" />
+        <br/>
+        <input type="hidden" name="stdin_id" value="${tc.stdin_id}" />
+        <div tal:condition="tc.expected_id"><a href="#">Existing expected output file</a></div>
+        <label for="expected_${repeat.tc.index}">Select a new expected output file: </label>
+        <input name="expected_id" id="expected_${repeat.tc.index}" type="file" />
+        <input type="hidden" name="expected_id" value="${tc.expected_id}" />
+        <br/>
+        <input type="submit" name="submit" value="update test case" />
       </form>
     </fieldset>
-
-
-    </fieldset>
-
-
-    <fieldset tal:repeat="tc project.test_cases">
-      <legend>Test Case</legend>
-    <form name="test_case" action="${_R('test_case')}"
-          onsubmit="return form_request(this, 'PUT', true);">
-      <p>
+    <fieldset style="background: #ccf">
+      <legend>New Test Case</legend>
+      <form name="test_case" action="${_R('test_case')}"
+            onsubmit="return form_request(this, 'PUT', true);">
         <label for="name_new">Test Name</label>
-        <input type="text" name="name" id="name_new"/><br/>
+        <input type="text" name="name" id="name_new" />
+        <br/>
         <label for="args_new">Execution line</label>
-        <input type="text" name="args" id="args_new" value="a.out"/><br/>
+        <input type="text" name="args" id="args_new" value="a.out" />
+        <br/>
         <label for="points_new">Points</label>
-        <input type="text" name="points" id="points_new" value="1"/><br/>
-      </p>
-      <input type="hidden" name="project_id" value="${project.id}" />
-      <input type="submit" name="submit" value="add test case"/>
-    </form>
+        <input type="text" name="points" id="points_new" value="1" />
+        <br/>
+        <label for="input_new">Select a standard input file: </label>
+        <input name="stdin_id" id="input_new" type="file" />
+        <br/>
+        <input type="hidden" name="stdin_id" value="" />
+        <label for="expected_new">Select a expected output file: </label>
+        <input name="expected_id" id="expected_new" type="file" />
+        <input type="hidden" name="expected_id" value="" />
+        <input type="hidden" name="project_id" value="${project.id}" />
+        <br/>
+        <input type="submit" name="submit" value="add test case" />
+      </form>
     </fieldset>
-
-
-
   </fieldset>
 </div>
 </div>

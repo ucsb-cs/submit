@@ -367,16 +367,21 @@ def submission_view(request):
              renderer='json')
 @validated_form(name=String('name', min_length=1),
                 args=String('args', min_length=1),
+                expected_id=TextNumber('expected_id', min_value=0,
+                                       optional=True),
                 points=TextNumber('points'),
-                project_id=TextNumber('project_id', min_value=0))
-def test_case_create(request, name, args, points, project_id):
+                project_id=TextNumber('project_id', min_value=0),
+                stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
+def test_case_create(request, name, args, expected_id, points, project_id,
+                     stdin_id):
     session = Session()
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
 
-    test_case = TestCase(name=name, args=args, points=points,
-                         project_id=project_id)
+    test_case = TestCase(name=name, args=args, expected_id=expected_id,
+                         points=points, project_id=project_id,
+                         stdin_id=stdin_id)
     session.add(test_case)
     try:
         session.flush()  # Cannot commit the transaction here
