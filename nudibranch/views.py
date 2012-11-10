@@ -160,13 +160,19 @@ def home(request):
 @view_config(route_name='project', request_method='PUT', permission='admin',
              renderer='json')
 @validated_form(name=String('name', min_length=2),
-                class_id=TextNumber('class_id', min_value=0))
-def project_create(request, name, class_id):
+                class_id=TextNumber('class_id', min_value=0),
+                makefile_id=TextNumber('makefile_id', min_value=0,
+                                       optional=True))
+def project_create(request, name, class_id, makefile_id):
     session = Session()
     klass = Class.fetch_by_id(class_id)
     if not klass:
         return http_bad_request(request, 'Invalid class_id')
-    project = Project(name=name, class_id=class_id)
+    if makefile_id:
+        makefile = File.fetch_by_id(makefile_id)
+        if not makefile or makefile not in request.user.files:
+            return http_bad_request(request, 'Invalid makefile_id')
+    project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
     session.add(project)
     try:
         session.flush()  # Cannot commit the transaction here

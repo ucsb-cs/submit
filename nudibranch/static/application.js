@@ -25,6 +25,11 @@ function form_request(form, method, skip_empty) {
 
 
 function handle_response(xhr) {
+    if (xhr.status > 500) {
+        console.log('Server error');
+        console.log(xhr.responseText);
+        return;
+    }
     data = JSON.parse(xhr.responseText);
     switch(xhr.status) {
     case 200:  // Ok

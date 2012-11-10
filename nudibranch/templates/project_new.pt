@@ -2,10 +2,12 @@
 <div metal:fill-slot="content">
   <div class="header">${page_title}</div>
   <form id="project_form" name="input" action="${_R('project')}"
-        onsubmit="return form_request(this, 'PUT');">
+        onsubmit="return form_request(this, 'PUT', true);">
     <p>
       <label for="name">Name</label><br/>
       <input type="text" name="name" id="name" value="${project.name}"/><br/>
+      <label for="makefile">Select a Makefile: </label>
+      <input name="makefile_id" id="makefile" type="file" />
     </p>
     <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}"/>
     <input type="submit" name="submit" value="Create"/>
