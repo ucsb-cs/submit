@@ -135,7 +135,7 @@ class Project(BasicBase, Base):
 
     def verify_submission(self, submission):
         results = {'missing': [], 'passed': [], 'failed': []}
-        file_mapping = {x.filename: x for x in submission.files}
+        file_mapping = dict([(x.filename, x) for x in submission.files])
         valid = True
         for fv in self.file_verifiers:
             name = fv.filename
@@ -195,7 +195,7 @@ class TestCase(BasicBase, Base):
     test_case_for = relationship('TestCaseResult', backref='test_case')
 
     def serialize(self):
-        data = {x: getattr(self, x) for x in ('id', 'args')}
+        data = dict([(x, getattr(self,x)) for x in ('id', 'args')])
         if self.stdin:
             data['stdin'] = self.stdin.sha1
         else:
