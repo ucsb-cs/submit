@@ -5,7 +5,6 @@ import shutil
 import tempfile
 import transaction
 import pickle
-import worker
 from nudibranch.models import (File, Session, Submission, TestCase,
                                TestCaseResult, initialize_sql)
 from nudibranch.diff_unit import DiffUnit

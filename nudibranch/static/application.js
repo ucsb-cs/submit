@@ -92,12 +92,13 @@ function process_file(handler) {
         setTimeout(function() {  // Perform asynchronously
             var base64 = window.btoa(data);
             var sha1 = hex_sha1(data);
-            var url = '/file/' + sha1;
+            var url = '/file/' + sha1 + '/info';
             console.log('Checking if ' + sha1 + ' exists');
             $.ajax({url: url, complete: function(xhr) {  // Test if file exists
                 if (xhr.status == 404) {
                     console.log('Uploading file for ' + sha1);
                     var form_json = JSON.stringify({b64data: base64});
+                    var url = '/file/' + sha1 + '/info';
                     $.ajax({url: url, type: 'PUT', complete: function(xhr) {
                         if (xhr.status == 200)
                             handler.replace_file(xhr.responseText);

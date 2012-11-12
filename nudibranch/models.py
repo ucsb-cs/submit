@@ -161,6 +161,7 @@ class Submission(BasicBase, Base):
     made_at = Column(DateTime, index=True)
     make_results = Column(UnicodeText)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    test_case_results = relationship('TestCaseResult', backref='submission')
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     verification_results = Column(PickleType)
     verified_at = Column(DateTime, index=True)
@@ -224,11 +225,6 @@ class TestCaseResult(Base):
                            primary_key=True)
     test_case_id = Column(Integer, ForeignKey('testcase.id'),
                           primary_key=True)
-
-    @staticmethod
-    def fetch_by_submission(submission_id):
-        return Session().query(TestCaseResult).filter_by(
-            submission_id=submission_id)
 
     @classmethod
     def fetch_by_ids(cls, submission_id, test_case_id):
