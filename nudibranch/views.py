@@ -374,7 +374,8 @@ def submission_view(request):
     # hardcoded path
     with open( '/tmp/diff_test/3d/c0/84c18ff12785e4f03ddfdee9bdfcea1440b7', 'r' ) as fh:
         diff_renderer.add_diff( pickle.load( fh ) )
-    return {'page_title': 'Submission Page', 
+    return {'page_title': 'Submission Page',
+            'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
             'diff_table': diff_renderer.make_whole_file() }

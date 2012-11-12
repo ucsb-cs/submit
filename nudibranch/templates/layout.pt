@@ -14,7 +14,6 @@
   <script src="${_S('nudibranch:static/form2js.js')}"></script>
   <script src="${_S('nudibranch:static/json2.js')}"></script>
   <script src="${_S('nudibranch:static/sha1.js')}"></script>
-  <script src="${_S('nudibranch:static/diff.js')}"></script>
   <script tal:repeat="js javascripts" src="${_S('nudibranch:static/' + js)}"></script>
 </head>
 <body>
