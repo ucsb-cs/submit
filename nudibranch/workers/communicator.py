@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import transaction
 import pickle
+import worker
 from nudibranch.models import (File, Session, Submission, TestCase,
                                TestCaseResult, initialize_sql)
 from nudibranch.diff_unit import DiffUnit
@@ -96,7 +97,6 @@ def update_or_create_result(submission_id, test_case_id, results):
     expected_output = readlines(expected_path)
 
     # get the actual output
-    import worker
     actual_path = os.path.join(worker.RESULTS_PATH,
                                'tc_{0}'.format(test_case_id))
     actual_output = readlines(actual_path)
