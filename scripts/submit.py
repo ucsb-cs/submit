@@ -6,11 +6,12 @@ import json
 import requests
 import sys
 from argparse import ArgumentParser, FileType
-from urllib.parse import urljoin
+from urlparse import urljoin
 
 
 class Nudibranch(object):
-    BASE_URL = 'https://borg.cs.ucsb.edu'
+    BASE_URL = 'http://localhost:6543'
+    #BASE_URL = 'https://borg.cs.ucsb.edu'
     PATHS = {'auth':         'session',
              'file_item':    'file/{sha1sum}',
              'project_item': 'class/{class_name}/{project_id}',
@@ -57,7 +58,7 @@ class Nudibranch(object):
         response = self.request(self.url('submission'), 'PUT',
                                 project_id=project_id, file_ids=file_ids,
                                 filenames=filenames)
-        self.msg('Make submission: {}'.format(response.status_code))
+        self.msg('Make submission: {0}'.format(response.status_code))
         if response.status_code == 201:
             url = urljoin(self.BASE_URL, response.json['redir_location'])
             print('Submission successful')
@@ -69,6 +70,11 @@ class Nudibranch(object):
         method = method.lower()
         if method == 'get':
             assert len(data) == 0
+            # TERRIBLE HACK
+            # on my setup, without this sleep, there is almost always a
+            # 'Connection Reset by Peer' exception
+            import time
+            time.sleep( 1 )
             response = self.session.get(url)
         elif method == 'head':
             assert len(data) == 0
@@ -86,13 +92,13 @@ class Nudibranch(object):
 
         # Have we already uploaded the file?
         response = self.request(url, 'GET')
-        self.msg('Test file: {}'.format(response.status_code))
+        self.msg('Test file: {0}'.format(response.status_code))
         if response.status_code == 200:
             return response.json['file_id']
         # Upload the file
         response = self.request(url, 'PUT',
                                 b64data=base64.b64encode(data).decode('ascii'))
-        self.msg('Send file: {}'.format(response.status_code))
+        self.msg('Send file: {0}'.format(response.status_code))
         if response.status_code == 200:
             return response.json['file_id']
         else:
@@ -120,6 +126,7 @@ class Nudibranch(object):
         class_name, project_id = project.split(':')
         url = self.url('project_item', class_name=class_name,
                        project_id=project_id)
+        self.msg( "URL: {0}".format(url) )
         response = self.request(url, 'HEAD')
         self.msg('Access test: {0}'.format(response.status_code))
         return response.status_code == 200
