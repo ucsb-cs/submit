@@ -1,53 +1,16 @@
 import difflib
-import sys
-
-def writeLines( lines, filename ):
-    with open( filename, "w" ) as fh:
-        fh.writelines( lines )
-
-def getLines( filename ):
-    with open( filename, "r" ) as fh:
-        retval = fh.readlines()
-        return retval
-
-def contents( filename ):
-    return ''.join( getLines( filename ) )
 
 _file_template = """
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html>
-
-<head>
-    <meta http-equiv="Content-Type"
-          content="text/html; charset=ISO-8859-1" />
-    <title></title>
-    <style type="text/css">%(styles)s
-    </style>
-    <script type="text/javascript" src="diff.js"></script>
-</head>
-
-<body style="width:99%%" onload="pageLoaded(); return false;">
+<div id="diff_table_div">
 %(summary)s
 <hr>
 %(legend)s
 <hr>
 %(table)s
-</body>
-
-</html>"""
-
-_styles = """
-        table.diff {font-family:Courier; border:medium;}
-        .diff_header {background-color:#e0e0e0}
-        td.diff_header {text-align:right}
-        .diff_next {background-color:#c0c0c0}
-        .diff_add {background-color:#4DB84D}
-        .diff_chg {background-color:yellow}
-        .diff_sub {background-color:#FF4D4D}
-"""
-        
+</div>
+<script type="text/javascript">
+  pageLoaded( 'diff_table_div' );
+</script>"""
 
 _table_template = """
     <table class="diff" id="difflib_chg_%(prefix)s_top"
@@ -92,27 +55,6 @@ def limitRevealedLinesTo( diffs, limit ):
         retval.append( ( fromdata, todata, flag ) )
     return retval
 
-def blocksInLine( line, startDelim, endDelim ):
-    retval = []
-    startPoint = line.find( startDelim )
-    endPoint = line.find( endDelim )
-    while startPoint != -1 and endPoint != -1:
-        retval.append( line[ startPoint + 1 : endPoint ] )
-        startPoint = line.find( startDelim, endPoint + 1 )
-        if startPoint != -1:
-            endPoint = line.find( startPoint + 1, endDelim )
-    return retval
-
-def addedBlocks( line ):
-    return blocksInLine( line, '\0+', '\1' )
-
-def changedBlocks( line ):
-    return blocksInLine( line, '\0^', '\1' )
-
-def escape( string ):
-    from xml.sax.saxutils import escape
-    return escape( string, { '"': "&quot",
-                             "'": "&apos;" } );
 
 # gets points at which changes begin
 def changeSameStartingPoints( flaglist ):
@@ -133,77 +75,12 @@ def changeSameStartingPoints( flaglist ):
 
     return ( changePoints, samePoints )
 
-class DiffUnit( object ):
-    '''Represents a single diff.
-    Can be pickled safely.'''
-
-    def __init__( self, correct, given, testNum, testName, testPoints ):
-        self._tabsize = 8
-        self.correct = correct
-        self.given = given
-        self.testNum = testNum
-        self.testName = testName
-        self.testPoints = testPoints
-        self.diff = self._makeDiff()
-
-    def _makeDiff( self ):
-        if not self.isCorrect():
-            fromlines, tolines = self._tab_newline_replace( self.correct, self.given )
-            return [ d for d in difflib._mdiff( fromlines, tolines ) ]
-        
-    def isCorrect( self ):
-        return self.correct == self.given
-
-    def __cmp__( self, other ):
-        return self.testNum - other.testNum
-
-    def escapedName( self ):
-        return escape( self.testName )
-
-    def nameID( self ):
-        return "{0}_{1}".format( int( self.testNum ),
-                                 self.escapedName() )
-    def htmlTestName( self ):
-        if not self.isCorrect():
-            return '<a href="#{0}" style="color:red">{1}</a>'.format( self.nameID(), 
-                                                                      self.escapedName() )
-        else:
-            return '<pre style="color:green">{0}</pre>'.format( self.escapedName() )
-
-    def htmlRow( self ):
-        return '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'.format( self.testNum,
-                                                                       self.htmlTestName(),
-                                                                       self.testPoints )
-    def _tab_newline_replace(self,fromlines,tolines):
-        """Returns from/to line lists with tabs expanded and newlines removed.
-
-        Instead of tab characters being replaced by the number of spaces
-        needed to fill in to the next tab stop, this function will fill
-        the space with tab characters.  This is done so that the difference
-        algorithms can identify changes in a file when tabs are replaced by
-        spaces and vice versa.  At the end of the HTML generation, the tab
-        characters will be replaced with a nonbreakable space.
-        """
-        def expand_tabs(line):
-            # hide real spaces
-            line = line.replace(' ','\0')
-            # expand tabs into spaces
-            line = line.expandtabs(self._tabsize)
-            # replace spaces from expanded tabs back into tab characters
-            # (we'll replace them with markup after we do differencing)
-            line = line.replace(' ','\t')
-            return line.replace('\0',' ').rstrip('\n')
-        fromlines = [expand_tabs(line) for line in fromlines]
-        tolines = [expand_tabs(line) for line in tolines]
-        return fromlines,tolines
-
 MAX_NUM_REVEALS = 3
 class HTMLDiff( difflib.HtmlDiff ):
     def __init__( self, diffs = [] ):
         super( HTMLDiff, self ).__init__( wrapcolumn = 50 )
         self._legend = _legend
         self._table_template = _table_template
-        self._styles = _styles
         self._file_template = _file_template
         self._diff_units = []
         self._last_collapsed = False
@@ -359,7 +236,6 @@ class HTMLDiff( difflib.HtmlDiff ):
                    if self._has_diff( diff ) ]
         return self._file_template % dict(
             summary = self.make_summary(),
-            styles = self._styles,
             legend = self._legend,
             table = '<hr>\n'.join( tables ) )
 
@@ -419,21 +295,3 @@ class HTMLDiff( difflib.HtmlDiff ):
 
         return fromlist,tolist,flaglist,next_href,next_id
 
-if __name__ == "__main__":
-    if len( sys.argv ) != 3:
-        print "Needs a known-correct output and a student output file"
-    else:
-        import pickle
-        with open( 'pickled', 'w' ) as f:
-            pickle.dump( [ DiffUnit( getLines( sys.argv[ 1 ] ),
-                                     getLines( sys.argv[ 2 ] ),
-                                     1, 'command line', 5 ),
-                           DiffUnit( getLines( 'example.c' ),
-                                     getLines( 'example2.c' ),
-                                     2, 'example', 3 ),
-                           DiffUnit( getLines( 't1.txt' ),
-                                     getLines( 't1.txt' ),
-                                     3, 't1', 1 ) ], f )
-        with open( 'pickled', 'r' ) as f:
-            writeLines( HTMLDiff( pickle.load( f ) ).make_whole_file(),
-                        "blah.html" )
