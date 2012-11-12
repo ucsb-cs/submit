@@ -17,7 +17,7 @@ class DiffUnit(object):
         self.test_num = test_num
         self.test_name = test_name
         self.test_points = test_points
-        self.diff = self._make_diff()
+        self.diff = self.make_diff()
 
     @staticmethod
     def escape(string):

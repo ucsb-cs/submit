@@ -387,11 +387,10 @@ def submission_view(request):
     # for each test case get the results, putting the diff into the diff
     # renderer.  Right now we just hardcode some things
     diff_renderer = diff_render.HTMLDiff()
-    # TERRIBLE HACK
-    # hardcoded path
-    temp_file = '/tmp/diff_test/3d/c0/84c18ff12785e4f03ddfdee9bdfcea1440b7'
-    with open(temp_file, 'r') as fh:
-        diff_renderer.add_diff(pickle.load(fh))
+    for test_case_result in submission.test_case_results:
+        diff_file = File.file_path(request.registry.settings['file_directory'],
+                                   test_case_result.diff.sha1)
+        diff_renderer.add_diff(pickle.load(open(diff_file)))
     return {'page_title': 'Submission Page',
             'javascripts': ['diff.js'],
             'submission': submission,
