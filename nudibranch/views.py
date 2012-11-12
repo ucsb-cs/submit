@@ -13,7 +13,6 @@ from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
-from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from .helpers import DummyTemplateAttr
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
@@ -268,13 +267,11 @@ def project_view(request):
     if not submissions:
         return HTTPNotFound()
 
-    def submission_key( submission ):
-        made_at = submission.made_at
-        return made_at if made_at is not None else func.now()
-
     return {'page_title': 'Project Page', 
             'project': project,
-            'submissions': sorted( submissions, key = submission_key, reverse=True ) }
+            'submissions': sorted( submissions, 
+                                   key = lambda s: s.created_at, 
+                                   reverse=True ) }
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
@@ -339,7 +336,6 @@ def submission_create(request, project_id, file_ids, filenames):
     for file_id, filename in zip(file_ids, filenames):
         assoc.append(SubmissionToFile(file_id=file_id, filename=filename))
     submission.files.extend(assoc)
-    submission.made_at = func.now()
     session.add(submission)
     session.add_all(assoc)
     session.flush()
