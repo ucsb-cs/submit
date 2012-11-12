@@ -9,7 +9,8 @@
       <br/>
       <input type="text" name="name" id="name" value="${project.name}" />
       <br/>
-      <div tal:condition="project.makefile"><a href="#">Existing Makefile</a></div>
+      <div tal:condition="project.makefile">
+        <a href="${_R('file_item', sha1sum=project.makefile.sha1)}">Existing Makefile</a></div>
       <label for="makefile">Select a Makefile: </label>
       <input name="makefile_id" id="makefile" type="file" />
       <input type="hidden" name="makefile_id" value="${project.makefile_id}" />
@@ -91,12 +92,14 @@
         <input type="text" name="points" id="points_${repeat.tc.index}"
                value="${tc.points}" />
         <br/>
-        <div tal:condition="tc.stdin_id"><a href="#">Existing standard input file</a></div>
+        <div tal:condition="tc.stdin_id">
+          <a href="${_R('file_item', sha1sum=tc.stdin.sha1)}">Existing standard input file</a></div>
         <label for="input_${repeat.tc.index}">Select a new standard input file: </label>
         <input name="stdin_id" id="input_${repeat.tc.index}" type="file" />
         <br/>
         <input type="hidden" name="stdin_id" value="${tc.stdin_id}" />
-        <div tal:condition="tc.expected_id"><a href="#">Existing expected output file</a></div>
+        <div tal:condition="tc.expected_id">
+          <a href="${_R('file_item', sha1sum=tc.expected.sha1)}">Existing expected output file</a></div>
         <label for="expected_${repeat.tc.index}">Select a new expected output file: </label>
         <input name="expected_id" id="expected_${repeat.tc.index}" type="file" />
         <input type="hidden" name="expected_id" value="${tc.expected_id}" />

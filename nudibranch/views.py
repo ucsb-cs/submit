@@ -16,7 +16,7 @@ from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
-from .helpers import DummyTemplateAttr
+from .helpers import DummyTemplateAttr, verify_file_ids
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, TestCase, User)
 
@@ -94,9 +94,26 @@ def file_create(request, b64data):
     return {'file_id': file_id}
 
 
-@view_config(route_name='file_item', request_method=('GET', 'HEAD'),
+@view_config(route_name='file_item', request_method='GET',
+             permission='authenticated', renderer='templates/file_view.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def file_item_view(request):
+    sha1sum = request.matchdict['sha1sum']
+    if len(sha1sum) != 40:
+        return http_bad_request(request, 'Invalid sha1sum')
+    file = File.fetch_by_sha1(sha1sum)
+    # return not found when the file has not been uploaded by the user
+    if not file or file not in request.user.files:
+        return HTTPNotFound()
+    source = File.file_path(request.registry.settings['file_directory'],
+                            sha1sum)
+    contents = open(source).read()
+    return {'page_title': 'File Contents', 'contents': contents}
+
+
+@view_config(route_name='file_item_info', request_method='GET',
              permission='authenticated', renderer='json')
-def file_view(request):
+def file_item_info(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, 'Invalid sha1sum')
@@ -170,10 +187,9 @@ def project_create(request, name, class_id, makefile_id):
     klass = Class.fetch_by_id(class_id)
     if not klass:
         return http_bad_request(request, 'Invalid class_id')
-    if makefile_id:
-        makefile = File.fetch_by_id(makefile_id)
-        if not makefile or makefile not in request.user.files:
-            return http_bad_request(request, 'Invalid makefile_id')
+    id_check = verify_file_ids(request, makefile_id=makefile_id)
+    if id_check:
+        return id_check
     project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
     session.add(project)
     try:
@@ -232,13 +248,11 @@ def project_update(request, name, class_id, makefile_id):
         project.name = name
         changed = True
     if makefile_id != project.makefile_id:
-        if makefile_id:
-            makefile = File.fetch_by_id(makefile_id)
-            if not makefile or makefile not in request.user.files:
-                return http_bad_request(request, 'Invalid makefile_id')
+        id_check = verify_file_ids(request, makefile_id=makefile_id)
+        if id_check:
+            return id_check
         project.makefile_id = makefile_id
         changed = True
-
     if not changed:
         return http_ok(request, 'Nothing to change')
 
@@ -400,7 +414,10 @@ def test_case_create(request, name, args, expected_id, points, project_id,
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
-
+    id_check = verify_file_ids(request, expected_id=expected_id,
+                               stdin_id=stdin_id)
+    if id_check:
+        return id_check
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
                          points=points, project_id=project_id,
                          stdin_id=stdin_id)
