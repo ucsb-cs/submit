@@ -10,5 +10,8 @@
     <p>Submission made ${_pd(submission.made_at)}</p>
     <pre>${submission.make_results}</pre>
   </div>
+
+  <div tal:replace="structure diff_table">
+  </div>
 </div>
 </div>
