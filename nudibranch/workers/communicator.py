@@ -6,6 +6,8 @@ import tempfile
 import transaction
 from nudibranch.models import (File, Session, Submission, TestCaseResult,
                                initialize_sql)
+from nudibranch.diff_unit import DiffUnit
+from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
 
 BASE_FILE_PATH = None
@@ -65,15 +67,14 @@ def fetch_results_worker(submission_id, user, host, remote_dir):
     session.add(submission)
     transaction.commit()
 
-
 def update_or_create_result(submission_id, test_case_id, results):
-    test_case = TestCaseResult.fetch_by_ids(submission_id, test_case_id)
-    if test_case:
-        test_case.update(results)
+    test_case_result = TestCaseResult.fetch_by_ids(submission_id, test_case_id)
+    if test_case_result:
+        test_case_result.update(results)
     else:
         results['submission_id'] = submission_id
         results['test_case_id'] = test_case_id
-        test_case = TestCaseResult(**results)
+        test_case_result = TestCaseResult(**results)
 
     # Store output as diff (for now)
     # TODO: store pickled difflib output between expected and actual
@@ -81,13 +82,41 @@ def update_or_create_result(submission_id, test_case_id, results):
     # Kyle: This is where you want to perform the diff. data should be a
     # string-representation of the pickled diff rather than simply the contents
     # of the produced output file.
-    data = open('tc_{}'.format(test_case_id)).read()
-    file = File.fetch_or_create(data, BASE_FILE_PATH)
-    test_case.diff = file
+    
+    # get the expected output
+    test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
+    if not test_case:
+        raise Exception( 'Invalid test case id: {0}'.format( test_case_result.test_case_id ) )
+
+    expected_path = File.file_path(BASE_FILE_PATH,
+                                   test_case.expected.sha1)
+    expected_output = readlines(expected_path)
+
+    # get the actual output
+    import worker
+    actual_path = os.path.join(worker.RESULTS_PATH, 
+                               'tc_{0}'.format(test_case_id))
+    actual_output = readlines(actual_path)
+
+    # put them into a DiffUnit
+    unit = DiffUnit( expected_output,
+                     actual_output,
+                     test_case_id, # probably a better way
+                     test_case.name,
+                     test_case.points )
+
+    # dump it to a file in the same way as originally, and do it as
+    # a string
+    diff_file = File.fetch_or_create(pickle.dumps(unit), BASE_FILE_PATH)
+    test_case_result.diff = diff_file
+
+    # data = open('tc_{}'.format(test_case_id)).read()
+    # file = File.fetch_or_create(data, BASE_FILE_PATH)
+    # test_case.diff = file
 
     session = Session()
-    session.add(test_case)
-    return test_case
+    session.add(test_case_result)
+    return test_case_result
 
 
 def start_communicator(queue_conf, work_func):
