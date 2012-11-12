@@ -13,11 +13,11 @@ from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from .helpers import DummyTemplateAttr
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
-                     SubmissionToFile, TestCase, User)
-
+                     SubmissionToFile, TestCase, TestCaseResult, User)
 
 @notfound_view_config()
 def not_found(request):
@@ -264,7 +264,17 @@ def project_view(request):
     if not request.user.is_admin and project.klass not in request.user.classes:
         return HTTPForbidden()
 
-    return {'page_title': 'Project Page', 'project': project}
+    submissions = Submission.fetch_by_user_project( request.user.id, project.id )
+    if not submissions:
+        return HTTPNotFound()
+
+    def submission_key( submission ):
+        made_at = submission.made_at
+        return made_at if made_at is not None else func.now()
+
+    return {'page_title': 'Project Page', 
+            'project': project,
+            'submissions': sorted( submissions, key = submission_key, reverse=True ) }
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
@@ -329,6 +339,7 @@ def submission_create(request, project_id, file_ids, filenames):
     for file_id, filename in zip(file_ids, filenames):
         assoc.append(SubmissionToFile(file_id=file_id, filename=filename))
     submission.files.extend(assoc)
+    submission.made_at = func.now()
     session.add(submission)
     session.add_all(assoc)
     session.flush()
@@ -350,7 +361,6 @@ def submission_create(request, project_id, file_ids, filenames):
                                         submission_id=submission_id)
     return http_created(request, redir_location=redir_location)
 
-
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -359,8 +369,19 @@ def submission_view(request):
     submission = Submission.fetch_by_id(request.matchdict['submission_id'])
     if not submission:
         return HTTPNotFound()
-    return {'page_title': 'Submission Page', 'submission': submission,
-            '_pd': pretty_date}
+
+    # for each test case get the results, putting the diff into the diff
+    # renderer.  Right now we just hardcode some things
+    import diff_render, pickle
+    diff_renderer = diff_render.HTMLDiff()
+    # TERRIBLE HACK
+    # hardcoded path
+    with open( '/tmp/diff_test/3d/c0/84c18ff12785e4f03ddfdee9bdfcea1440b7', 'r' ) as fh:
+        diff_renderer.add_diff( pickle.load( fh ) )
+    return {'page_title': 'Submission Page', 
+            'submission': submission,
+            '_pd': pretty_date,
+            'diff_table': diff_renderer.make_whole_file() }
 
 
 @view_config(route_name='test_case', request_method='PUT', permission='admin',
