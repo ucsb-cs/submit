@@ -199,8 +199,8 @@ class HTMLDiff(difflib.HtmlDiff):
             if self._last_collapsed:
                 show_hide = self.SHOW_HIDE_INSTRUMENTATION
                 table = '{0}{1}{0}'.format(show_hide, table)
-            return self.FAILING_TEST_BLOCK.format(diff.nameID(),
-                                                  diff.escapedName(),
+            return self.FAILING_TEST_BLOCK.format(diff.name_id(),
+                                                  diff.escaped_name(),
                                                   table)
 
     def _ordered_diffs(self, should_include):
@@ -212,16 +212,16 @@ class HTMLDiff(difflib.HtmlDiff):
 
         retval = '<table border="1">\n  <tr>\
 <th>Test Number</th><th>Test Name</th><th>Value</th></tr>'
-        numRows = 0
+        num_rows = 0
         for diff in self._ordered_diffs(should_include):
-            retval += diff.htmlRow()
-            numRows += 1
+            retval += diff.html_row()
+            num_rows += 1
         retval += '</table>'
-        return (retval, numRows)
+        return (retval, num_rows)
 
     def _make_header_summary(self, header, should_include):
-        (html, numRows) = self._make_some_summary(should_include)
-        if numRows > 0:
+        (html, num_rows) = self._make_some_summary(should_include)
+        if num_rows > 0:
             return header + html
         else:
             return ''
