@@ -96,8 +96,7 @@ class File(BasicBase, Base):
                 raise
         with open(path, 'wb') as fp:
             fp.write(data)
-
-
+            
 class FileVerifier(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
     filename = Column(Unicode, nullable=False)
@@ -165,6 +164,10 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime, index=True)
 
+    @staticmethod
+    def fetch_by_user_project( user_id, project_id ):
+        return Session().query(Submission).filter_by(user_id=user_id,project_id=project_id)
+
     def verify(self):
         return self.project.verify_submission(self)
 
@@ -219,6 +222,10 @@ class TestCaseResult(Base):
                            primary_key=True)
     test_case_id = Column(Integer, ForeignKey('testcase.id'),
                           primary_key=True)
+
+    @staticmethod
+    def fetch_by_submission( submission_id ):
+        return Session().query(TestCaseResult).filter_by(submission_id=submission_id )
 
     @classmethod
     def fetch_by_ids(cls, submission_id, test_case_id):
