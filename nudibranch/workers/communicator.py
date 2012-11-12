@@ -79,13 +79,6 @@ def update_or_create_result(submission_id, test_case_id, results):
         results['test_case_id'] = test_case_id
         test_case_result = TestCaseResult(**results)
 
-    # Store output as diff (for now)
-    # TODO: store pickled difflib output between expected and actual
-
-    # Kyle: This is where you want to perform the diff. data should be a
-    # string-representation of the pickled diff rather than simply the contents
-    # of the produced output file.
-
     # get the expected output
     test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
     if not test_case:
@@ -97,8 +90,9 @@ def update_or_create_result(submission_id, test_case_id, results):
     expected_output = readlines(expected_path)
 
     # get the actual output
-    actual_path = os.path.join(worker.RESULTS_PATH,
-                               'tc_{0}'.format(test_case_id))
+    # actual_path = os.path.join(worker.RESULTS_PATH,
+    #                            'tc_{0}'.format(test_case_id))
+    actual_path = 'tc_{0}'.format(test_case_id)
     actual_output = readlines(actual_path)
 
     # put them into a DiffUnit

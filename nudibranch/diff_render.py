@@ -205,7 +205,7 @@ class HTMLDiff(difflib.HtmlDiff):
 
     def _ordered_diffs(self, should_include):
         return sorted([diff for diff in self._diff_units
-                       if self.should_include(diff)])
+                       if should_include(diff)])
 
     def _make_some_summary(self, should_include):
         """Returns html and the number of rows in the table"""
