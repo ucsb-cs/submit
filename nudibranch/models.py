@@ -96,7 +96,8 @@ class File(BasicBase, Base):
                 raise
         with open(path, 'wb') as fp:
             fp.write(data)
-            
+
+
 class FileVerifier(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
     filename = Column(Unicode, nullable=False)
@@ -165,8 +166,9 @@ class Submission(BasicBase, Base):
     verified_at = Column(DateTime, index=True)
 
     @staticmethod
-    def fetch_by_user_project( user_id, project_id ):
-        return Session().query(Submission).filter_by(user_id=user_id,project_id=project_id)
+    def fetch_by_user_project(user_id, project_id):
+        return Session().query(Submission).filter_by(
+            user_id=user_id, project_id=project_id)
 
     def verify(self):
         return self.project.verify_submission(self)
@@ -198,7 +200,7 @@ class TestCase(BasicBase, Base):
     test_case_for = relationship('TestCaseResult', backref='test_case')
 
     def serialize(self):
-        data = dict([(x, getattr(self,x)) for x in ('id', 'args')])
+        data = dict([(x, getattr(self, x)) for x in ('id', 'args')])
         if self.stdin:
             data['stdin'] = self.stdin.sha1
         else:
@@ -224,8 +226,9 @@ class TestCaseResult(Base):
                           primary_key=True)
 
     @staticmethod
-    def fetch_by_submission( submission_id ):
-        return Session().query(TestCaseResult).filter_by(submission_id=submission_id )
+    def fetch_by_submission(submission_id):
+        return Session().query(TestCaseResult).filter_by(
+            submission_id=submission_id)
 
     @classmethod
     def fetch_by_ids(cls, submission_id, test_case_id):

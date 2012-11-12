@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 import json
 import pika
 import transaction
+import diff_render
+import pickle
 from base64 import b64decode
 from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
@@ -16,7 +18,8 @@ from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
 from .helpers import DummyTemplateAttr
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
-                     SubmissionToFile, TestCase, TestCaseResult, User)
+                     SubmissionToFile, TestCase, User)
+
 
 @notfound_view_config()
 def not_found(request):
@@ -263,15 +266,15 @@ def project_view(request):
     if not request.user.is_admin and project.klass not in request.user.classes:
         return HTTPForbidden()
 
-    submissions = Submission.fetch_by_user_project( request.user.id, project.id )
+    submissions = Submission.fetch_by_user_project(request.user.id, project.id)
     if not submissions:
         return HTTPNotFound()
 
-    return {'page_title': 'Project Page', 
+    return {'page_title': 'Project Page',
             'project': project,
-            'submissions': sorted( submissions, 
-                                   key = lambda s: s.created_at, 
-                                   reverse=True ) }
+            'submissions': sorted(submissions,
+                                  key=lambda s: s.created_at,
+                                  reverse=True)}
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
@@ -357,6 +360,7 @@ def submission_create(request, project_id, file_ids, filenames):
                                         submission_id=submission_id)
     return http_created(request, redir_location=redir_location)
 
+
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -368,17 +372,17 @@ def submission_view(request):
 
     # for each test case get the results, putting the diff into the diff
     # renderer.  Right now we just hardcode some things
-    import diff_render, pickle
     diff_renderer = diff_render.HTMLDiff()
     # TERRIBLE HACK
     # hardcoded path
-    with open( '/tmp/diff_test/3d/c0/84c18ff12785e4f03ddfdee9bdfcea1440b7', 'r' ) as fh:
-        diff_renderer.add_diff( pickle.load( fh ) )
+    temp_file = '/tmp/diff_test/3d/c0/84c18ff12785e4f03ddfdee9bdfcea1440b7'
+    with open(temp_file, 'r') as fh:
+        diff_renderer.add_diff(pickle.load(fh))
     return {'page_title': 'Submission Page',
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
-            'diff_table': diff_renderer.make_whole_file() }
+            'diff_table': diff_renderer.make_whole_file()}
 
 
 @view_config(route_name='test_case', request_method='PUT', permission='admin',

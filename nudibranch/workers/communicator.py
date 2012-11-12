@@ -4,8 +4,9 @@ import os
 import shutil
 import tempfile
 import transaction
-from nudibranch.models import (File, Session, Submission, TestCaseResult,
-                               initialize_sql)
+import pickle
+from nudibranch.models import (File, Session, Submission, TestCase,
+                               TestCaseResult, initialize_sql)
 from nudibranch.diff_unit import DiffUnit
 from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
@@ -59,13 +60,14 @@ def fetch_results_worker(submission_id, user, host, remote_dir):
         for test_case_id, results in data.items():
             try:
                 update_or_create_result(submission_id, test_case_id, results)
-            except Exception as exc:
+            except Exception:
                 import traceback
                 traceback.print_exc()
                 raise
     session = Session()
     session.add(submission)
     transaction.commit()
+
 
 def update_or_create_result(submission_id, test_case_id, results):
     test_case_result = TestCaseResult.fetch_by_ids(submission_id, test_case_id)
@@ -82,11 +84,12 @@ def update_or_create_result(submission_id, test_case_id, results):
     # Kyle: This is where you want to perform the diff. data should be a
     # string-representation of the pickled diff rather than simply the contents
     # of the produced output file.
-    
+
     # get the expected output
     test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
     if not test_case:
-        raise Exception( 'Invalid test case id: {0}'.format( test_case_result.test_case_id ) )
+        raise Exception(
+            'Invalid test case id: {0}'.format(test_case_result.test_case_id))
 
     expected_path = File.file_path(BASE_FILE_PATH,
                                    test_case.expected.sha1)
@@ -94,16 +97,16 @@ def update_or_create_result(submission_id, test_case_id, results):
 
     # get the actual output
     import worker
-    actual_path = os.path.join(worker.RESULTS_PATH, 
+    actual_path = os.path.join(worker.RESULTS_PATH,
                                'tc_{0}'.format(test_case_id))
     actual_output = readlines(actual_path)
 
     # put them into a DiffUnit
-    unit = DiffUnit( expected_output,
-                     actual_output,
-                     test_case_id, # probably a better way
-                     test_case.name,
-                     test_case.points )
+    unit = DiffUnit(expected_output,
+                    actual_output,
+                    test_case_id,  # probably a better way
+                    test_case.name,
+                    test_case.points)
 
     # dump it to a file in the same way as originally, and do it as
     # a string

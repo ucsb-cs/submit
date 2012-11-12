@@ -5,6 +5,7 @@ class DummyTemplateAttr(object):
     def __getattr__(self, attr):
         return self.default
 
-def readlines( path ):
-    with open( path, 'r' ) as fh:
+
+def readlines(path):
+    with open(path, 'r') as fh:
         return fh.readlines()

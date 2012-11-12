@@ -74,7 +74,7 @@ class Nudibranch(object):
             # on my setup, without this sleep, there is almost always a
             # 'Connection Reset by Peer' exception
             import time
-            time.sleep( 1 )
+            time.sleep(1)
             response = self.session.get(url)
         elif method == 'head':
             assert len(data) == 0
@@ -126,7 +126,6 @@ class Nudibranch(object):
         class_name, project_id = project.split(':')
         url = self.url('project_item', class_name=class_name,
                        project_id=project_id)
-        self.msg( "URL: {0}".format(url) )
         response = self.request(url, 'HEAD')
         self.msg('Access test: {0}'.format(response.status_code))
         return response.status_code == 200
