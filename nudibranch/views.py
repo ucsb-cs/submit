@@ -15,7 +15,7 @@ from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from .helpers import DummyTemplateAttr
+from .helpers import DummyTemplateAttr, verify_file_ids
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, TestCase, TestCaseResult, User)
 
@@ -185,10 +185,9 @@ def project_create(request, name, class_id, makefile_id):
     klass = Class.fetch_by_id(class_id)
     if not klass:
         return http_bad_request(request, 'Invalid class_id')
-    if makefile_id:
-        makefile = File.fetch_by_id(makefile_id)
-        if not makefile or makefile not in request.user.files:
-            return http_bad_request(request, 'Invalid makefile_id')
+    id_check = verify_file_ids(request, makefile_id=makefile_id)
+    if id_check:
+        return id_check
     project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
     session.add(project)
     try:
@@ -247,13 +246,11 @@ def project_update(request, name, class_id, makefile_id):
         project.name = name
         changed = True
     if makefile_id != project.makefile_id:
-        if makefile_id:
-            makefile = File.fetch_by_id(makefile_id)
-            if not makefile or makefile not in request.user.files:
-                return http_bad_request(request, 'Invalid makefile_id')
+        id_check = verify_file_ids(request, makefile_id=makefile_id)
+        if id_check:
+            return id_check
         project.makefile_id = makefile_id
         changed = True
-
     if not changed:
         return http_ok(request, 'Nothing to change')
 
@@ -416,7 +413,10 @@ def test_case_create(request, name, args, expected_id, points, project_id,
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
-
+    id_check = verify_file_ids(request, expected_id=expected_id,
+                               stdin_id=stdin_id)
+    if id_check:
+        return id_check
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
                          points=points, project_id=project_id,
                          stdin_id=stdin_id)

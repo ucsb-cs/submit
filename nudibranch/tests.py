@@ -257,47 +257,47 @@ class FileTests(BaseAPITest):
         self.assertEqual(expected_file.id, info['file_id'])
 
     def test_view_invalid_sha1sum_too_small(self):
-        from nudibranch.views import file_view
+        from nudibranch.views import file_item_info
         user, _ = self.get_objects()
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': 'a' * 39})
-        info = file_view(request)
+        info = file_item_info(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid sha1sum', info['messages'])
 
     def test_view_invalid_sha1sum_too_big(self):
-        from nudibranch.views import file_view
+        from nudibranch.views import file_item_info
         user, _ = self.get_objects()
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': 'a' * 41})
-        info = file_view(request)
+        info = file_item_info(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid sha1sum', info['messages'])
 
-    def test_view_file_not_found(self):
-        from nudibranch.views import file_view
+    def test_info_file_not_found(self):
+        from nudibranch.views import file_item_info
         user, _ = self.get_objects()
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': 'a' * 40})
-        info = file_view(request)
+        info = file_item_info(request)
         self.assertIsInstance(info, HTTPNotFound)
 
     def test_view_user_did_not_upload_file(self):
-        from nudibranch.views import file_view
+        from nudibranch.views import file_item_info
         user, _ = self.get_objects(username='user2')
         sha1sum = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': sha1sum})
-        info = file_view(request)
+        info = file_item_info(request)
         self.assertIsInstance(info, HTTPNotFound)
 
     def test_view_found(self):
-        from nudibranch.views import file_view
+        from nudibranch.views import file_item_info
         user, _ = self.get_objects()
         sha1sum = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': sha1sum})
-        info = file_view(request)
+        info = file_item_info(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         expected_file = File.fetch_by_sha1(sha1sum)
         self.assertEqual(expected_file.id, info['file_id'])
@@ -427,6 +427,24 @@ class ProjectTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid class_id', info['messages'])
 
+    def test_create_invalid_makefile_id(self):
+        from nudibranch.views import project_create
+        matchdict, json_data = self.get_update_objects(makefile_id='100')
+        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        info = project_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid makefile_id', info['messages'])
+
+    def test_create_invalid_makefile_id_perms(self):
+        from nudibranch.views import project_create
+        user = Session.query(User).filter_by(username='admin').first()
+        matchdict, json_data = self.get_update_objects(makefile_id='1')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = project_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid makefile_id', info['messages'])
+
     def test_create_no_params(self):
         from nudibranch.views import project_create
         request = self.make_request(json_body={})
@@ -535,7 +553,7 @@ class ProjectTests(BaseAPITest):
         proj = Session.query(Project).first()
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Project updated', info['message'])
-        self.assertEqual(2, proj.makefile_id)
+        self.assertEqual(int(json_data['makefile_id']), proj.makefile_id)
 
     def test_update_valid_remove_makefile(self):
         from nudibranch.views import project_update
@@ -717,6 +735,42 @@ class TestCaseTests(BaseAPITest):
         self.assertEqual('That name already exists for the project',
                          info['message'])
 
+    def test_update_invalid_expected_id(self):
+        from nudibranch.views import test_case_create
+        user = Session.query(User).filter_by(username='admin').first()
+        json_data = self.get_objects(expected_id='100')
+        request = self.make_request(json_body=json_data, user=user)
+        info = test_case_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid expected_id', info['messages'])
+
+    def test_update_invalid_expected_id_perms(self):
+        from nudibranch.views import test_case_create
+        user = Session.query(User).filter_by(username='admin').first()
+        json_data = self.get_objects(expected_id='1')
+        request = self.make_request(json_body=json_data, user=user)
+        info = test_case_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid expected_id', info['messages'])
+
+    def test_update_invalid_stdin_id(self):
+        from nudibranch.views import test_case_create
+        user = Session.query(User).filter_by(username='admin').first()
+        json_data = self.get_objects(stdin_id='100')
+        request = self.make_request(json_body=json_data, user=user)
+        info = test_case_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid stdin_id', info['messages'])
+
+    def test_update_invalid_stdin_id_perms(self):
+        from nudibranch.views import test_case_create
+        user = Session.query(User).filter_by(username='admin').first()
+        json_data = self.get_objects(stdin_id='1')
+        request = self.make_request(json_body=json_data, user=user)
+        info = test_case_create(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid stdin_id', info['messages'])
+
     def test_create_no_params(self):
         from nudibranch.views import test_case_create
         request = self.make_request(json_body={})
@@ -726,15 +780,19 @@ class TestCaseTests(BaseAPITest):
 
     def test_create_valid(self):
         from nudibranch.views import test_case_create
-        json_data = self.get_objects()
-        request = self.make_request(json_body=json_data)
+        user = Session.query(User).filter_by(username='admin').first()
+        json_data = self.get_objects(stdin_id='2', expected_id='2')
+        request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
         project = Session.query(Project).first()
         expected = route_path('project_edit', request, project_id=project.id,
                               class_name=project.klass.name)
+        self.assertEqual(HTTPCreated.code, request.response.status_code)
         self.assertEqual(expected, info['redir_location'])
         test_case = project.test_cases[-1]
         self.assertEqual(json_data['name'], test_case.name)
+        self.assertEqual(int(json_data['expected_id']), test_case.expected_id)
+        self.assertEqual(int(json_data['stdin_id']), test_case.stdin_id)
 
     def test_serialize(self):
         test_case = Session.query(TestCase).first()
