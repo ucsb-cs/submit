@@ -2,5 +2,10 @@
 <div metal:fill-slot="content">
   <p>Info for ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
+  <p>These are your submissions:</p>
+  <ul>
+    <li tal:repeat="submission submissions">
+      <a href="${_R('submission_item', submission_id=submission.id)}">${str(submission.verified_at)}</a></li>
+  </ul>
 </div>
 </div>
