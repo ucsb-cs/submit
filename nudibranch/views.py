@@ -92,9 +92,26 @@ def file_create(request, b64data):
     return {'file_id': file_id}
 
 
-@view_config(route_name='file_item', request_method=('GET', 'HEAD'),
+@view_config(route_name='file_item', request_method='GET',
+             permission='authenticated', renderer='templates/file_view.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def file_item_view(request):
+    sha1sum = request.matchdict['sha1sum']
+    if len(sha1sum) != 40:
+        return http_bad_request(request, 'Invalid sha1sum')
+    file = File.fetch_by_sha1(sha1sum)
+    # return not found when the file has not been uploaded by the user
+    if not file or file not in request.user.files:
+        return HTTPNotFound()
+    source = File.file_path(request.registry.settings['file_directory'],
+                            sha1sum)
+    contents = open(source).read()
+    return {'page_title': 'File Contents', 'contents': contents}
+
+
+@view_config(route_name='file_item_info', request_method='GET',
              permission='authenticated', renderer='json')
-def file_view(request):
+def file_item_info(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, 'Invalid sha1sum')

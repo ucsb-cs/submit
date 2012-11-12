@@ -13,7 +13,7 @@ class Nudibranch(object):
     BASE_URL = 'http://localhost:6543'
     #BASE_URL = 'https://borg.cs.ucsb.edu'
     PATHS = {'auth':         'session',
-             'file_item':    'file/{sha1sum}',
+             'file_item':    'file/{sha1sum}/info',
              'project_item': 'class/{class_name}/{project_id}',
              'submission':   'submission'}
 
