@@ -89,8 +89,8 @@ class HTMLDiff(difflib.HtmlDiff):
 <p><a href="#" onclick="showAll('difflib_chg_{0}_top');">Show All</a>
     <a href="#" onclick="hideAll('difflib_chg_{0}_top');">Hide All</a></p>"""
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
-    TENTATIVE_SCORE_BLOCK = '<li><ul>Tentative total score: {0}</ul>\
-<ul>Tentative percentage score: {1}</ul></li>\n'
+    TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative total score: {0}</li>\
+<li>Tentative percentage score: {1}</li></ul>\n'
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
     NEXT_HREF_TOP = '<a href="#difflib_chg_{0}_top">t</a>'
