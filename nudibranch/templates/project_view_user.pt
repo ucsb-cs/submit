@@ -5,7 +5,7 @@
   <p>These are your submissions:</p>
   <ul>
     <li tal:repeat="submission submissions">
-      <a href="${_R('submission_item', submission_id=submission.id)}">${str(submission.verified_at)}</a></li>
+      <a href="${_R('submission_item', submission_id=submission.id)}">${str(submission.created_at)}</a></li>
   </ul>
 </div>
 </div>

@@ -1,0 +1,13 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+  <h1> ADMIN VIEW </h1>
+  <p>Info for ${project.name}
+    (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
+  <p>Users</p>
+  <ul>
+    <li tal:repeat="(user,submission) submissions">
+      ${user.name} <a tal:condition="submission" href="${_R('submission_item', submission_id=submission.id)}">${submission.created_at}</a>
+    </li>
+  </ul>
+</div>
+</div>
