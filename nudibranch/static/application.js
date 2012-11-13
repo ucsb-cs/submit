@@ -98,7 +98,7 @@ function process_file(handler) {
                 if (xhr.status == 404) {
                     console.log('Uploading file for ' + sha1);
                     var form_json = JSON.stringify({b64data: base64});
-                    var url = '/file/' + sha1 + '/info';
+                    var url = '/file/' + sha1;
                     $.ajax({url: url, type: 'PUT', complete: function(xhr) {
                         if (xhr.status == 200)
                             handler.replace_file(xhr.responseText);
