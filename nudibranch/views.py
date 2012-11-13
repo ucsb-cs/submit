@@ -11,7 +11,9 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, TextNumber,
                                        WhiteSpaceString, validated_form)
-from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
+from pyramid.httpexceptions import (HTTPException, HTTPForbidden, HTTPFound,
+                                    HTTPNotFound)
+from pyramid.renderers import render_to_response
 from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
@@ -268,16 +270,39 @@ def project_update(request, name, class_id, makefile_id):
 
 
 @view_config(route_name='project_item', request_method=('GET', 'HEAD'),
-             renderer='templates/project_view.pt', permission='authenticated')
-@site_layout('nudibranch:templates/layout.pt')
+             permission='authenticated')
 def project_view(request):
     project = Project.fetch_by_id(request.matchdict['project_id'])
     class_name = request.matchdict['class_name']
     if not project or project.klass.name != class_name:
         return HTTPNotFound()
+    if request.user.is_admin:
+        template = 'templates/project_view_admin.pt'
+        retval = project_view_admin(request, project)
+    else:
+        template = 'templates/project_view_user.pt'
+        retval = project_view_user(request, project)
+    if isinstance(retval, HTTPException):
+        return retval
+    return render_to_response(template, retval, request)
 
+
+@site_layout('nudibranch:templates/layout.pt')
+def project_view_admin(request, project):
+    submissions = {}
+    for user in project.klass.users:
+        submission = (Submission.fetch_by_user_project(user.id, project.id)
+                      .order_by(Submission.created_at.desc())).first()
+        submissions[user] = submission
+    return {'page_title': 'Admin Project Page',
+            'project': project,
+            'submissions': sorted(submissions.items())}
+
+
+@site_layout('nudibranch:templates/layout.pt')
+def project_view_user(request, project):
     # Verify user is a member of the class
-    if not request.user.is_admin and project.klass not in request.user.classes:
+    if project.klass not in request.user.classes:
         return HTTPForbidden()
 
     submissions = Submission.fetch_by_user_project(request.user.id, project.id)
