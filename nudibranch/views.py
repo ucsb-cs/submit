@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 import json
+import pickle
 import pika
 import transaction
-import diff_render
-import pickle
 from base64 import b64decode
 from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
@@ -19,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from .helpers import DummyTemplateAttr, verify_file_ids
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, TestCase, User)
-
+from . import diff_render
 
 @notfound_view_config()
 def not_found(request):
