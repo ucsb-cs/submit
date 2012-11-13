@@ -58,6 +58,7 @@ def fetch_results_worker(submission_id, user, host, remote_dir):
     if os.path.isfile('test_cases'):
         data = json.load(open('test_cases'))
         for test_case_id, results in data.items():
+            test_case_id = int(test_case_id)  # json doesn't support int keys
             try:
                 update_or_create_result(submission_id, test_case_id, results)
             except Exception:
