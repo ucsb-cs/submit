@@ -722,14 +722,15 @@ class TestCaseTests(BaseAPITest):
     def get_objects(**kwargs):
         project = Session.query(Project).first()
         json_data = {'name': 'Test Case 2', 'args': 'a.out', 'points': '0',
-                     'project_id': text_type(project.id)}
+                     'project_id': text_type(project.id), 'expected_id': '2'}
         json_data.update(kwargs)
         return json_data
 
     def test_create_invalid_duplicate_name(self):
         from nudibranch.views import test_case_create
+        user = Session.query(User).filter_by(username='admin').first()
         json_data = self.get_objects(name='Test Case 1')
-        request = self.make_request(json_body=json_data)
+        request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
         self.assertEqual('That name already exists for the project',
@@ -776,12 +777,12 @@ class TestCaseTests(BaseAPITest):
         request = self.make_request(json_body={})
         info = test_case_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual(4, len(info['messages']))
+        self.assertEqual(5, len(info['messages']))
 
     def test_create_valid(self):
         from nudibranch.views import test_case_create
         user = Session.query(User).filter_by(username='admin').first()
-        json_data = self.get_objects(stdin_id='2', expected_id='2')
+        json_data = self.get_objects(stdin_id='2')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
         project = Session.query(Project).first()

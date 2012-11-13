@@ -401,8 +401,7 @@ def submission_view(request):
              renderer='json')
 @validated_form(name=String('name', min_length=1),
                 args=String('args', min_length=1),
-                expected_id=TextNumber('expected_id', min_value=0,
-                                       optional=True),
+                expected_id=TextNumber('expected_id', min_value=0),
                 points=TextNumber('points'),
                 project_id=TextNumber('project_id', min_value=0),
                 stdin_id=TextNumber('stdin_id', min_value=0, optional=True))

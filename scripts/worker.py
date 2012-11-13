@@ -17,7 +17,7 @@ from subprocess import Popen, PIPE, STDOUT
 
 
 SRC_PATH = 'src'
-INPUT_PATH = 'input'
+INPUT_PATH = 'inputs'
 RESULTS_PATH = 'results'
 
 
@@ -138,10 +138,16 @@ class SubmissionHandler(object):
         results = {}
         for tc in test_cases:
             output_file = os.path.join(RESULTS_PATH, 'tc_{}'.format(tc['id']))
+            if tc['stdin']:
+                stdin_file = os.path.join(INPUT_PATH, tc['stdin'])
+                stdin = open(stdin_file)
+            else:
+                stdin = None
             result = {'extra': None}
-            with open(output_file, 'wb') as fd:
+            with open(output_file, 'wb') as stdout:
                 try:
-                    result['extra'] = self.execute(tc['args'], stdout=fd)
+                    result['extra'] = self.execute(tc['args'], stdout=stdout,
+                                                   stdin=stdin)
                     result['status'] = 'success'
                 except NonexistentExecutable:
                     result['status'] = 'nonexistent_executable'
