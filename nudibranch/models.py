@@ -266,6 +266,9 @@ class User(UserMixin, BasicBase, Base):
             pass
         return retval
 
+    def __cmp__(self, other):
+        return cmp(self.name, other.name)
+
     def __repr__(self):
         return 'User(email="{0}", name="{1}", username="{2}")'.format(
             self.email, self.name, self.username)
