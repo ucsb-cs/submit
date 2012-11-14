@@ -99,6 +99,7 @@ class HTMLDiff(difflib.HtmlDiff):
         '<a href="javascript:void(0)" onclick="showHideRows(this);">h</a>'
     NO_DIFFERENCES = '<td></td><td>&nbsp;No Differences Found&nbsp;</td>'
     EMPTY_FILE = '<td></td><td>&nbsp;Empty File&nbsp;</td>'
+    MAX_SAME_LINES_BEFORE_SHOW_HIDE = 5  # must be >= 4
 
     def __init__(self, diffs=[]):
         super(HTMLDiff, self).__init__(wrapcolumn=50)
@@ -302,7 +303,8 @@ class HTMLDiff(difflib.HtmlDiff):
                     sameprefix, same_block,
                     same_pos - same_start_pos + 1)
                 same_pos += 1
-            if same_pos - same_start_pos > 4:
+            num_same_lines = same_pos - same_start_pos
+            if num_same_lines > self.MAX_SAME_LINES_BEFORE_SHOW_HIDE:
                 next_href[same_start_pos + 2] = self.SHOW_HIDE_ROWS
                 self._last_collapsed = True
 
