@@ -21,6 +21,8 @@ from .helpers import DummyTemplateAttr, verify_file_ids
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, TestCase, User)
 from . import diff_render
+#from . import diff_unit, diff_render  # TESTING
+
 
 @notfound_view_config()
 def not_found(request):
@@ -411,11 +413,17 @@ def submission_view(request):
     # for each test case get the results, putting the diff into the diff
     # renderer.  Right now we just hardcode some things
     diff_renderer = diff_render.HTMLDiff()
+
+    # TESTING
+    # with open('/tmp/diff_pickled', 'r') as fh:
+    #     diff_renderer.add_diff(pickle.load(fh))
+
     for test_case_result in submission.test_case_results:
         diff_file = File.file_path(request.registry.settings['file_directory'],
                                    test_case_result.diff.sha1)
         diff_renderer.add_diff(pickle.load(open(diff_file)))
     return {'page_title': 'Submission Page',
+            'css_files': ['diff.css'],
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
