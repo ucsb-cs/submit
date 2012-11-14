@@ -95,7 +95,8 @@ class HTMLDiff(difflib.HtmlDiff):
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
     NEXT_HREF_TOP = '<a href="#difflib_chg_{0}_top">t</a>'
     NEXT_ID_SAME = ' id="difflib_same_{0}{1}_{2}"'
-    SHOW_HIDE_ROWS = '<a href="#" onclick="show_hideRows(this);">h</a>'
+    SHOW_HIDE_ROWS = \
+        '<a href="javascript:void(0)" onclick="showHideRows(this);">h</a>'
     NO_DIFFERENCES = '<td></td><td>&nbsp;No Differences Found&nbsp;</td>'
     EMPTY_FILE = '<td></td><td>&nbsp;Empty File&nbsp;</td>'
 
