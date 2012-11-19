@@ -110,21 +110,24 @@ class HTMLDiff(difflib.HtmlDiff):
             self.add_diff(d)
 
     def add_diff(self, diff):
-        self._diff_html[diff] = self._make_table_for_diff(diff)
+        self._diff_html[diff] = self._make_html_for_diff(diff)
 
     def _make_html_for_diff(self, diff):
-        table = self._make_table_for_diff()
+        table = self._make_table_for_diff(diff)
+        if not table:
+            table = ''
         wrong_things = diff.wrong_things_html_list()
-        if not table and not wrong_things:  # all correct
-            return None
-        else:
-            return table + wrong_things
+        if not wrong_things:
+            wrong_things = ''
+
+        retval = table + wrong_things
+        return retval if retval != '' else None
 
     def make_table(self, diff):
         """Makes unique anchor prefixes so that multiple tables may exist
         on the same page without conflict."""
         self._make_prefix()
-        diffs = diff.diff
+        diffs = diff._diff._diff
 
         # set up iterator to wrap lines that exceed desired width
         if self._wrapcolumn:
@@ -199,7 +202,7 @@ class HTMLDiff(difflib.HtmlDiff):
 
     def _make_table_for_diff(self, diff):
         """Returns one of the table, the diff, or None"""
-        if not diff.outputs_match():
+        if diff.should_show_table():
             self._last_collapsed = False
             table = self.make_table(diff)
             if self._last_collapsed:

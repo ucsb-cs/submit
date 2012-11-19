@@ -1,5 +1,5 @@
 import difflib
-import xml.sax.saxutils
+from .helpers import escape
 
 
 class DiffExtraInfo(object):
@@ -9,6 +9,9 @@ class DiffExtraInfo(object):
     def __init__(self, status, extra):
         self._status = status
         self._extra = extra
+
+    def should_show_table(self):
+        return self._status != 'nonexistent_executable'
 
     def wrong_things(self):
         '''Returns a list of strings describing what's wrong'''
@@ -45,36 +48,35 @@ class DiffWithMetadata(object):
     def outputs_match(self):
         return self._diff.outputs_match()
 
+    def should_show_table(self):
+        return self._diff.should_show_table() and \
+            self.extra_info.should_show_table()
+
     def wrong_things(self):
         '''Returns a list of strings describing everything that's wrong'''
-        return self.diff.wrong_things() + self.extra_info.wrong_things()
+        return self._diff.wrong_things() + self.extra_info.wrong_things()
 
     def wrong_things_html_list(self):
         '''Returns all the things that were wrong in an html list, or None if
         nothing was wrong'''
         things = self.wrong_things()
         if things:
-            list_items = ["<li>{0}</li>".format(DiffUnit.escape(thing))
+            list_items = ["<li>{0}</li>".format(escape(thing))
                           for thing in things]
             return "<ul>{0}</ul>".format("\n".join(list_items))
-        
-    @staticmethod
-    def escape(string):
-        return xml.sax.saxutils.escape(string, {'"': "&quot;",
-                                                "'": "&apos;"})
 
     def __cmp__(self, other):
         return self.test_num - other.test_num
 
     def escaped_name(self):
-        return DiffUnit.escape(self.test_name)
+        return escape(self.test_name)
 
     def name_id(self):
         return "{0}_{1}".format(int(self.test_num),
                                 self.escaped_name())
 
     def html_test_name(self):
-        if not self._diff.is_correct():
+        if not self.is_correct():
             return self.INCORRECT_HTML_TEST_NAME.format(self.name_id(),
                                                         self.escaped_name())
         else:
@@ -90,22 +92,45 @@ class Diff(object):
 
     def __init__(self, correct, given):
         self._tabsize = 8
+        self._correct_empty = correct == ""
+        self._given_empty = given == ""
         self._diff = self._make_diff(correct, given) \
             if correct != given else None
+
+    def is_correct_empty(self):
+        return self._correct_empty
+
+    def is_given_empty(self):
+        return self._given_empty
 
     def outputs_match(self):
         return self._diff is None
 
-    def wrong_things(self):
-        if not self.outputs_match():
-            return ["Your output did not match the expected output"]
-        else:
-            return []
+    def should_show_table(self):
+        '''Determines whether or not an HTML table showing this result
+        should be made.  This is whenever the results didn't match and
+        the student at least attempted to produce output'''
+        return not self.outputs_match() and not \
+            (self.is_given_empty() and not self.is_correct_empty())
 
-    def _make_diff(self):
+    def wrong_things(self):
+        retval = []
+        if self.is_correct_empty() and not self.is_given_empty():
+            retval.append(
+                "You produced output, but the correct solution did not")
+        elif self.is_given_empty() and not self.is_correct_empty():
+            retval.append(
+                "You produced no output")
+
+        if not self.outputs_match():
+            retval.append("Your output did not match the expected output")
+            
+        return retval
+
+    def _make_diff(self, correct, given):
         '''Only to be called when there is a difference'''
-        fromlines, tolines = self._tab_newline_replace(self.correct,
-                                                       self.given)
+        fromlines, tolines = self._tab_newline_replace(correct,
+                                                       given)
         return [d for d in difflib._mdiff(fromlines, tolines)]
 
     def _tab_newline_replace(self, fromlines, tolines):
