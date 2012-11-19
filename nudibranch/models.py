@@ -218,8 +218,9 @@ class TestCaseResult(Base):
     __tablename__ = 'testcaseresult'
     diff = relationship(File)
     diff_id = Column(Integer, ForeignKey('file.id'))
-    status = Enum('nonexistent_executable', 'signal', 'success', 'timed_out',
-                  nullable=False)
+    status = Column(Enum('nonexistent_executable', 'signal', 
+                         'success', 'timed_out',
+                         nullable=False))
     extra = Column(Integer)
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            primary_key=True)
