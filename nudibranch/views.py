@@ -293,7 +293,7 @@ def project_view_admin(request, project):
     submissions = {}
     for user in project.klass.users:
         submission = (Submission.fetch_by_user_project(user.id, project.id)
-                      .order_by(Submission.created_at.desc())).first()
+                      .order_by(Submission.created_at.desc()))[0:3]
         submissions[user] = submission
     return {'page_title': 'Admin Project Page',
             'project': project,

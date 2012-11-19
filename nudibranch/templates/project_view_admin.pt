@@ -4,10 +4,22 @@
   <p>Info for ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
   <p>Users</p>
-  <ul>
-    <li tal:repeat="(user,submission) submissions">
-      ${user.name} <a tal:condition="submission" href="${_R('submission_item', submission_id=submission.id)}">${submission.created_at}</a>
-    </li>
-  </ul>
+  <table border="1">
+    <tr>
+      <th>User</th>
+      <th>Most Recent Submissions</th>
+    </tr>
+    <tr tal:repeat="(user, user_submissions) submissions">
+      <td>${user.name}</td>
+      <td>
+	<ul tal:condition="user_submissions">
+	  <li tal:repeat="user_submission user_submissions">
+	    <a href="${_R('submission_item', submission_id=user_submission.id)}">
+	      ${user_submission.created_at}</a>
+	  </li>
+	</ul>
+      </td>
+    </tr>
+  </table>
 </div>
 </div>
