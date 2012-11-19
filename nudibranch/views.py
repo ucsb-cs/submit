@@ -403,14 +403,14 @@ def submission_create(request, project_id, file_ids, filenames):
 
 def to_full_diff(request, test_case_result):
     '''Given a test case result, it will return a complete DiffWithMetadata
-    object'''
+    object, or None if we couldn't get the test case'''
 
     diff_file = File.file_path(request.registry.settings['file_directory'],
                                test_case_result.diff.sha1)
     diff = pickle.load(open(diff_file))
     test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
     if not test_case:
-        return HTTPNotFound()
+        return None
     return DiffWithMetadata(diff,
                             test_case.id,
                             test_case.name,
@@ -433,8 +433,11 @@ def submission_view(request):
     diff_renderer = HTMLDiff()
 
     for test_case_result in submission.test_case_results:
-        diff_renderer.add_diff(to_full_diff(request,
-                                            test_case_result))
+        full_diff = to_full_diff(request, test_case_result)
+        if not full_diff:
+            return HTTPNotFound()
+        diff_renderer.add_diff(full_diff)
+
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css'],
             'javascripts': ['diff.js'],
