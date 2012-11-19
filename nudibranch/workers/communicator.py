@@ -7,7 +7,7 @@ import transaction
 import pickle
 from nudibranch.models import (File, Session, Submission, TestCase,
                                TestCaseResult, initialize_sql)
-from nudibranch.diff_unit import DiffUnit
+from nudibranch.diff_unit import Diff
 from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
 
@@ -96,11 +96,7 @@ def update_or_create_result(submission_id, test_case_id, results):
     actual_output = readlines(actual_path)
 
     # put them into a DiffUnit
-    unit = DiffUnit(expected_output,
-                    actual_output,
-                    test_case_id,  # probably a better way
-                    test_case.name,
-                    test_case.points)
+    unit = Diff(expected_output, actual_output)
 
     # dump it to a file in the same way as originally, and do it as
     # a string

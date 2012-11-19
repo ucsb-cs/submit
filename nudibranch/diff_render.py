@@ -106,15 +106,23 @@ class HTMLDiff(difflib.HtmlDiff):
         self._legend = _legend
         self._table_template = _table_template
         self._file_template = _file_template
-        self._diff_units = []
         self._last_collapsed = False
-        self._diff_table = {}  # maps a diff to a table
+        self._diff_html = {}  # maps a diff to html
         for d in diffs:
             self.add_diff(d)
 
     def add_diff(self, diff):
-        self._diff_units.append(diff)
-        self._diff_table[diff] = self._make_table_for_diff(diff)
+        html = self._make_table_for_diff(diff)
+        if html:
+            self._diff_table[diff] = html
+
+    def _make_html_for_diff(self, diff):
+        table = self._make_table_for_diff()
+        wrong_things = diff.wrong_things_html_list()
+        if not table and not wrong_things:  # all correct
+            return None
+        else:
+            return table + wrong_things
 
     def make_table(self, diff):
         """Makes unique anchor prefixes so that multiple tables may exist
@@ -195,7 +203,7 @@ class HTMLDiff(difflib.HtmlDiff):
 
     def _make_table_for_diff(self, diff):
         """Returns one of the table, the diff, or None"""
-        if not diff.is_correct():
+        if not diff.outputs_match():
             self._last_collapsed = False
             table = self.make_table(diff)
             if self._last_collapsed:
@@ -206,7 +214,7 @@ class HTMLDiff(difflib.HtmlDiff):
                                                   table)
 
     def _ordered_diffs(self, should_include):
-        return sorted([diff for diff in self._diff_units
+        return sorted([diff for diff in self._diff_html.keys()
                        if should_include(diff)])
 
     def _make_some_summary(self, should_include):
@@ -216,7 +224,7 @@ class HTMLDiff(difflib.HtmlDiff):
 <th>Test Number</th><th>Test Name</th><th>Value</th></tr>'
         num_rows = 0
         for diff in self._ordered_diffs(should_include):
-            retval += diff.html_row()
+            retval += diff.html_header_row()
             num_rows += 1
         retval += '</table>'
         return (retval, num_rows)
@@ -229,8 +237,7 @@ class HTMLDiff(difflib.HtmlDiff):
             return ''
 
     def _has_diff(self, diff):
-        return diff in self._diff_table and \
-            self._diff_table[diff] is not None
+        return diff in self._diff_table
 
     def _make_failed_summary(self):
         return self._make_header_summary(

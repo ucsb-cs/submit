@@ -2,36 +2,66 @@ import difflib
 import xml.sax.saxutils
 
 
-class DiffUnit(object):
-    '''Represents a single diff.
-    Can be pickled safely.'''
+class DiffExtraInfo(object):
+    '''TestCaseResult can either have a signal thrown or have a normal
+    exit status.  This abstracts that away.'''
+    
+    def __init__(self, status, extra):
+        self._status = status
+        self._extra = extra
 
+    def wrong_things(self):
+        '''Returns a list of strings describing what's wrong'''
+        if self._status == 'nonexistent_executable':
+            return ["Executable was not produced during make"]
+        elif self._status == 'signal':
+            return ["Your program threw signal {0}".format(self._extra)]
+        elif self._status == 'timed_out':
+            return ["Your program timed out"]
+        elif self._status == 'success' and self._extra != 0:
+            return ["Your program terminated with exit code {0}".format(
+                    self._extra)]
+        else:
+            return []
+        
+class DiffWithMetadata(object):
+    '''Wraps around a Diff to impart additional functionality.
+    Not intended to be stored.'''
+    
     INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
     CORRECT_HTML_TEST_NAME = '<pre style="color:green">{0}</pre>'
     HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
 
-    def __init__(self, correct, given, test_num, test_name, test_points):
-        self._tabsize = 8
-        self.correct = correct
-        self.given = given
+    def __init__(self, diff, test_num, test_name, test_points, extra_info):
+        self._diff = diff
         self.test_num = test_num
         self.test_name = test_name
         self.test_points = test_points
-        self.diff = self.make_diff()
+        self.extra_info = extra_info
 
+    def is_correct(self):
+        return len(self.wrong_things()) == 0
+
+    def outputs_match(self):
+        return self._diff.outputs_match()
+
+    def wrong_things(self):
+        '''Returns a list of strings describing everything that's wrong'''
+        return self.diff.wrong_things() + self.extra_info.wrong_things()
+
+    def wrong_things_html_list(self):
+        '''Returns all the things that were wrong in an html list, or None if
+        nothing was wrong'''
+        things = self.wrong_things()
+        if things:
+            list_items = ["<li>{0}</li>".format(DiffUnit.escape(thing))
+                          for thing in things]
+            return "<ul>{0}</ul>".format("\n".join(list_items))
+        
     @staticmethod
     def escape(string):
         return xml.sax.saxutils.escape(string, {'"': "&quot;",
                                                 "'": "&apos;"})
-
-    def make_diff(self):
-        if not self.is_correct():
-            fromlines, tolines = self._tab_newline_replace(self.correct,
-                                                           self.given)
-            return [d for d in difflib._mdiff(fromlines, tolines)]
-
-    def is_correct(self):
-        return self.correct == self.given
 
     def __cmp__(self, other):
         return self.test_num - other.test_num
@@ -44,16 +74,39 @@ class DiffUnit(object):
                                 self.escaped_name())
 
     def html_test_name(self):
-        if not self.is_correct():
+        if not self._diff.is_correct():
             return self.INCORRECT_HTML_TEST_NAME.format(self.name_id(),
                                                         self.escaped_name())
         else:
             return self.CORRECT_HTML_TEST_NAME.format(self.escaped_name())
 
-    def html_row(self):
+    def html_header_row(self):
         return self.HTML_ROW.format(self.test_num,
                                     self.html_test_name(),
                                     self.test_points)
+
+class Diff(object):
+    '''Represents a saved diff file.  Can be pickled safely.'''
+
+    def __init__(self, correct, given):
+        self._tabsize = 8
+        self._diff = self._make_diff(correct, given) \
+            if correct != given else None
+
+    def outputs_match(self):
+        return self._diff is None
+
+    def wrong_things(self):
+        if not self.outputs_match():
+            return ["Your output did not match the expected output"]
+        else:
+            return []
+
+    def _make_diff(self):
+        '''Only to be called when there is a difference'''
+        fromlines, tolines = self._tab_newline_replace(self.correct,
+                                                       self.given)
+        return [d for d in difflib._mdiff(fromlines, tolines)]
 
     def _tab_newline_replace(self, fromlines, tolines):
         """Returns from/to line lists with tabs expanded

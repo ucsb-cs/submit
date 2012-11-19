@@ -17,11 +17,11 @@ from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
+from .diff_render import HTMLDiff
+from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .helpers import DummyTemplateAttr, verify_file_ids
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, TestCase, User)
-from . import diff_render
-#from . import diff_unit, diff_render  # TESTING
 
 
 @notfound_view_config()
@@ -401,6 +401,23 @@ def submission_create(request, project_id, file_ids, filenames):
     return http_created(request, redir_location=redir_location)
 
 
+def to_full_diff(request, test_case_result):
+    '''Given a test case result, it will return a complete DiffWithMetadata
+    object'''
+
+    diff_file = File.file_path(request.registry.settings['file_directory'],
+                               test_case_result.diff.sha1)
+    diff = pickle.load(open(diff_file))
+    test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
+    if not test_case:
+        return HTTPNotFound()
+    return DiffWithMetadata( diff,
+                             test_case.id,
+                             test_case.name,
+                             test_case.points,
+                             DiffExtraInfo(test_case_result.status,
+                                           test_case_result.extra))
+
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -412,16 +429,11 @@ def submission_view(request):
 
     # for each test case get the results, putting the diff into the diff
     # renderer.  Right now we just hardcode some things
-    diff_renderer = diff_render.HTMLDiff()
-
-    # TESTING
-    # with open('/tmp/diff_pickled', 'r') as fh:
-    #     diff_renderer.add_diff(pickle.load(fh))
+    diff_renderer = HTMLDiff()
 
     for test_case_result in submission.test_case_results:
-        diff_file = File.file_path(request.registry.settings['file_directory'],
-                                   test_case_result.diff.sha1)
-        diff_renderer.add_diff(pickle.load(open(diff_file)))
+        diff_renderer.add_diff(to_full_diff(request,
+                                            test_case_result))
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css'],
             'javascripts': ['diff.js'],
