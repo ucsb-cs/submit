@@ -267,13 +267,25 @@ class HTMLDiff(difflib.HtmlDiff):
         retval += self.TENTATIVE_SCORE_BLOCK.format(total, "%.2f" % percentage)
         return retval
 
+    def is_legend_needed(self):
+        for diff in self._all_diffs():
+            if diff.should_show_table():
+                return True
+        return False
+
+    def legend_html(self):
+        if self.is_legend_needed():
+            return "<hr>{0}<hr>".format(self._legend)
+        else:
+            return "<hr>"
+
     def make_whole_file(self):
         tables = [self._diff_html[diff]
                   for diff in self._all_diffs()
                   if self._has_diff(diff)]
         return self._file_template % dict(
             summary=self.make_summary(),
-            legend="<hr>{0}<hr>".format(self._legend) if tables else "",
+            legend=self.legend_html(),
             table='<hr>\n'.join(tables))
 
     def _line_wrapper(self, diffs):
