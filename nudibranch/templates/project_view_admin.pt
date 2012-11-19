@@ -10,7 +10,10 @@
       <th>Most Recent Submissions</th>
     </tr>
     <tr tal:repeat="(user, user_submissions) submissions">
-      <td>${user.name}</td>
+      <td>
+	<a href="${_R('user_item', username=user.username)}">
+	  ${user.name}</a>
+      </td>
       <td>
 	<ul tal:condition="user_submissions">
 	  <li tal:repeat="user_submission user_submissions">
