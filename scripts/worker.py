@@ -125,7 +125,7 @@ class SubmissionHandler(object):
     def make_project(self):
         if not os.path.isfile('Makefile'):
             return True
-        command = 'make -f ../Makefile -C {}'.format(SRC_PATH)
+        command = 'make -f ../Makefile -C {0}'.format(SRC_PATH)
         with open(os.path.join(RESULTS_PATH, 'make'), 'w') as fp:
             pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
             pipe.wait()
@@ -137,7 +137,7 @@ class SubmissionHandler(object):
         test_cases = json.load(open('test_cases'))
         results = {}
         for tc in test_cases:
-            output_file = os.path.join(RESULTS_PATH, 'tc_{}'.format(tc['id']))
+            output_file = os.path.join(RESULTS_PATH, 'tc_{0}'.format(tc['id']))
             if tc['stdin']:
                 stdin_file = os.path.join(INPUT_PATH, tc['stdin'])
                 stdin = open(stdin_file)
