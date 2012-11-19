@@ -78,6 +78,29 @@ def change_same_starting_points(flaglist):
     return (change_points, same_points)
 
 
+class ScoreMaker(object):
+    '''Base class for something that scores diffs.
+    Defaults to a basic totaling of the score.'''
+
+    def points_for_diff(self, diff):
+        '''Gets the number of points a given diff with metadata should
+        be worth.  Defaults to ```diff.test_points```'''
+        return diff.test_points
+
+    def total_score_available(self, diffs):
+        return sum([self.points_for_diff(diff) for diff in diffs])
+
+    def total_score_achieved(self, diffs):
+        return sum([self.points_for_diff(diff) for diff in diffs
+                    if diff.is_correct()])
+
+    def percentage_score_achieved(self, diffs):
+        available = self.total_score_available(diffs)
+        if available == 0:
+            return 100
+        else:
+            return float(self.total_score_achieved(diffs)) / available * 100
+
 class HTMLDiff(difflib.HtmlDiff):
     FROM_DESC = 'Correct Output'
     TO_DESC = 'Your Output'
@@ -88,7 +111,7 @@ class HTMLDiff(difflib.HtmlDiff):
     <a href="#" onclick="hideAll('difflib_chg_{0}_top');">Hide All</a></p>"""
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
     TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative total score: {0}</li>\
-<li>Tentative percentage score: {1}</li></ul>\n'
+<li>Tentative percentage score: {1:.2f}</li></ul>\n'
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
     NEXT_HREF_TOP = '<a href="#difflib_chg_{0}_top">t</a>'
@@ -99,13 +122,14 @@ class HTMLDiff(difflib.HtmlDiff):
     EMPTY_FILE = '<td></td><td>&nbsp;Empty File&nbsp;</td>'
     MAX_SAME_LINES_BEFORE_SHOW_HIDE = 5  # must be >= 4
 
-    def __init__(self, diffs=[]):
+    def __init__(self, diffs=[], calc_score=ScoreMaker()):
         super(HTMLDiff, self).__init__(wrapcolumn=50)
         self._legend = _legend
         self._table_template = _table_template
         self._file_template = _file_template
         self._last_collapsed = False
         self._diff_html = {}  # maps a diff to html
+        self._calc_score = calc_score
         for d in diffs:
             self.add_diff(d)
 
@@ -254,17 +278,15 @@ class HTMLDiff(difflib.HtmlDiff):
 
     def tentative_score(self):
         """Returns total score and score as a percentage"""
-        total_points = sum([t.test_points for t in self._all_diffs()])
-        acquired_points = sum([t.test_points for t in self._all_diffs()
-                               if t.is_correct()])
-        percentage = float(acquired_points) / total_points * 100 \
-            if total_points != 0 else 100
-        return (acquired_points, percentage)
+        calc = self._calc_score
+        all_diffs = self._all_diffs()
+        return (calc.total_score_achieved(all_diffs),
+                calc.percentage_score_achieved(all_diffs))
 
     def make_summary(self):
-        (total, percentage) = self.tentative_score()
+        total, percentage = self.tentative_score()
         retval = self._make_failed_summary() + self._make_success_summary()
-        retval += self.TENTATIVE_SCORE_BLOCK.format(total, "%.2f" % percentage)
+        retval += self.TENTATIVE_SCORE_BLOCK.format(total, percentage)
         return retval
 
     def is_legend_needed(self):
