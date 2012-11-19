@@ -101,6 +101,7 @@ class ScoreMaker(object):
         else:
             return float(self.total_score_achieved(diffs)) / available * 100
 
+
 class HTMLDiff(difflib.HtmlDiff):
     FROM_DESC = 'Correct Output'
     TO_DESC = 'Your Output'
