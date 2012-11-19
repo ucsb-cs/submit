@@ -1,3 +1,4 @@
+import xml.sax.saxutils
 from pyramid_addons.helpers import http_bad_request
 from .models import File
 
@@ -22,3 +23,7 @@ def verify_file_ids(request, **kwargs):
             if not item_file or item_file not in request.user.files:
                 return http_bad_request(request, 'Invalid {0}'.format(name))
     return None
+
+def escape(string):
+    return xml.sax.saxutils.escape(string, {'"': "&quot;",
+                                            "'": "&apos;"})
