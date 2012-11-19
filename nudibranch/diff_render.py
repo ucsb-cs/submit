@@ -3,9 +3,7 @@ import difflib
 _file_template = """
 <div id="diff_table_div">
 %(summary)s
-<hr>
 %(legend)s
-<hr>
 %(table)s
 </div>
 <script type="text/javascript">
@@ -112,9 +110,7 @@ class HTMLDiff(difflib.HtmlDiff):
             self.add_diff(d)
 
     def add_diff(self, diff):
-        html = self._make_table_for_diff(diff)
-        if html:
-            self._diff_table[diff] = html
+        self._diff_html[diff] = self._make_table_for_diff(diff)
 
     def _make_html_for_diff(self, diff):
         table = self._make_table_for_diff()
@@ -214,7 +210,7 @@ class HTMLDiff(difflib.HtmlDiff):
                                                   table)
 
     def _ordered_diffs(self, should_include):
-        return sorted([diff for diff in self._diff_html.keys()
+        return sorted([diff for diff in self._all_diffs()
                        if should_include(diff)])
 
     def _make_some_summary(self, should_include):
@@ -237,7 +233,8 @@ class HTMLDiff(difflib.HtmlDiff):
             return ''
 
     def _has_diff(self, diff):
-        return diff in self._diff_table
+        return diff in self._diff_html and \
+            self._diff_html[diff] is not None
 
     def _make_failed_summary(self):
         return self._make_header_summary(
@@ -249,10 +246,13 @@ class HTMLDiff(difflib.HtmlDiff):
             '<h3 style="color:green">Passed Tests</h3>',
             lambda diff: not self._has_diff(diff))
 
+    def _all_diffs(self):
+        return self._diff_html.keys()
+
     def tentative_score(self):
         """Returns total score and score as a percentage"""
-        total_points = sum([t.test_points for t in self._diff_units])
-        acquired_points = sum([t.test_points for t in self._diff_units
+        total_points = sum([t.test_points for t in self._all_diffs()])
+        acquired_points = sum([t.test_points for t in self._all_diffs()
                                if t.is_correct()])
         percentage = float(acquired_points) / total_points * 100 \
             if total_points != 0 else 100
@@ -265,12 +265,13 @@ class HTMLDiff(difflib.HtmlDiff):
         return retval
 
     def make_whole_file(self):
-        tables = [self._diff_table[diff]
-                  for diff in self._diff_units
+        tables = [self._diff_html[diff]
+                  for diff in self._all_diffs()
                   if self._has_diff(diff)]
         return self._file_template % dict(
             summary=self.make_summary(),
-            legend=self._legend,
+            legend="<hr>{0}<hr>".format(self._legend) \
+                if tables else "",
             table='<hr>\n'.join(tables))
 
     def _line_wrapper(self, diffs):
