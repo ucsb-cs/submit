@@ -273,8 +273,7 @@ class HTMLDiff(difflib.HtmlDiff):
                   if self._has_diff(diff)]
         return self._file_template % dict(
             summary=self.make_summary(),
-            legend="<hr>{0}<hr>".format(self._legend) \
-                if tables else "",
+            legend="<hr>{0}<hr>".format(self._legend) if tables else "",
             table='<hr>\n'.join(tables))
 
     def _line_wrapper(self, diffs):

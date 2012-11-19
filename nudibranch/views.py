@@ -411,12 +411,13 @@ def to_full_diff(request, test_case_result):
     test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
     if not test_case:
         return HTTPNotFound()
-    return DiffWithMetadata( diff,
-                             test_case.id,
-                             test_case.name,
-                             test_case.points,
-                             DiffExtraInfo(test_case_result.status,
-                                           test_case_result.extra))
+    return DiffWithMetadata(diff,
+                            test_case.id,
+                            test_case.name,
+                            test_case.points,
+                            DiffExtraInfo(test_case_result.status,
+                                          test_case_result.extra))
+
 
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',

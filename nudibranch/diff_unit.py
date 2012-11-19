@@ -5,7 +5,7 @@ from .helpers import escape
 class DiffExtraInfo(object):
     '''TestCaseResult can either have a signal thrown or have a normal
     exit status.  This abstracts that away.'''
-    
+
     def __init__(self, status, extra):
         self._status = status
         self._extra = extra
@@ -26,11 +26,12 @@ class DiffExtraInfo(object):
                     self._extra)]
         else:
             return []
-        
+
+
 class DiffWithMetadata(object):
     '''Wraps around a Diff to impart additional functionality.
     Not intended to be stored.'''
-    
+
     INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
     CORRECT_HTML_TEST_NAME = '<pre style="color:green">{0}</pre>'
     HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
@@ -87,6 +88,7 @@ class DiffWithMetadata(object):
                                     self.html_test_name(),
                                     self.test_points)
 
+
 class Diff(object):
     '''Represents a saved diff file.  Can be pickled safely.'''
 
@@ -124,7 +126,7 @@ class Diff(object):
 
         if not self.outputs_match():
             retval.append("Your output did not match the expected output")
-            
+
         return retval
 
     def _make_diff(self, correct, given):

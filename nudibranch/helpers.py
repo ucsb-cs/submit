@@ -24,6 +24,7 @@ def verify_file_ids(request, **kwargs):
                 return http_bad_request(request, 'Invalid {0}'.format(name))
     return None
 
+
 def escape(string):
     return xml.sax.saxutils.escape(string, {'"': "&quot;",
                                             "'": "&apos;"})
