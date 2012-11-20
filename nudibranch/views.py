@@ -287,8 +287,9 @@ def project_view_summary(request):
     submissions = {}
     user_truncated = {}
     for user in project.klass.users:
-        first_four = (Submission.fetch_by_user_project(user.id, project.id)
-                      .order_by(Submission.created_at.desc()))[0:4]
+        first_four = \
+            Submission.fetch_by_user_project_in_order(user.id,
+                                                      project.id)[0:4]
         user_truncated[user] = len(first_four) == 4
         first_four.pop()
         submissions[user] = first_four
@@ -296,7 +297,8 @@ def project_view_summary(request):
     return {'page_title': 'Admin Project Page',
             'project': project,
             'user_truncated': user_truncated,
-            'submissions': sorted(submissions.items())}
+            'submissions': sorted(submissions.items(),
+                                  key=lambda p: (p[0].name, p[1]))}
 
 
 @view_config(route_name='project_item_detailed',
@@ -446,12 +448,29 @@ def submission_view(request):
             return HTTPNotFound()
         diff_renderer.add_diff(full_diff)
 
+    # see what the next submission and next user is
+    next_submission_id = None
+    current_user_name = None
+    next_user_submission_id = None
+    if request.user.is_admin:
+        next_submission_id = Submission.next_submission_for_user(submission).id
+        project = Project.fetch_by_id(submission.project_id)
+        user = User.fetch_by_id(submission.user_id)
+        if not project or not user:
+            return HTTPNotFound()
+        current_user_name = user.name
+        next_sub_next = Submission.next_user_with_submissions_submission(user, project)
+        next_user_submission_id = next_sub_next.id if next_sub_next else None
+
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css'],
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
-            'diff_table': diff_renderer.make_whole_file()}
+            'diff_table': diff_renderer.make_whole_file(),
+            'current_user_name': current_user_name,
+            'next_submission_id': next_submission_id,
+            'next_user_submission_id': next_user_submission_id}
 
 
 @view_config(route_name='test_case', request_method='PUT',

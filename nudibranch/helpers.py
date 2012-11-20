@@ -1,6 +1,5 @@
 import xml.sax.saxutils
 from pyramid_addons.helpers import http_bad_request
-from .models import File
 
 
 class DummyTemplateAttr(object):
@@ -28,3 +27,11 @@ def verify_file_ids(request, **kwargs):
 def escape(string):
     return xml.sax.saxutils.escape(string, {'"': "&quot;",
                                             "'": "&apos;"})
+
+
+def next_in_sorted(item, lst):
+    '''Returns the next item in the given (assumed sorted) list,
+    or None if it is already the last item.  Throws an IndexError if
+    it doesn't exist at all'''
+    retval_idx = lst.index(item) + 1
+    return lst[retval_idx] if retval_idx < len(lst) else None

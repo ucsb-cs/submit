@@ -11,6 +11,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
+from .helpers import next_in_sorted
 
 if sys.version_info < (3, 0):
     builtins = __import__('__builtin__')
@@ -155,6 +156,11 @@ class Project(BasicBase, Base):
         submission.verified_at = func.now()
         return valid
 
+    def next_user(self, user):
+        '''Returns the next user (determined by name), or None if this
+        is the last user'''
+        return next_in_sorted(user, sorted(self.klass.users))
+
 
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submissions')
@@ -167,9 +173,43 @@ class Submission(BasicBase, Base):
     verified_at = Column(DateTime, index=True)
 
     @staticmethod
+    def next_user_with_submissions_submission(user, project):
+        '''Gets the first submission availbale for the next user,
+        skipping any users who have no submissions.  Returns None if
+        we are at the end'''
+        while True:
+            next_user = project.next_user(user)
+            if not next_user:
+                return None
+            submissions = Submission.fetch_by_user_project_in_order(next_user.id,
+                                                                    project.id)
+            next_submission_lst = submissions[0:1]
+            if next_submission_lst:
+                return next_submission_lst[ 0 ]
+            user = next_user
+        
+    @staticmethod
     def fetch_by_user_project(user_id, project_id):
         return Session().query(Submission).filter_by(
             user_id=user_id, project_id=project_id)
+
+    @staticmethod
+    def fetch_by_user_project_in_order(user_id, project_id): 
+        return (Submission.fetch_by_user_project(user_id, project_id)
+                .order_by(Submission.created_at.desc()))
+
+    @staticmethod
+    def next_submission_for_user(old_submission):
+        '''Returns the next submission for the user behind the submission,
+        or None if this is the last user's submission.  The submissions 
+        returned will be in order of the submission created_at time'''
+        retval = None
+        user_id = old_submission.user_id
+        project_id = old_submission.project_id
+        query_for_this_user = \
+            Submission.fetch_by_user_project_in_order(user_id, project_id)
+        for_this_user = [q for q in query_for_this_user]
+        return next_in_sorted(old_submission, for_this_user)
 
     def verify(self):
         return self.project.verify_submission(self)
