@@ -63,7 +63,7 @@ def class_list(request):
              renderer='templates/class_view.pt', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def class_view(request):
-    klass = Class.fetch_by_name(request.matchdict['class_name'])
+    klass = Class.fetch_by(name=request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
     return {'page_title': 'Class Page', 'klass': klass}
@@ -102,7 +102,7 @@ def file_item_view(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, 'Invalid sha1sum')
-    file = File.fetch_by_sha1(sha1sum)
+    file = File.fetch_by(sha1=sha1sum)
     # return not found when the file has not been uploaded by the user
     if not file or file not in request.user.files:
         return HTTPNotFound()
@@ -118,7 +118,7 @@ def file_item_info(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, 'Invalid sha1sum')
-    file = File.fetch_by_sha1(sha1sum)
+    file = File.fetch_by(sha1=sha1sum)
     # return not found when the file has not been uploaded by the user
     if not file or file not in request.user.files:
         return HTTPNotFound()
@@ -145,7 +145,6 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
 
-    session = Session()
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
@@ -153,6 +152,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, project_id=project_id)
+    session = Session()
     session.add(filev)
     try:
         session.flush()  # Cannot commit the transaction here
@@ -184,7 +184,6 @@ def home(request):
                 makefile_id=TextNumber('makefile_id', min_value=0,
                                        optional=True))
 def project_create(request, name, class_id, makefile_id):
-    session = Session()
     klass = Class.fetch_by_id(class_id)
     if not klass:
         return http_bad_request(request, 'Invalid class_id')
@@ -192,6 +191,7 @@ def project_create(request, name, class_id, makefile_id):
     if id_check:
         return id_check
     project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
+    session = Session()
     session.add(project)
     try:
         session.flush()  # Cannot commit the transaction here
@@ -226,7 +226,7 @@ def project_edit(request):
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
 def project_new(request):
-    klass = Class.fetch_by_name(request.matchdict['class_name'])
+    klass = Class.fetch_by(name=request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
     dummy_project = DummyTemplateAttr(None)
@@ -281,7 +281,7 @@ def project_update(request, name, class_id, makefile_id):
 def project_view_detailed(request):
     class_name = request.matchdict['class_name']
     username = request.matchdict['username']
-    user = User.fetch_by_name(username)
+    user = User.fetch_by(username=username)
     project = Project.fetch_by_id(request.matchdict['project_id'])
     # Additional verification
     if not (user and project) or project.klass.name != class_name \
@@ -291,7 +291,7 @@ def project_view_detailed(request):
     if not request.user.is_admin and request.user != user:
         return HTTPForbidden()
 
-    submissions = Submission.fetch_by_user_project(user.id, project.id)
+    submissions = Submission.query_by(project_id=project.id, user_id=user.id)
     if not submissions:
         return HTTPNotFound()
 
@@ -317,7 +317,7 @@ def project_view_summary(request):
     submissions = {}
     user_truncated = set()
     for user in project.klass.users:
-        newest = (Submission.fetch_by_user_project(user.id, project.id)
+        newest = (Submission.query_by(project_id=project.id, user_id=user.id)
                   .order_by(Submission.created_at.desc()))[0:4]
         # Grab four submissions to see if there are more than 3 even though
         # only three are displayed
@@ -525,11 +525,11 @@ def user_class_join(request):
     username = request.matchdict['username']
     if request.user.username != username:
         return http_bad_request(request, 'Invalid user')
-    session = Session()
-    klass = Session.query(Class).filter_by(name=class_name).first()
+    klass = Class.fetch_by(name=class_name)
     if not klass:
         return http_bad_request(request, 'Invalid class')
     request.user.classes.append(klass)
+    session = Session()
     session.add(request.user)
     transaction.commit()
     return http_ok(request, 'Class joined')
@@ -576,7 +576,7 @@ def user_list(request):
              renderer='templates/user_view.pt', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def user_view(request):
-    user = User.fetch_by_name(request.matchdict['username'])
+    user = User.fetch_by(username=request.matchdict['username'])
     if not user:
         return HTTPNotFound()
     return {'page_title': 'User Page', 'user': user}

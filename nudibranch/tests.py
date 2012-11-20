@@ -150,7 +150,7 @@ class ClassTests(BaseAPITest):
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         self.assertEqual(route_path('class', request), info['redir_location'])
         name = json_data['name']
-        klass = Session.query(Class).filter_by(name=name).first()
+        klass = Class.fetch_by(name=name)
         self.assertEqual(json_data['name'], klass.name)
 
     def test_class_edit(self):
@@ -186,7 +186,7 @@ class ClassJoinTests(BaseAPITest):
     """Test the API methods involved in joining a class."""
     @staticmethod
     def get_objects():
-        return Session.query(User).filter_by(username='user1').first(), {}
+        return User.fetch_by(username='user1'), {}
 
     def test_invalid_class(self):
         from nudibranch.views import user_class_join
@@ -222,7 +222,7 @@ class ClassJoinTests(BaseAPITest):
 class FileTests(BaseAPITest):
     @staticmethod
     def get_objects(data='', username='user1'):
-        user = Session.query(User).filter_by(username=username).first()
+        user = User.fetch_by(username=username)
         json_data = {'b64data': data}
         return user, json_data
 
@@ -244,7 +244,7 @@ class FileTests(BaseAPITest):
                                     matchdict={'sha1sum': sha1sum})
         info = file_create(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        expected_file = File.fetch_by_sha1(sha1sum)
+        expected_file = File.fetch_by(sha1=sha1sum)
         self.assertEqual(expected_file.id, info['file_id'])
 
     def test_create_success(self):
@@ -255,7 +255,7 @@ class FileTests(BaseAPITest):
                                     matchdict={'sha1sum': sha1sum})
         info = file_create(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        expected_file = File.fetch_by_sha1(sha1sum)
+        expected_file = File.fetch_by(sha1=sha1sum)
         self.assertEqual(expected_file.id, info['file_id'])
 
     def test_view_invalid_sha1sum_too_small(self):
@@ -301,7 +301,7 @@ class FileTests(BaseAPITest):
                                     matchdict={'sha1sum': sha1sum})
         info = file_item_info(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        expected_file = File.fetch_by_sha1(sha1sum)
+        expected_file = File.fetch_by(sha1=sha1sum)
         self.assertEqual(expected_file.id, info['file_id'])
 
 
@@ -398,7 +398,7 @@ class ProjectTests(BaseAPITest):
 
     @staticmethod
     def get_view_objects(username='user1', **kwargs):
-        user = Session.query(User).filter_by(username=username).first()
+        user = User.fetch_by(username=username)
         proj = Session.query(Project).first()
         matchdict = {'class_name': proj.klass.name, 'project_id': proj.id,
                      'username': user.username}
@@ -440,7 +440,7 @@ class ProjectTests(BaseAPITest):
 
     def test_create_invalid_makefile_id_perms(self):
         from nudibranch.views import project_create
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         matchdict, json_data = self.get_update_objects(makefile_id='1')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
@@ -465,7 +465,7 @@ class ProjectTests(BaseAPITest):
                                      class_name='Class 1', project_id=0)[:-1]
         self.assertTrue(info['redir_location'].startswith(expected_prefix))
         project_id = int(info['redir_location'].rsplit('/', 1)[1])
-        project = Session.query(Project).filter_by(id=project_id).first()
+        project = Project.fetch_by_id(project_id)
         self.assertEqual(json_data['name'], project.name)
 
     def test_edit(self):
@@ -505,7 +505,7 @@ class ProjectTests(BaseAPITest):
 
     def test_update_invalid_makefile_id_perms(self):
         from nudibranch.views import project_update
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         matchdict, json_data = self.get_update_objects(makefile_id='1')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
@@ -549,7 +549,7 @@ class ProjectTests(BaseAPITest):
         from nudibranch.views import project_update
         matchdict, json_data = self.get_update_objects(name='Project 1',
                                                        makefile_id='2')
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = project_update(request)
@@ -562,7 +562,7 @@ class ProjectTests(BaseAPITest):
         from nudibranch.views import project_update
         matchdict, json_data = self.get_update_objects(first_project=False,
                                                        name='Project 2')
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = project_update(request)
@@ -624,7 +624,7 @@ class ProjectTests(BaseAPITest):
 
     def test_view_detailed_invalid_id(self):
         from nudibranch.views import project_view_detailed
-        user = Session.query(User).filter_by(username='user1').first()
+        user = User.fetch_by(username='user1')
         user, matchdict = self.get_view_objects(project_id='100')
         request = self.make_request(user=user, matchdict=matchdict)
         info = project_view_detailed(request)
@@ -687,7 +687,7 @@ class SubmissionTests(BaseAPITest):
     """Test the API methods involved with Submissions."""
     @staticmethod
     def get_objects(**kwargs):
-        user = Session.query(User).filter_by(username='user1').first()
+        user = User.fetch_by(username='user1')
         project = Session.query(Project).first()
         the_file = Session.query(File).first()
         json_data = {'file_ids': [text_type(the_file.id)],
@@ -750,7 +750,7 @@ class TestCaseTests(BaseAPITest):
 
     def test_create_invalid_duplicate_name(self):
         from nudibranch.views import test_case_create
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         json_data = self.get_objects(name='Test Case 1')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
@@ -760,7 +760,7 @@ class TestCaseTests(BaseAPITest):
 
     def test_update_invalid_expected_id(self):
         from nudibranch.views import test_case_create
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         json_data = self.get_objects(expected_id='100')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
@@ -769,7 +769,7 @@ class TestCaseTests(BaseAPITest):
 
     def test_update_invalid_expected_id_perms(self):
         from nudibranch.views import test_case_create
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         json_data = self.get_objects(expected_id='1')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
@@ -778,7 +778,7 @@ class TestCaseTests(BaseAPITest):
 
     def test_update_invalid_stdin_id(self):
         from nudibranch.views import test_case_create
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         json_data = self.get_objects(stdin_id='100')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
@@ -787,7 +787,7 @@ class TestCaseTests(BaseAPITest):
 
     def test_update_invalid_stdin_id_perms(self):
         from nudibranch.views import test_case_create
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         json_data = self.get_objects(stdin_id='1')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
@@ -803,7 +803,7 @@ class TestCaseTests(BaseAPITest):
 
     def test_create_valid(self):
         from nudibranch.views import test_case_create
-        user = Session.query(User).filter_by(username='admin').first()
+        user = User.fetch_by(username='admin')
         json_data = self.get_objects(stdin_id='2')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
@@ -902,7 +902,7 @@ class UserTests(BaseAPITest):
         expected = route_path('session', request, _query={'username': 'user0'})
         self.assertEqual(expected, info['redir_location'])
         username = json_data['username']
-        user = Session.query(User).filter_by(username=username).first()
+        user = User.fetch_by(username=username)
         self.assertEqual(json_data['email'], user.email)
         self.assertEqual(json_data['name'], user.name)
         self.assertNotEqual(json_data['password'], user._password)

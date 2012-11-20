@@ -71,7 +71,8 @@ def fetch_results_worker(submission_id, user, host, remote_dir):
 
 
 def update_or_create_result(submission_id, test_case_id, results):
-    test_case_result = TestCaseResult.fetch_by_ids(submission_id, test_case_id)
+    test_case_result = TestCaseResult.fetch_by(submission_id=submission_id,
+                                               test_case_id=test_case_id)
     if test_case_result:
         test_case_result.update(results)
     else:

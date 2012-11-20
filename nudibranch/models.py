@@ -40,11 +40,6 @@ class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
     projects = relationship('Project', backref='klass')
 
-    @staticmethod
-    def fetch_by_name(name):
-        session = Session()
-        return session.query(Class).filter_by(name=name).first()
-
     def __repr__(self):
         return 'Class(name={0})'.format(self.name)
 
@@ -58,15 +53,10 @@ class File(BasicBase, Base):
     size = Column(Integer, nullable=False)
 
     @staticmethod
-    def fetch_by_sha1(sha1):
-        session = Session()
-        return session.query(File).filter_by(sha1=sha1).first()
-
-    @staticmethod
     def fetch_or_create(data, base_path, sha1sum=None):
         if not sha1sum:
             sha1sum = sha1(data).hexdigest()
-        file = File.fetch_by_sha1(sha1sum)
+        file = File.fetch_by(sha1=sha1sum)
         if not file:
             file = File(base_path=base_path, data=data, sha1=sha1sum)
             session = Session()
@@ -180,34 +170,24 @@ class Submission(BasicBase, Base):
             next_user = project.next_user(user)
             if not next_user:
                 return None
-            submissions = Submission.fetch_by_user_project_in_order(
-                next_user.id, project.id)
-            next_submission_lst = submissions[0:1]
-            if next_submission_lst:
-                return next_submission_lst[0]
+            next_submission = (Submission
+                               .query_by(project=project, user=next_user)
+                               .order_by(Submission.created_at.desc()).first())
+            if next_submission:
+                return next_submission
             user = next_user
 
     @staticmethod
-    def fetch_by_user_project(user_id, project_id):
-        return Session().query(Submission).filter_by(
-            user_id=user_id, project_id=project_id)
-
-    @staticmethod
-    def fetch_by_user_project_in_order(user_id, project_id):
-        return (Submission.fetch_by_user_project(user_id, project_id)
-                .order_by(Submission.created_at.desc()))
-
-    @staticmethod
-    def next_submission_for_user(old_submission):
+    def next_submission_for_user(prev_sub):
         '''Returns the next submission for the user behind the submission, or
         None if this is the last user's submission.  The submissions returned
         will be in order of the submission created_at time'''
         user_id = old_submission.user_id
         project_id = old_submission.project_id
-        query_for_this_user = \
-            Submission.fetch_by_user_project_in_order(user_id, project_id)
-        for_this_user = [q for q in query_for_this_user]
-        return next_in_sorted(old_submission, for_this_user)
+        submissions = (Submission
+                       .query_by(project=prev_sub.project, user=prev_sub.user)
+                       .order_by(Submission.created_at.desc()).all())
+        return next_in_sorted(prev_sub, submissions)
 
     def verify(self):
         return self.project.verify_submission(self)
@@ -265,12 +245,6 @@ class TestCaseResult(Base):
     test_case_id = Column(Integer, ForeignKey('testcase.id'),
                           primary_key=True)
 
-    @classmethod
-    def fetch_by_ids(cls, submission_id, test_case_id):
-        session = Session()
-        return session.query(cls).filter_by(
-            submission_id=submission_id, test_case_id=test_case_id).first()
-
     def update(self, data):
         for attr, val in data.items():
             setattr(self, attr, val)
@@ -289,16 +263,11 @@ class User(UserMixin, BasicBase, Base):
     submissions = relationship('Submission', backref='user')
 
     @staticmethod
-    def fetch_by_name(username):
-        session = Session()
-        return session.query(User).filter_by(username=username).first()
-
-    @staticmethod
     def login(username, password):
         """Return the user if successful, None otherwise"""
         retval = None
         try:
-            user = User.fetch_by_name(username)
+            user = User.fetch_by(username=username)
             if user and user.verify_password(password):
                 retval = user
         except OperationalError:
@@ -331,7 +300,7 @@ def initialize_sql(engine, populate=False):
 def populate_database():
     import transaction
 
-    if User.fetch_by_name('admin'):
+    if User.fetch_by(username='admin'):
         return
 
     # Admin user
