@@ -454,14 +454,19 @@ def submission_view(request):
     current_user_name = None
     next_user_submission_id = None
     if request.user.is_admin:
-        next_submission_id = Submission.next_submission_for_user(submission).id
-        project = Project.fetch_by_id(submission.project_id)
         user = User.fetch_by_id(submission.user_id)
-        if not project or not user:
+        if not user:
             return HTTPNotFound()
         current_user_name = user.name
+        next_submission = Submission.next_submission_for_user(submission)
+        if next_submission:
+            next_submission_id = next_submission.id
+        project = Project.fetch_by_id(submission.project_id)
+        if not project:
+            return HTTPNotFound()
         next_sub_next = Submission.next_user_with_submissions_submission(user, project)
-        next_user_submission_id = next_sub_next.id if next_sub_next else None
+        if next_sub_next:
+            next_user_submission_id = next_sub_next.id
 
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css'],

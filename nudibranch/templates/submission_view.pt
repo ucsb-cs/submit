@@ -23,7 +23,7 @@
     </p>
     <a tal:condition="next_user_submission_id"
        href="${_R('submission_item', submission_id=next_user_submission_id)}">
-      First submission of next user
+      First submission of next user with submissions
     </a>
     <p tal:condition="not next_user_submission_id">
       This is the last user with submissions
