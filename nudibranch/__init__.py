@@ -26,7 +26,7 @@ def add_routes(config):
     config.add_route('file_verifier', '/file_verifier')
     config.add_route('file_verifier_item', '/file_verifier/{file_verifier_id}')
     config.add_route('project', '/project')
-    config.add_route('project_item_summary', 
+    config.add_route('project_item_summary',
                      '/class/{class_name}/{project_id}')
     config.add_route('project_item_detailed',
                      '/class/{class_name}/{project_id}/{user_id}')

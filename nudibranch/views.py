@@ -10,9 +10,7 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, TextNumber,
                                        WhiteSpaceString, validated_form)
-from pyramid.httpexceptions import (HTTPException, HTTPForbidden, HTTPFound,
-                                    HTTPNotFound)
-from pyramid.renderers import render_to_response
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
@@ -207,7 +205,7 @@ def project_create(request, name, class_id, makefile_id):
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='project_edit', 
+@view_config(route_name='project_edit',
              renderer='templates/project_edit.pt',
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
@@ -215,11 +213,11 @@ def project_edit(request):
     project = Project.fetch_by_id(request.matchdict['project_id'])
     if not project:
         return HTTPNotFound()
-    action = request.route_path('project_item_summary', 
+    action = request.route_path('project_item_summary',
                                 class_name=project.klass.name,
                                 project_id=project.id)
-    return {'page_title': 'Edit Project', 
-            'project': project, 
+    return {'page_title': 'Edit Project',
+            'project': project,
             'action': action}
 
 
@@ -456,7 +454,7 @@ def submission_view(request):
             'diff_table': diff_renderer.make_whole_file()}
 
 
-@view_config(route_name='test_case', request_method='PUT', 
+@view_config(route_name='test_case', request_method='PUT',
              permission='admin',
              renderer='json')
 @validated_form(name=String('name', min_length=1),
