@@ -207,19 +207,24 @@ def project_create(request, name, class_id, makefile_id):
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='project_edit', renderer='templates/project_edit.pt',
+@view_config(route_name='project_edit', 
+             renderer='templates/project_edit.pt',
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
 def project_edit(request):
     project = Project.fetch_by_id(request.matchdict['project_id'])
     if not project:
         return HTTPNotFound()
-    action = request.route_path('project_item', class_name=project.klass.name,
+    action = request.route_path('project_item_summary', 
+                                class_name=project.klass.name,
                                 project_id=project.id)
-    return {'page_title': 'Edit Project', 'project': project, 'action': action}
+    return {'page_title': 'Edit Project', 
+            'project': project, 
+            'action': action}
 
 
-@view_config(route_name='project_new', renderer='templates/project_new.pt',
+@view_config(route_name='project_new',
+             renderer='templates/project_new.pt',
              request_method='GET', permission='admin')
 @site_layout('nudibranch:templates/layout.pt')
 def project_new(request):
@@ -231,7 +236,7 @@ def project_new(request):
     return {'page_title': 'Create Project', 'project': dummy_project}
 
 
-@view_config(route_name='project_item', request_method='POST',
+@view_config(route_name='project_item_summary', request_method='POST',
              permission='admin', renderer='json')
 @validated_form(name=String('name', min_length=2),
                 class_id=TextNumber('class_id', min_value=0),
@@ -270,48 +275,53 @@ def project_update(request, name, class_id, makefile_id):
     return http_ok(request, 'Project updated')
 
 
-@view_config(route_name='project_item', request_method=('GET', 'HEAD'),
-             permission='authenticated')
-def project_view(request):
+@view_config(route_name='project_item_summary',
+             renderer='templates/project_view_summary.pt',
+             request_method=('GET', 'HEAD'),
+             permission='admin')
+@site_layout('nudibranch:templates/layout.pt')
+def project_view_summary(request):
     project = Project.fetch_by_id(request.matchdict['project_id'])
     class_name = request.matchdict['class_name']
     if not project or project.klass.name != class_name:
         return HTTPNotFound()
-    if request.user.is_admin:
-        template = 'templates/project_view_admin.pt'
-        retval = project_view_admin(request, project)
-    else:
-        template = 'templates/project_view_user.pt'
-        retval = project_view_user(request, project)
-    if isinstance(retval, HTTPException):
-        return retval
-    return render_to_response(template, retval, request)
 
-
-@site_layout('nudibranch:templates/layout.pt')
-def project_view_admin(request, project):
     submissions = {}
+    user_truncated = {}
     for user in project.klass.users:
-        submission = (Submission.fetch_by_user_project(user.id, project.id)
-                      .order_by(Submission.created_at.desc()))[0:3]
-        submissions[user] = submission
+        first_four = (Submission.fetch_by_user_project(user.id, project.id)
+                      .order_by(Submission.created_at.desc()))[0:4]
+        user_truncated[user] = len(first_four) == 4
+        first_four.pop()
+        submissions[user] = first_four
+
     return {'page_title': 'Admin Project Page',
             'project': project,
+            'user_truncated': user_truncated,
             'submissions': sorted(submissions.items())}
 
 
+@view_config(route_name='project_item_detailed',
+             renderer='templates/project_view_detailed.pt',
+             request_method=('GET', 'HEAD'),
+             permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
-def project_view_user(request, project):
-    # Verify user is a member of the class
-    if project.klass not in request.user.classes:
-        return HTTPForbidden()
+def project_view_detailed(request):
+    project = Project.fetch_by_id(request.matchdict['project_id'])
+    class_name = request.matchdict['class_name']
+    user_id = request.matchdict['user_id']
+    user = User.fetch_by_id(user_id)
+    if not user or not project or project.klass.name != class_name or \
+            (not request.user.is_admin and request.user.id != int(user_id)):
+        return HTTPNotFound()
 
-    submissions = Submission.fetch_by_user_project(request.user.id, project.id)
+    submissions = Submission.fetch_by_user_project(user_id, project.id)
     if not submissions:
         return HTTPNotFound()
 
     return {'page_title': 'Project Page',
             'project': project,
+            'name': user.name,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
                                   reverse=True)}
@@ -446,7 +456,8 @@ def submission_view(request):
             'diff_table': diff_renderer.make_whole_file()}
 
 
-@view_config(route_name='test_case', request_method='PUT', permission='admin',
+@view_config(route_name='test_case', request_method='PUT', 
+             permission='admin',
              renderer='json')
 @validated_form(name=String('name', min_length=1),
                 args=String('args', min_length=1),

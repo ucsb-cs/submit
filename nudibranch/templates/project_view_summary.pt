@@ -20,6 +20,10 @@
 	    <a href="${_R('submission_item', submission_id=user_submission.id)}">
 	      ${user_submission.created_at}</a>
 	  </li>
+	  <li tal:condition="user_truncated[user]">
+	    <a href="${_R('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], user_id=user.id)}">
+	      Additional submissions...</a>
+	  </li>
 	</ul>
       </td>
     </tr>

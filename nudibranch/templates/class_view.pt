@@ -9,8 +9,13 @@
   <p>Projects</p>
   <ul>
     <li tal:repeat="project klass.projects">
-      <a href="${_R('project_item', class_name=project.klass.name, project_id=project.id)}">
-        ${project.name}</a></li>
+      <a tal:condition="request.user.is_admin"
+	 href="${_R('project_item_summary', class_name=project.klass.name, project_id=project.id)}">
+	${project.name}</a>
+      <a tal:condition="not request.user.is_admin"
+	 href="${_R('project_item_detailed', class_name=project.klass.name, project_id=project.id, user_id=request.user.id)}">
+        ${project.name}</a>
+    </li>
   </ul>
 
   <form name="input" action="${_R('user_class_join', class_name=klass.name,
