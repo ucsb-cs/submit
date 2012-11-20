@@ -10,7 +10,7 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, TextNumber,
                                        WhiteSpaceString, validated_form)
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound
+from pyramid.httpexceptions import HTTPFound, HTTPForbidden, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
@@ -311,9 +311,17 @@ def project_view_detailed(request):
     class_name = request.matchdict['class_name']
     user_name = request.matchdict['username']
     user = User.fetch_by_name(user_name)
-    if not user or not project or project.klass.name != class_name or \
-            (not request.user.is_admin and request.user.id != user.id):
+
+    # make sure the request matches up with the database
+    if not user or not project or project.klass.name != class_name:
         return HTTPNotFound()
+
+    # make sure that we're either an admin or a normal user
+    # enrolled in the class, and that the usernames match up
+    if not request.user.is_admin and \
+            (request.user.id != user.id or \
+                 project.klass not in request.user.classes):
+        return HTTPForbidden()
 
     submissions = Submission.fetch_by_user_project(user.id, project.id)
     if not submissions:
