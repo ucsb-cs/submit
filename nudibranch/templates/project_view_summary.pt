@@ -7,7 +7,7 @@
   <table border="1">
     <tr>
       <th>User</th>
-      <th>Most Recent Submissions</th>
+      <th>Submissions (Most Recent Three Shown)</th>
     </tr>
     <tr tal:repeat="(user, user_submissions) submissions">
       <td>
@@ -22,7 +22,7 @@
 	  </li>
 	  <li tal:condition="user_truncated[user]">
 	    <a href="${_R('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], user_id=user.id)}">
-	      Additional submissions...</a>
+	      See all submissions...</a>
 	  </li>
 	</ul>
       </td>
