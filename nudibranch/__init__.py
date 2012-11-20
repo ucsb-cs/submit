@@ -29,7 +29,7 @@ def add_routes(config):
     config.add_route('project_item_summary',
                      '/class/{class_name}/{project_id}')
     config.add_route('project_item_detailed',
-                     '/class/{class_name}/{project_id}/{user_name}')
+                     '/class/{class_name}/{project_id}/{username}')
     config.add_route('session', '/session')
     config.add_route('submission', '/submission')
     config.add_route('submission_item', '/submission/{submission_id}')

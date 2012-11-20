@@ -309,7 +309,7 @@ def project_view_summary(request):
 def project_view_detailed(request):
     project = Project.fetch_by_id(request.matchdict['project_id'])
     class_name = request.matchdict['class_name']
-    user_name = request.matchdict['user_name']
+    user_name = request.matchdict['username']
     user = User.fetch_by_name(user_name)
     if not user or not project or project.klass.name != class_name or \
             (not request.user.is_admin and request.user.id != user.id):
