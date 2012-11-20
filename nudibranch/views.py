@@ -248,18 +248,11 @@ def project_update(request, name, class_id, makefile_id):
         return http_bad_request(request, 'Invalid project_id')
     if class_id != project.klass.id or project.klass.name != class_name:
         return http_bad_request(request, 'Inconsistent class specification')
+    id_check = verify_file_ids(request, makefile_id=makefile_id)
+    if id_check:
+        return id_check
 
-    changed = False
-    if name != project.name:
-        project.name = name
-        changed = True
-    if makefile_id != project.makefile_id:
-        id_check = verify_file_ids(request, makefile_id=makefile_id)
-        if id_check:
-            return id_check
-        project.makefile_id = makefile_id
-        changed = True
-    if not changed:
+    if not project.update(name=name, makefile_id=makefile_id):
         return http_ok(request, 'Nothing to change')
 
     session = Session()
@@ -515,6 +508,37 @@ def test_case_create(request, name, args, expected_id, points, project_id,
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
+
+
+@view_config(route_name='test_case_item', request_method='POST',
+             permission='admin', renderer='json')
+@validated_form(name=String('name', min_length=1),
+                args=String('args', min_length=1),
+                expected_id=TextNumber('expected_id', min_value=0),
+                points=TextNumber('points'),
+                stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
+def test_case_update(request, name, args, expected_id, points, stdin_id):
+    test_case_id = request.matchdict['test_case_id']
+    test_case = TestCase.fetch_by_id(test_case_id)
+    if not test_case:
+        return http_bad_request(request, 'Invalid test_case_id')
+    id_check = verify_file_ids(request, expected_id=expected_id,
+                               stdin_id=stdin_id)
+    if id_check:
+        return id_check
+
+    if not test_case.update(name=name, args=args, expected_id=expected_id,
+                            points=points, stdin_id=stdin_id):
+        return http_ok(request, 'Nothing to change')
+    session = Session()
+    session.add(test_case)
+    try:
+        transaction.commit()
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'That name already exists for the project')
+    return http_ok(request, 'Test case updated')
 
 
 @view_config(route_name='user_class_join', request_method='POST',
