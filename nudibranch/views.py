@@ -285,13 +285,13 @@ def project_view_summary(request):
         return HTTPNotFound()
 
     submissions = {}
-    user_truncated = {}
+    user_truncated = set()
     for user in project.klass.users:
         first_four = \
             Submission.fetch_by_user_project_in_order(user.id,
                                                       project.id)[0:4]
         if len(first_four) == 4:
-            user_truncated[user] = True
+            user_truncated.add(user)
             first_four.pop()
         submissions[user] = first_four
 
