@@ -16,7 +16,7 @@ class Nudibranch(object):
     PATHS = {'auth':           'session',
              'file_item':      'file/{sha1sum}',
              'file_item_info': 'file/{sha1sum}/info',
-             'project_item':   'class/{class_name}/{project_id}',
+             'project_item':   'class/{class_name}/{project_id}/{username}',
              'submission':     'submission'}
 
     @staticmethod
@@ -47,6 +47,7 @@ class Nudibranch(object):
         self.request_timeout = int(config['request_timeout'])
         self._url = config['url']
         self.session = requests.session()
+        self.username = None
 
     def login(self, username=None, password=None):
         """Login to establish a valid session."""
@@ -61,6 +62,7 @@ class Nudibranch(object):
                                     password=password)
             if response.status_code == 201:
                 self.msg('logged in')
+                self.username = username
                 break
             else:
                 print(response.json['message'])
@@ -139,8 +141,10 @@ class Nudibranch(object):
 
     def verify_access(self, project):
         class_name, project_id = project.split(':')
-        url = self.url('project_item', class_name=class_name,
-                       project_id=project_id)
+        url = self.url('project_item', 
+                       class_name=class_name,
+                       project_id=project_id,
+                       username=self.username)
         response = self.request(url, 'HEAD')
         self.msg('Access test: {0}'.format(response.status_code))
         return response.status_code == 200
