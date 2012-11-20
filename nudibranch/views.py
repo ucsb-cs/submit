@@ -290,15 +290,15 @@ def project_view_summary(request):
         first_four = \
             Submission.fetch_by_user_project_in_order(user.id,
                                                       project.id)[0:4]
-        user_truncated[user] = len(first_four) == 4
-        first_four.pop()
+        if len(first_four) == 4:
+            user_truncated[user] = True
+            first_four.pop()
         submissions[user] = first_four
 
     return {'page_title': 'Admin Project Page',
             'project': project,
             'user_truncated': user_truncated,
-            'submissions': sorted(submissions.items(),
-                                  key=lambda p: (p[0].name, p[1]))}
+            'submissions': sorted(submissions.items())}
 
 
 @view_config(route_name='project_item_detailed',
@@ -309,13 +309,13 @@ def project_view_summary(request):
 def project_view_detailed(request):
     project = Project.fetch_by_id(request.matchdict['project_id'])
     class_name = request.matchdict['class_name']
-    user_id = request.matchdict['user_id']
-    user = User.fetch_by_id(user_id)
+    user_name = request.matchdict['user_name']
+    user = User.fetch_by_name(user_name)
     if not user or not project or project.klass.name != class_name or \
-            (not request.user.is_admin and request.user.id != int(user_id)):
+            (not request.user.is_admin and request.user.id != user.id):
         return HTTPNotFound()
 
-    submissions = Submission.fetch_by_user_project(user_id, project.id)
+    submissions = Submission.fetch_by_user_project(user.id, project.id)
     if not submissions:
         return HTTPNotFound()
 
@@ -334,7 +334,8 @@ def session_create(request, username, password):
     user = User.login(username, password)
     if user:
         headers = remember(request, user.id)
-        url = request.route_path('user_item', username=user.username)
+        url = request.route_path('user_item',
+                                 username=user.username)
         retval = http_created(request, redir_location=url, headers=headers)
     else:
         retval = http_conflict(request, 'Invalid login')
