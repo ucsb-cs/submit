@@ -33,9 +33,10 @@ def _init_testing_db():
                  is_admin=True)
     user1 = User(email='', name='User 1', username='user1', password='pswd1')
     user2 = User(email='', name='User 2', username='user2', password='pswd2')
+    user3 = User(email='', name='User 3', username='user3', password='pswd3')
     klass1 = Class(name='Class 1')
     klass2 = Class(name='Class 2')
-    Session.add_all([admin, user1, user2, klass1, klass2])
+    Session.add_all([admin, user1, user2, user3, klass1, klass2])
     Session.flush()
 
     # Add two projects associated with klass1
@@ -57,11 +58,12 @@ def _init_testing_db():
     Session.flush()
 
     # Make associatations
+    admin.files.append(file2)
     user1.classes.append(klass1)
     user1.files.append(file1)
-    admin.files.append(file2)
+    user3.classes.append(klass1)
     project2.makefile = file2
-    Session.add_all([user1, user2, project2])
+    Session.add_all([admin, user1, user3, project2])
     Session.flush()
 
     # Make a submission
@@ -398,7 +400,8 @@ class ProjectTests(BaseAPITest):
     def get_view_objects(username='user1', **kwargs):
         user = Session.query(User).filter_by(username=username).first()
         proj = Session.query(Project).first()
-        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
+        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id,
+                     'username': user.username}
         matchdict.update(kwargs)
         return user, matchdict
 
@@ -578,34 +581,53 @@ class ProjectTests(BaseAPITest):
         self.assertEqual('Project updated', info['message'])
         self.assertEqual('Foobar', proj.name)
 
-    def test_view(self):
-        from nudibranch.views import project_view
+    def test_view_detailed(self):
+        from nudibranch.views import project_view_detailed
         user, matchdict = self.get_view_objects()
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view(request)
+        info = project_view_detailed(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Project 1', info['project'].name)
+        self.assertEqual('User 1', info['name'])
 
-    def test_view_incorrect_class_name(self):
-        from nudibranch.views import project_view
+    def test_view_detailed_as_admin(self):
+        from nudibranch.views import project_view_detailed
+        user, matchdict = self.get_view_objects(username='admin')
+        matchdict['username'] = 'user1'
+        request = self.make_request(user=user, matchdict=matchdict)
+        info = project_view_detailed(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Project 1', info['project'].name)
+        self.assertEqual('User 1', info['name'])
+
+    def test_view_detailed_incorrect_class_name(self):
+        from nudibranch.views import project_view_detailed
         user, matchdict = self.get_view_objects(class_name='Test Invalid')
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view(request)
+        info = project_view_detailed(request)
         self.assertIsInstance(info, HTTPNotFound)
 
-    def test_view_user_not_part_of_class(self):
-        from nudibranch.views import project_view
-        user, matchdict = self.get_view_objects(username='user2')
+    def test_view_detailed_user_cannot_access_other_user_info(self):
+        from nudibranch.views import project_view_detailed
+        user, matchdict = self.get_view_objects()
+        matchdict['username'] = 'user3'
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view(request)
+        info = project_view_detailed(request)
         self.assertIsInstance(info, HTTPForbidden)
 
-    def test_view_invalid_id(self):
-        from nudibranch.views import project_view
+    def test_view_detailed_user_not_part_of_class(self):
+        from nudibranch.views import project_view_detailed
+        user, matchdict = self.get_view_objects(username='user2')
+        request = self.make_request(user=user, matchdict=matchdict)
+        info = project_view_detailed(request)
+        self.assertIsInstance(info, HTTPNotFound)
+
+    def test_view_detailed_invalid_id(self):
+        from nudibranch.views import project_view_detailed
         user = Session.query(User).filter_by(username='user1').first()
         user, matchdict = self.get_view_objects(project_id='100')
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view(request)
+        info = project_view_detailed(request)
         self.assertIsInstance(info, HTTPNotFound)
 
 
@@ -807,7 +829,7 @@ class UserTests(BaseAPITest):
     @staticmethod
     def get_objects(**kwargs):
         json_data = {'email': 'foo@bar.com', 'name': 'Foobar',
-                     'password': 'Foobar', 'username': 'user3'}
+                     'password': 'Foobar', 'username': 'user0'}
         json_data.update(kwargs)
         return json_data
 
@@ -877,7 +899,7 @@ class UserTests(BaseAPITest):
         request = self.make_request(json_body=json_data)
         info = user_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        expected = route_path('session', request, _query={'username': 'user3'})
+        expected = route_path('session', request, _query={'username': 'user0'})
         self.assertEqual(expected, info['redir_location'])
         username = json_data['username']
         user = Session.query(User).filter_by(username=username).first()
@@ -897,7 +919,7 @@ class UserTests(BaseAPITest):
         request = self.make_request()
         info = user_list(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual(3, len(info['users']))
+        self.assertEqual(4, len(info['users']))
         self.assertEqual('user1', info['users'][1].username)
 
     def test_user_view(self):

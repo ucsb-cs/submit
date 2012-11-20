@@ -1,5 +1,6 @@
 import xml.sax.saxutils
 from pyramid_addons.helpers import http_bad_request
+from .models import File
 
 
 class DummyTemplateAttr(object):

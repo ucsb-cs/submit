@@ -10,7 +10,7 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, TextNumber,
                                        WhiteSpaceString, validated_form)
-from pyramid.httpexceptions import HTTPFound, HTTPForbidden, HTTPNotFound
+from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
@@ -273,6 +273,36 @@ def project_update(request, name, class_id, makefile_id):
     return http_ok(request, 'Project updated')
 
 
+@view_config(route_name='project_item_detailed',
+             renderer='templates/project_view_detailed.pt',
+             request_method=('GET', 'HEAD'),
+             permission='authenticated')
+@site_layout('nudibranch:templates/layout.pt')
+def project_view_detailed(request):
+    class_name = request.matchdict['class_name']
+    username = request.matchdict['username']
+    user = User.fetch_by_name(username)
+    project = Project.fetch_by_id(request.matchdict['project_id'])
+    # Additional verification
+    if not (user and project) or project.klass.name != class_name \
+            or project.klass not in user.classes:
+        return HTTPNotFound()
+    # Authorization checks
+    if not request.user.is_admin and request.user != user:
+        return HTTPForbidden()
+
+    submissions = Submission.fetch_by_user_project(user.id, project.id)
+    if not submissions:
+        return HTTPNotFound()
+
+    return {'page_title': 'Project Page',
+            'project': project,
+            'name': user.name,
+            'submissions': sorted(submissions,
+                                  key=lambda s: s.created_at,
+                                  reverse=True)}
+
+
 @view_config(route_name='project_item_summary',
              renderer='templates/project_view_summary.pt',
              request_method=('GET', 'HEAD'),
@@ -287,52 +317,17 @@ def project_view_summary(request):
     submissions = {}
     user_truncated = set()
     for user in project.klass.users:
-        first_four = \
-            Submission.fetch_by_user_project_in_order(user.id,
-                                                      project.id)[0:4]
-        if len(first_four) == 4:
+        newest = (Submission.fetch_by_user_project(user.id, project.id)
+                  .order_by(Submission.created_at.desc()))[0:4]
+        # Grab four submissions to see if there are more than 3 even though
+        # only three are displayed
+        if len(newest) == 4:
             user_truncated.add(user)
-            first_four.pop()
-        submissions[user] = first_four
-
+        submissions[user] = newest[:3]
     return {'page_title': 'Admin Project Page',
             'project': project,
             'user_truncated': user_truncated,
             'submissions': sorted(submissions.items())}
-
-
-@view_config(route_name='project_item_detailed',
-             renderer='templates/project_view_detailed.pt',
-             request_method=('GET', 'HEAD'),
-             permission='authenticated')
-@site_layout('nudibranch:templates/layout.pt')
-def project_view_detailed(request):
-    project = Project.fetch_by_id(request.matchdict['project_id'])
-    class_name = request.matchdict['class_name']
-    user_name = request.matchdict['username']
-    user = User.fetch_by_name(user_name)
-
-    # make sure the request matches up with the database
-    if not user or not project or project.klass.name != class_name:
-        return HTTPNotFound()
-
-    # make sure that we're either an admin or a normal user
-    # enrolled in the class, and that the usernames match up
-    if not request.user.is_admin and \
-            (request.user.id != user.id or \
-                 project.klass not in request.user.classes):
-        return HTTPForbidden()
-
-    submissions = Submission.fetch_by_user_project(user.id, project.id)
-    if not submissions:
-        return HTTPNotFound()
-
-    return {'page_title': 'Project Page',
-            'project': project,
-            'name': user.name,
-            'submissions': sorted(submissions,
-                                  key=lambda s: s.created_at,
-                                  reverse=True)}
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
@@ -472,7 +467,8 @@ def submission_view(request):
         project = Project.fetch_by_id(submission.project_id)
         if not project:
             return HTTPNotFound()
-        next_sub_next = Submission.next_user_with_submissions_submission(user, project)
+        next_sub_next = Submission.next_user_with_submissions_submission(
+            user, project)
         if next_sub_next:
             next_user_submission_id = next_sub_next.id
 
@@ -498,7 +494,6 @@ def submission_view(request):
                 stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
 def test_case_create(request, name, args, expected_id, points, project_id,
                      stdin_id):
-    session = Session()
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
@@ -509,6 +504,7 @@ def test_case_create(request, name, args, expected_id, points, project_id,
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
                          points=points, project_id=project_id,
                          stdin_id=stdin_id)
+    session = Session()
     session.add(test_case)
     try:
         session.flush()  # Cannot commit the transaction here
