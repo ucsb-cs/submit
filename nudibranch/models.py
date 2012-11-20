@@ -182,8 +182,6 @@ class Submission(BasicBase, Base):
         '''Returns the next submission for the user behind the submission, or
         None if this is the last user's submission.  The submissions returned
         will be in order of the submission created_at time'''
-        user_id = old_submission.user_id
-        project_id = old_submission.project_id
         submissions = (Submission
                        .query_by(project=prev_sub.project, user=prev_sub.user)
                        .order_by(Submission.created_at.desc()).all())
@@ -244,6 +242,12 @@ class TestCaseResult(Base):
                            primary_key=True)
     test_case_id = Column(Integer, ForeignKey('testcase.id'),
                           primary_key=True)
+
+    @classmethod
+    def fetch_by_ids(cls, submission_id, test_case_id):
+        session = Session()
+        return session.query(cls).filter_by(
+            submission_id=submission_id, test_case_id=test_case_id).first()
 
     def update(self, data):
         for attr, val in data.items():
