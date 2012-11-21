@@ -167,6 +167,46 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     return http_created(request, redir_location=redir_location)
 
 
+@view_config(route_name='file_verifier_item', request_method='POST',
+             permission='admin', renderer='json')
+@validated_form(filename=String('filename', min_length=1),
+                min_size=TextNumber('min_size', min_value=0),
+                max_size=TextNumber('max_size', min_value=0, optional=True),
+                min_lines=TextNumber('min_lines', min_value=0),
+                max_lines=TextNumber('max_lines', min_value=0, optional=True))
+def file_verifier_update(request, filename, min_size, max_size, min_lines,
+                         max_lines):
+    # Additional verification
+    if max_size is not None and max_size < min_size:
+        return http_bad_request(request, 'min_size cannot be > max_size')
+    if max_lines is not None and max_lines < min_lines:
+        return http_bad_request(request, 'min_lines cannot be > max_lines')
+    if min_size < min_lines:
+        return http_bad_request(request, 'min_lines cannot be > min_size')
+    if max_size is not None and max_lines is not None and max_size < max_lines:
+        return http_bad_request(request, 'max_lines cannot be > max_size')
+
+    file_verifier_id = request.matchdict['file_verifier_id']
+    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
+    if not file_verifier:
+        return http_bad_request(request, 'Invalid file_verifier_id')
+
+    if not file_verifier.update(filename=filename, min_size=min_size,
+                                max_size=max_size, min_lines=min_lines,
+                                max_lines=max_lines):
+        return http_ok(request, 'Nothing to change')
+
+    session = Session()
+    session.add(file_verifier)
+    try:
+        transaction.commit()
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'That filename already exists for the project')
+    return http_ok(request, 'File verifier updated')
+
+
 @view_config(route_name='home', renderer='templates/home.pt',
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
