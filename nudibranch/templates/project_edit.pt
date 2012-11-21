@@ -14,7 +14,6 @@
       <label for="makefile">Select a Makefile: </label>
       <input name="makefile_id" id="makefile" type="file" />
       <input type="hidden" name="makefile_id" value="${project.makefile_id}" />
-      <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}" />
       <br/>
       <input type="submit" name="submit" value="Update" />
     </fieldset>

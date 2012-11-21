@@ -237,16 +237,15 @@ def project_new(request):
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='admin', renderer='json')
 @validated_form(name=String('name', min_length=2),
-                class_id=TextNumber('class_id', min_value=0),
                 makefile_id=TextNumber('makefile_id', min_value=0,
                                        optional=True))
-def project_update(request, name, class_id, makefile_id):
+def project_update(request, name, makefile_id):
     project_id = request.matchdict['project_id']
     class_name = request.matchdict['class_name']
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
-    if class_id != project.klass.id or project.klass.name != class_name:
+    if project.klass.name != class_name:
         return http_bad_request(request, 'Inconsistent class specification')
     id_check = verify_file_ids(request, makefile_id=makefile_id)
     if id_check:

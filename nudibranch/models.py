@@ -208,7 +208,7 @@ class TestCase(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'project_id'),)
     args = Column(Unicode, nullable=False)
     expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
-    expected_id = Column(Integer, ForeignKey('file.id'))
+    expected_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     name = Column(Unicode, nullable=False)
     points = Column(Integer, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)

@@ -45,16 +45,23 @@ def _init_testing_db():
     Session.add_all([project1, project2])
     Session.flush()
 
-    # Add two files, a file verifier, and a test case to project1
+    # Add two files, and a file verifier
     file1 = File(base_path=FILE_DIR, data=b'',
                  sha1='da39a3ee5e6b4b0d3255bfef95601890afd80709')
     file2 = File(base_path=FILE_DIR, data=b'all:\n\tls',
                  sha1='5a874c84b1abdd164ce1ac6cdaa901575d3d7612')
     filev = FileVerifier(filename='File 1', min_size=0, min_lines=0,
                          project_id=project1.id)
-    test_case = TestCase(name='Test Case 1', args='a.out', points=1,
-                         project_id=project1.id)
-    Session.add_all([file1, file2, filev, test_case])
+    Session.add_all([file1, file2, filev])
+    Session.flush()
+
+    # Add two test cases
+    test_case1 = TestCase(name='Test Case 1', args='a.out', points=1,
+                          project_id=project1.id, expected_id=file2.id)
+    test_case2 = TestCase(name='Test Case 2', args='a.out', points=1,
+                          project_id=project1.id, expected_id=file2.id,
+                          stdin_id=file2.id)
+    Session.add_all([test_case1, test_case2])
     Session.flush()
 
     # Make associatations
@@ -390,7 +397,7 @@ class ProjectTests(BaseAPITest):
         else:
             proj = Session.query(Project).all()[1]
         matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
-        json_data = {'name': 'Foobar', 'class_id': text_type(proj.klass.id)}
+        json_data = {'name': 'Foobar'}
         if md_update:
             matchdict.update(md_update)
         json_data.update(kwargs)
@@ -432,8 +439,8 @@ class ProjectTests(BaseAPITest):
 
     def test_create_invalid_makefile_id(self):
         from nudibranch.views import project_create
-        matchdict, json_data = self.get_update_objects(makefile_id='100')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        json_data = self.get_objects(makefile_id='100')
+        request = self.make_request(json_body=json_data)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid makefile_id', info['messages'])
@@ -441,9 +448,8 @@ class ProjectTests(BaseAPITest):
     def test_create_invalid_makefile_id_perms(self):
         from nudibranch.views import project_create
         user = User.fetch_by(username='admin')
-        matchdict, json_data = self.get_update_objects(makefile_id='1')
-        request = self.make_request(json_body=json_data, matchdict=matchdict,
-                                    user=user)
+        json_data = self.get_objects(makefile_id='1')
+        request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid makefile_id', info['messages'])
@@ -521,14 +527,6 @@ class ProjectTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid project_id', info['messages'])
 
-    def test_update_inconsistent_class_id(self):
-        from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects(class_id='100')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
-        info = project_update(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Inconsistent class specification', info['messages'])
-
     def test_update_inconsistent_class_name(self):
         from nudibranch.views import project_update
         matchdict, json_data = self.get_update_objects({'class_name': 'Ivld'})
@@ -544,6 +542,13 @@ class ProjectTests(BaseAPITest):
         info = project_update(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Nothing to change', info['message'])
+
+    def test_update_no_params(self):
+        from nudibranch.views import project_update
+        request = self.make_request(json_body={})
+        info = project_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(1, len(info['messages']))
 
     def test_update_valid_add_makefile(self):
         from nudibranch.views import project_update
@@ -743,10 +748,24 @@ class TestCaseTests(BaseAPITest):
     @staticmethod
     def get_objects(**kwargs):
         project = Session.query(Project).first()
-        json_data = {'name': 'Test Case 2', 'args': 'a.out', 'points': '0',
+        json_data = {'name': 'Test Case 3', 'args': 'test', 'points': '10',
                      'project_id': text_type(project.id), 'expected_id': '2'}
         json_data.update(kwargs)
         return json_data
+
+    @staticmethod
+    def get_update_objects(md_update=None, first_test_case=True, **kwargs):
+        if first_test_case:
+            test_case = Session.query(TestCase).first()
+        else:
+            test_case = Session.query(TestCase).all()[1]
+        matchdict = {'test_case_id': test_case.id}
+        json_data = {'name': 'Test Case 3', 'args': 'test', 'points': '10',
+                     'expected_id': '2'}
+        if md_update:
+            matchdict.update(md_update)
+        json_data.update(kwargs)
+        return matchdict, json_data
 
     def test_create_invalid_duplicate_name(self):
         from nudibranch.views import test_case_create
@@ -758,7 +777,7 @@ class TestCaseTests(BaseAPITest):
         self.assertEqual('That name already exists for the project',
                          info['message'])
 
-    def test_update_invalid_expected_id(self):
+    def test_create_invalid_expected_id(self):
         from nudibranch.views import test_case_create
         user = User.fetch_by(username='admin')
         json_data = self.get_objects(expected_id='100')
@@ -767,7 +786,7 @@ class TestCaseTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid expected_id', info['messages'])
 
-    def test_update_invalid_expected_id_perms(self):
+    def test_create_invalid_expected_id_perms(self):
         from nudibranch.views import test_case_create
         user = User.fetch_by(username='admin')
         json_data = self.get_objects(expected_id='1')
@@ -776,7 +795,7 @@ class TestCaseTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid expected_id', info['messages'])
 
-    def test_update_invalid_stdin_id(self):
+    def test_create_invalid_stdin_id(self):
         from nudibranch.views import test_case_create
         user = User.fetch_by(username='admin')
         json_data = self.get_objects(stdin_id='100')
@@ -785,7 +804,7 @@ class TestCaseTests(BaseAPITest):
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid stdin_id', info['messages'])
 
-    def test_update_invalid_stdin_id_perms(self):
+    def test_create_invalid_stdin_id_perms(self):
         from nudibranch.views import test_case_create
         user = User.fetch_by(username='admin')
         json_data = self.get_objects(stdin_id='1')
@@ -822,6 +841,117 @@ class TestCaseTests(BaseAPITest):
         data = test_case.serialize()
         self.assertEqual(test_case.id, data['id'])
         self.assertEqual(test_case.args, data['args'])
+
+    def test_update_invalid_duplicate_name(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(name='Test Case 2')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPConflict.code, request.response.status_code)
+        self.assertEqual('That name already exists for the project',
+                         info['message'])
+
+    def test_update_invalid_expected_id(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(expected_id='100')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid expected_id', info['messages'])
+
+    def test_update_invalid_expected_id_perms(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(expected_id='1')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid expected_id', info['messages'])
+
+    def test_update_invalid_stdin_id(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(stdin_id='100')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid stdin_id', info['messages'])
+
+    def test_update_invalid_stdin_id_perms(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(stdin_id='1')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual('Invalid stdin_id', info['messages'])
+
+    def test_update_no_params(self):
+        from nudibranch.views import test_case_update
+        request = self.make_request(json_body={})
+        info = test_case_update(request)
+        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
+        self.assertEqual(4, len(info['messages']))
+
+    def test_update_no_change(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(args='a.out',
+                                                       name='Test Case 1',
+                                                       points='1')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Nothing to change', info['message'])
+
+    def test_update_valid_add_stdin(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(stdin_id='2')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Test case updated', info['message'])
+        tc = TestCase.fetch_by_id(matchdict['test_case_id'])
+        self.assertEqual(int(json_data['stdin_id']), tc.stdin_id)
+
+    def test_update_valid_remove_stdin(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects(first_test_case=False)
+        tc = TestCase.fetch_by_id(matchdict['test_case_id'])
+        self.assertNotEqual(None, tc.stdin_id)
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Test case updated', info['message'])
+        tc = TestCase.fetch_by_id(matchdict['test_case_id'])
+        self.assertEqual(None, tc.stdin_id)
+
+    def test_update_valid_update_attrs(self):
+        from nudibranch.views import test_case_update
+        user = User.fetch_by(username='admin')
+        matchdict, json_data = self.get_update_objects()
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
+        info = test_case_update(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Test case updated', info['message'])
+        tc = TestCase.fetch_by_id(matchdict['test_case_id'])
+        self.assertEqual(None, tc.stdin_id)
+        self.assertEqual(json_data['args'], tc.args)
+        self.assertEqual(json_data['name'], tc.name)
+        self.assertEqual(int(json_data['points']), tc.points)
 
 
 class UserTests(BaseAPITest):
