@@ -23,6 +23,14 @@ Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 builtins._sqla_mixins_session = Session
 
 
+testable_to_file_verifier = Table('testable_to_file_verifier', Base.metadata,
+                                  Column('testable_id', Integer,
+                                         ForeignKey('testable.id'),
+                                         nullable=False),
+                                  Column('file_verifier_id', Integer,
+                                         ForeignKey('fileverifier.id'),
+                                         nullable=False))
+
 user_to_class = Table('user_to_class', Base.metadata,
                       Column('user_id', Integer, ForeignKey('user.id'),
                              nullable=False),
@@ -95,6 +103,7 @@ class FileVerifier(BasicBase, Base):
     max_size = Column(Integer)
     min_lines = Column(Integer, nullable=False)
     max_lines = Column(Integer)
+    optional = Column(Boolean, default=False, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
     def verify(self, file):
@@ -115,13 +124,13 @@ class FileVerifier(BasicBase, Base):
 
 class Project(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
-    name = Column(Unicode, nullable=False)
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     file_verifiers = relationship('FileVerifier', backref='project')
-    submissions = relationship('Submission', backref='project')
-    test_cases = relationship('TestCase', backref='project')
     makefile = relationship(File)
     makefile_id = Column(Integer, ForeignKey('file.id'))
+    name = Column(Unicode, nullable=False)
+    submissions = relationship('Submission', backref='project')
+    testables = relationship('Testable', backref='project')
 
     def verify_submission(self, submission):
         results = {'missing': [], 'passed': [], 'failed': []}
@@ -205,13 +214,13 @@ class SubmissionToFile(Base):
 
 
 class TestCase(BasicBase, Base):
-    __table_args__ = (UniqueConstraint('name', 'project_id'),)
+    __table_args__ = (UniqueConstraint('name', 'testable_id'),)
     args = Column(Unicode, nullable=False)
     expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
     expected_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     name = Column(Unicode, nullable=False)
     points = Column(Integer, nullable=False)
-    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id')
     stdin_id = Column(Integer, ForeignKey('file.id'))
     test_case_for = relationship('TestCaseResult', backref='test_case')
@@ -255,6 +264,18 @@ class TestCaseResult(Base):
         self.created_at = func.now()
 
 
+class Testable(BasicBase, Base):
+    """Represents a set of properties for a single program to test."""
+    #build_files = relationship(...)  # Additional files used with Make
+    executable = Column(Unicode, nullable=False)
+    #execution_files = relationship(...)  # Additional files used
+    file_verifiers = relationship(FileVerifier, backref='testables',
+                                  secondary=testable_to_file_verifier)
+    make_target = Column(Unicode)  # When None, no make is required
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    test_cases = relationship('TestCase', backref='testable')
+
+
 class User(UserMixin, BasicBase, Base):
     """The UserMixin provides the `username` and `password` attributes.
     `password` is a write-only attribute and can be verified using the
@@ -264,7 +285,7 @@ class User(UserMixin, BasicBase, Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     classes = relationship(Class, secondary=user_to_class, backref='users')
     files = relationship(File, secondary=user_to_file, backref='users')
-    submissions = relationship('Submission', backref='user')
+    submissions = relationship(Submission, backref='user')
 
     @staticmethod
     def login(username, password):
