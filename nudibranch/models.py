@@ -227,6 +227,15 @@ class SubmissionToFile(Base):
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            primary_key=True)
 
+    @staticmethod
+    def fetch_file_mapping_for_submission(submission_id):
+        '''Given a submission id, it returns a mapping of filenames
+        to File objects'''
+        query = Session().query(
+            SubmissionToFile.filename,
+            SubmissionToFile.file).filter_by(submission_id=submission_id)
+        return dict(list(query))
+
 
 class TestCase(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'project_id'),)
