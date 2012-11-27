@@ -141,7 +141,7 @@ class Nudibranch(object):
 
     def verify_access(self, project):
         class_name, project_id = project.split(':')
-        url = self.url('project_item', 
+        url = self.url('project_item',
                        class_name=class_name,
                        project_id=project_id,
                        username=self.username)

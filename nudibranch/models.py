@@ -11,7 +11,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
-from .helpers import next_in_sorted
 
 if sys.version_info < (3, 0):
     builtins = __import__('__builtin__')
@@ -41,11 +40,6 @@ class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
     projects = relationship('Project', backref='klass')
 
-    @staticmethod
-    def fetch_by_name(name):
-        session = Session()
-        return session.query(Class).filter_by(name=name).first()
-
     def __repr__(self):
         return 'Class(name={0})'.format(self.name)
 
@@ -59,15 +53,10 @@ class File(BasicBase, Base):
     size = Column(Integer, nullable=False)
 
     @staticmethod
-    def fetch_by_sha1(sha1):
-        session = Session()
-        return session.query(File).filter_by(sha1=sha1).first()
-
-    @staticmethod
     def fetch_or_create(data, base_path, sha1sum=None):
         if not sha1sum:
             sha1sum = sha1(data).hexdigest()
-        file = File.fetch_by_sha1(sha1sum)
+        file = File.fetch_by(sha1=sha1sum)
         if not file:
             file = File(base_path=base_path, data=data, sha1=sha1sum)
             session = Session()
@@ -181,35 +170,22 @@ class Submission(BasicBase, Base):
             next_user = project.next_user(user)
             if not next_user:
                 return None
-            submissions = Submission.fetch_by_user_project_in_order(next_user.id,
-                                                                    project.id)
-            next_submission_lst = submissions[0:1]
-            if next_submission_lst:
-                return next_submission_lst[ 0 ]
+            next_submission = (Submission
+                               .query_by(project=project, user=next_user)
+                               .order_by(Submission.created_at.desc()).first())
+            if next_submission:
+                return next_submission
             user = next_user
-        
-    @staticmethod
-    def fetch_by_user_project(user_id, project_id):
-        return Session().query(Submission).filter_by(
-            user_id=user_id, project_id=project_id)
 
     @staticmethod
-    def fetch_by_user_project_in_order(user_id, project_id): 
-        return (Submission.fetch_by_user_project(user_id, project_id)
-                .order_by(Submission.created_at.desc()))
-
-    @staticmethod
-    def next_submission_for_user(old_submission):
-        '''Returns the next submission for the user behind the submission,
-        or None if this is the last user's submission.  The submissions 
-        returned will be in order of the submission created_at time'''
-        retval = None
-        user_id = old_submission.user_id
-        project_id = old_submission.project_id
-        query_for_this_user = \
-            Submission.fetch_by_user_project_in_order(user_id, project_id)
-        for_this_user = [q for q in query_for_this_user]
-        return next_in_sorted(old_submission, for_this_user)
+    def next_submission_for_user(prev_sub):
+        '''Returns the next submission for the user behind the submission, or
+        None if this is the last user's submission.  The submissions returned
+        will be in order of the submission created_at time'''
+        submissions = (Submission
+                       .query_by(project=prev_sub.project, user=prev_sub.user)
+                       .order_by(Submission.created_at.desc()).all())
+        return next_in_sorted(prev_sub, submissions)
 
     def verify(self):
         return self.project.verify_submission(self)
@@ -241,7 +217,7 @@ class TestCase(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'project_id'),)
     args = Column(Unicode, nullable=False)
     expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
-    expected_id = Column(Integer, ForeignKey('file.id'))
+    expected_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     name = Column(Unicode, nullable=False)
     points = Column(Integer, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
@@ -300,16 +276,11 @@ class User(UserMixin, BasicBase, Base):
     submissions = relationship('Submission', backref='user')
 
     @staticmethod
-    def fetch_by_name(username):
-        session = Session()
-        return session.query(User).filter_by(username=username).first()
-
-    @staticmethod
     def login(username, password):
         """Return the user if successful, None otherwise"""
         retval = None
         try:
-            user = User.fetch_by_name(username)
+            user = User.fetch_by(username=username)
             if user and user.verify_password(password):
                 retval = user
         except OperationalError:
@@ -342,7 +313,7 @@ def initialize_sql(engine, populate=False):
 def populate_database():
     import transaction
 
-    if User.fetch_by_name('admin'):
+    if User.fetch_by(username='admin'):
         return
 
     # Admin user
@@ -368,3 +339,7 @@ def populate_database():
         print('Admin user created')
     except IntegrityError:
         transaction.abort()
+
+
+# Prevent circular import
+from .helpers import next_in_sorted
