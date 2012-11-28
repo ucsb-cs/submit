@@ -148,16 +148,16 @@ class Project(BasicBase, Base):
     def next_user(self, user):
         '''Returns the next user (determined by name), or None if this
         is the last user'''
-        return Session().query(User).\
-            filter(user_to_class.c.class_id == self.class_id, 
-                   User.name > user.name).\
-            order_by(User.name).first()
+        return (Session().query(User).
+                filter(user_to_class.c.class_id == self.class_id,
+                       User.name > user.name).
+                order_by(User.name).first())
 
     def prev_user(self, user):
-        return Session().query(User).\
-            filter(user_to_class.c.class_id == self.class_id, 
-                   User.name > user.name).\
-            order_by(User.name).first()
+        return (Session().query(User).
+                filter(user_to_class.c.class_id == self.class_id,
+                       User.name > user.name).
+                order_by(User.name).first())
 
 
 class Submission(BasicBase, Base):
@@ -190,7 +190,7 @@ class Submission(BasicBase, Base):
     def later_submission_for_user(earlier_sub):
         return next_in_sorted(
             earlier_sub,
-            Submission.sorted_submissions(earlier_sub))
+            Submission.sorted_submissions_for_submission(earlier_sub))
 
     @staticmethod
     def earlier_submission_for_user(later_sub):
@@ -210,7 +210,7 @@ class Submission(BasicBase, Base):
         # the below code is needed for SQLite
         return prev_in_sorted(
             later_sub,
-            Submission.sorted_submissions(later_sub))
+            Submission.sorted_submissions_for_submission(later_sub))
 
     @staticmethod
     def query_submissions_for_same(submission):
@@ -220,12 +220,16 @@ class Submission(BasicBase, Base):
                                    project=submission.project)
 
     @staticmethod
-    def sorted_submissions(submission):
-        '''Like query_all_submissions, but it will get them in order
-        sorted by the created_at field.'''
-        return sorted(
+    def sorted_submissions_for_submission(submission, reverse=False):
+        return Submission.sorted_submissions(
             Submission.query_submissions_for_same(submission).all(),
-            key=lambda s: s.created_at)
+            reverse)
+
+    @staticmethod
+    def sorted_submissions(submissions, reverse=False):
+        return sorted(submissions,
+                      key=lambda s: s.created_at,
+                      reverse=reverse)
 
     def verify(self):
         return self.project.verify_submission(self)

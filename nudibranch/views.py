@@ -349,8 +349,10 @@ def project_view_summary(request):
     submissions = {}
     user_truncated = set()
     for user in project.klass.users:
-        newest = (Submission.query_by(project_id=project.id, user_id=user.id)
-                  .order_by(Submission.created_at.desc()))[0:4]
+        # more SQLite sadness
+        newest = Submission.sorted_submissions(
+            Submission.query_by(project_id=project.id, user_id=user.id).all(),
+            reverse=True)[0:4]
         # Grab four submissions to see if there are more than 3 even though
         # only three are displayed
         if len(newest) == 4:
