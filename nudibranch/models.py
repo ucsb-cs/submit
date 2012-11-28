@@ -172,7 +172,7 @@ class Submission(BasicBase, Base):
 
     @staticmethod
     def next_user_with_submissions_submission(user, project):
-        '''Gets the first submission availbale for the next user,
+        '''Gets the first submission available for the next user,
         skipping any users who have no submissions.  Returns None if
         we are at the end'''
         while True:

@@ -327,9 +327,19 @@ def project_view_detailed(request):
     if not submissions:
         return HTTPNotFound()
 
+    next_user_name = None
+    next_username = None
+    if request.user.is_admin:
+        next_user = project.next_user(user)
+        if next_user:
+            next_username = next_user.username
+            next_user_name = next_user.name
+
     return {'page_title': 'Project Page',
             'project': project,
             'name': user.name,
+            'next_user_name': next_user_name,
+            'next_username': next_username,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
                                   reverse=True)}

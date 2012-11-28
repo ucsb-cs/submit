@@ -14,5 +14,11 @@
     <li tal:repeat="submission submissions">
       <a href="${_R('submission_item', submission_id=submission.id)}">${str(submission.created_at)}</a></li>
   </ul>
+  <p tal:condition="request.user.is_admin and not next_user_name">
+    This is the last user for this project</p>
+  <p tal:condition="request.user.is_admin and next_user_name">
+    <a href="${_R('project_item_detailed', class_name=request.matchdict['class_name'], username=next_username, project_id=request.matchdict['project_id'])}">
+      See submissions for ${next_user_name}, the next user</a>
+  </p>
 </div>
 </div>
