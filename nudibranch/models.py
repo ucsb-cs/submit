@@ -148,7 +148,16 @@ class Project(BasicBase, Base):
     def next_user(self, user):
         '''Returns the next user (determined by name), or None if this
         is the last user'''
-        return next_in_sorted(user, sorted(self.klass.users))
+        return Session().query(User).\
+            filter(user_to_class.c.class_id == self.class_id, 
+                   User.name > user.name).\
+            order_by(User.name).first()
+
+    def prev_user(self, user):
+        return Session().query(User).\
+            filter(user_to_class.c.class_id == self.class_id, 
+                   User.name > user.name).\
+            order_by(User.name).first()
 
 
 class Submission(BasicBase, Base):
@@ -178,14 +187,45 @@ class Submission(BasicBase, Base):
             user = next_user
 
     @staticmethod
-    def next_submission_for_user(prev_sub):
+    def later_submission_for_user(earlier_sub):
+        return next_in_sorted(
+            earlier_sub,
+            Submission.sorted_submissions(earlier_sub))
+
+    @staticmethod
+    def earlier_submission_for_user(later_sub):
         '''Returns the next submission for the user behind the submission, or
         None if this is the last user's submission.  The submissions returned
         will be in order of the submission created_at time'''
-        submissions = (Submission
-                       .query_by(project=prev_sub.project, user=prev_sub.user)
-                       .order_by(Submission.created_at.desc()).all())
-        return next_in_sorted(prev_sub, submissions)
+
+        # the below code is if we have proper datetime support at the
+        # database level (i.e. not SQLite)
+        # return Session().query(Submission).\
+        #     filter(Submission.project_id == later_sub.project_id,
+        #            Submission.user_id == later_sub.user_id,
+        #            Submission.created_at < later_sub.created_at).\
+        #     order_by(Submission.created_at.desc()).\
+        #     first()
+
+        # the below code is needed for SQLite
+        return prev_in_sorted(
+            later_sub,
+            Submission.sorted_submissions(later_sub))
+
+    @staticmethod
+    def query_submissions_for_same(submission):
+        '''Gets all submissions for the same project and user
+        as the given submission'''
+        return Submission.query_by(user=submission.user,
+                                   project=submission.project)
+
+    @staticmethod
+    def sorted_submissions(submission):
+        '''Like query_all_submissions, but it will get them in order
+        sorted by the created_at field.'''
+        return sorted(
+            Submission.query_submissions_for_same(submission).all(),
+            key=lambda s: s.created_at)
 
     def verify(self):
         return self.project.verify_submission(self)
@@ -342,4 +382,4 @@ def populate_database():
 
 
 # Prevent circular import
-from .helpers import next_in_sorted
+from .helpers import next_in_sorted, prev_in_sorted

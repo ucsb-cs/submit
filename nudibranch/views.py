@@ -493,7 +493,7 @@ def submission_view(request):
         if not user:
             return HTTPNotFound()
         current_user_name = user.name
-        next_submission = Submission.next_submission_for_user(submission)
+        next_submission = Submission.earlier_submission_for_user(submission)
         if next_submission:
             next_submission_id = next_submission.id
         project = Project.fetch_by_id(submission.project_id)

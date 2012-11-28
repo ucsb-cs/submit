@@ -30,9 +30,23 @@ def escape(string):
                                             "'": "&apos;"})
 
 
+def offset_from_sorted(item, lst, offset):
+    '''Takes an item to look for, a sorted list, and an offset.
+    If the item is in the list and the offset is valid, then it
+    will return the item at that offset.  Returns None if the
+    offset is out of bounds and IndexError if the given item isn't
+    found.'''
+    index = lst.index(item) + offset
+    if index >= 0 and index < len(lst):
+        return lst[index]
+
+
 def next_in_sorted(item, lst):
     '''Returns the next item in the given (assumed sorted) list,
     or None if it is already the last item.  Throws an IndexError if
     it doesn't exist at all'''
-    retval_idx = lst.index(item) + 1
-    return lst[retval_idx] if retval_idx < len(lst) else None
+    return offset_from_sorted(item, lst, 1)
+
+
+def prev_in_sorted(item, lst):
+    return offset_from_sorted(item, lst, -1)
