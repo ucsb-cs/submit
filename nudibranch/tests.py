@@ -6,8 +6,8 @@ from chameleon.zpt.template import Macro
 from mock import MagicMock
 from nudibranch import add_routes
 from nudibranch.models import (Class, File, FileVerifier, Project, Session,
-                               Submission, SubmissionToFile, TestCase, User,
-                               initialize_sql)
+                               Submission, SubmissionToFile, TestCase,
+                               Testable, User, initialize_sql)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPForbidden, HTTPNotFound, HTTPOk)
@@ -40,9 +40,15 @@ def _init_testing_db():
     Session.flush()
 
     # Add two projects associated with klass1
-    project1 = Project(name='Project 1', class_id=klass1.id)
-    project2 = Project(name='Project 2', class_id=klass1.id)
+    project1 = Project(name='Project 1', klass=klass1)
+    project2 = Project(name='Project 2', klass=klass1)
     Session.add_all([project1, project2])
+    Session.flush()
+
+    # Add two testables associated with project1
+    testable1 = Testable(executable='a.out', make_target='', project=project1)
+    testable2 = Testable(executable='a.out', project=project1)
+    Session.add_all([testable1, testable2])
     Session.flush()
 
     # Add two files, and two file verifiers
@@ -51,18 +57,19 @@ def _init_testing_db():
     file2 = File(base_path=FILE_DIR, data=b'all:\n\tls',
                  sha1='5a874c84b1abdd164ce1ac6cdaa901575d3d7612')
     filev1 = FileVerifier(filename='File 1', min_size=0, min_lines=0,
-                          project_id=project1.id)
+                          project=testable1.project)
+    filev1.testables.append(testable1)
     filev2 = FileVerifier(filename='File 2', min_size=0, min_lines=0,
-                          project_id=project1.id)
+                          project=testable1.project)
+    filev2.testables.append(testable1)
     Session.add_all([file1, file2, filev1, filev2])
     Session.flush()
 
     # Add two test cases
     test_case1 = TestCase(name='Test Case 1', args='a.out', points=1,
-                          project_id=project1.id, expected_id=file2.id)
+                          testable=testable1, expected=file2)
     test_case2 = TestCase(name='Test Case 2', args='a.out', points=1,
-                          project_id=project1.id, expected_id=file2.id,
-                          stdin_id=file2.id)
+                          testable=testable1, expected=file2, stdin=file2)
     Session.add_all([test_case1, test_case2])
     Session.flush()
 
@@ -317,9 +324,9 @@ class FileTests(BaseAPITest):
 class FileVerifierTests(BaseAPITest):
     @staticmethod
     def get_objects(**kwargs):
-        project = Session.query(Project).first()
+        testable = Session.query(Testable).first()
         json_data = {'filename': 'File 3', 'min_size': '0', 'min_lines': '0',
-                     'project_id': text_type(project.id)}
+                     'testable_id': text_type(testable.id)}
         json_data.update(kwargs)
         return json_data
 
@@ -384,11 +391,12 @@ class FileVerifierTests(BaseAPITest):
         request = self.make_request(json_body=json_data)
         info = file_verifier_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        project = Session.query(Project).first()
-        expected = route_path('project_edit', request, project_id=project.id,
-                              class_name=project.klass.name)
+        testable = Session.query(Testable).first()
+        expected = route_path('project_edit', request,
+                              class_name=testable.project.klass.name,
+                              project_id=testable.project.id)
         self.assertEqual(expected, info['redir_location'])
-        file_verifier = project.file_verifiers[-1]
+        file_verifier = testable.file_verifiers[-1]
         self.assertEqual(json_data['filename'], file_verifier.filename)
 
     def test_update_invalid_duplicate_name(self):
@@ -819,9 +827,9 @@ class TestCaseTests(BaseAPITest):
     """Test the API methods involved with modifying test cases."""
     @staticmethod
     def get_objects(**kwargs):
-        project = Session.query(Project).first()
+        testable = Session.query(Testable).first()
         json_data = {'name': 'Test Case 3', 'args': 'test', 'points': '10',
-                     'project_id': text_type(project.id), 'expected_id': '2'}
+                     'testable_id': text_type(testable.id), 'expected_id': '2'}
         json_data.update(kwargs)
         return json_data
 
@@ -846,7 +854,7 @@ class TestCaseTests(BaseAPITest):
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
-        self.assertEqual('That name already exists for the project',
+        self.assertEqual('That name already exists for the testable',
                          info['message'])
 
     def test_create_invalid_expected_id(self):
@@ -899,11 +907,12 @@ class TestCaseTests(BaseAPITest):
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        project = Session.query(Project).first()
-        expected = route_path('project_edit', request, project_id=project.id,
-                              class_name=project.klass.name)
+        testable = Session.query(Testable).first()
+        expected = route_path('project_edit', request,
+                              class_name=testable.project.klass.name,
+                              project_id=testable.project.id)
         self.assertEqual(expected, info['redir_location'])
-        test_case = project.test_cases[-1]
+        test_case = testable.test_cases[-1]
         self.assertEqual(json_data['name'], test_case.name)
         self.assertEqual(int(json_data['expected_id']), test_case.expected_id)
         self.assertEqual(int(json_data['stdin_id']), test_case.stdin_id)

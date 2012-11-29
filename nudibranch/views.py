@@ -19,7 +19,7 @@ from .diff_render import HTMLDiff
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .helpers import DummyTemplateAttr, verify_file_ids
 from .models import (Class, File, FileVerifier, Project, Session, Submission,
-                     SubmissionToFile, TestCase, User)
+                     SubmissionToFile, TestCase, Testable, User)
 
 
 @notfound_view_config()
@@ -132,9 +132,9 @@ def file_item_info(request):
                 max_size=TextNumber('max_size', min_value=0, optional=True),
                 min_lines=TextNumber('min_lines', min_value=0),
                 max_lines=TextNumber('max_lines', min_value=0, optional=True),
-                project_id=TextNumber('project_id', min_value=0))
+                testable_id=TextNumber('testable_id', min_value=0))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
-                         max_lines, project_id):
+                         max_lines, testable_id):
     # Additional verification
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
@@ -145,13 +145,14 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
 
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, 'Invalid project_id')
+    testable = Testable.fetch_by_id(testable_id)
+    if not testable:
+        return http_bad_request(request, 'Invalid testable_id')
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
-                         max_lines=max_lines, project_id=project_id)
+                         max_lines=max_lines, project_id=testable.project.id)
+    filev.testables.append(testable)
     session = Session()
     session.add(filev)
     try:
@@ -162,7 +163,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                              'That filename already exists for the project')
 
     redir_location = request.route_path('project_edit',
-                                        project_id=project.id)
+                                        project_id=testable.project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
 
@@ -561,20 +562,20 @@ def submission_view(request):
                 args=String('args', min_length=1),
                 expected_id=TextNumber('expected_id', min_value=0),
                 points=TextNumber('points'),
-                project_id=TextNumber('project_id', min_value=0),
-                stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
-def test_case_create(request, name, args, expected_id, points, project_id,
-                     stdin_id):
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, 'Invalid project_id')
+                stdin_id=TextNumber('stdin_id', min_value=0, optional=True),
+                testable_id=TextNumber('testable_id', min_value=0))
+def test_case_create(request, name, args, expected_id, points, stdin_id,
+                     testable_id):
+    testable = Testable.fetch_by_id(testable_id)
+    if not testable:
+        return http_bad_request(request, 'Invalid testable_id')
     id_check = verify_file_ids(request, expected_id=expected_id,
                                stdin_id=stdin_id)
     if id_check:
         return id_check
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
-                         points=points, project_id=project_id,
-                         stdin_id=stdin_id)
+                         points=points, stdin_id=stdin_id,
+                         testable_id=testable.id)
     session = Session()
     session.add(test_case)
     try:
@@ -582,8 +583,9 @@ def test_case_create(request, name, args, expected_id, points, project_id,
     except IntegrityError:
         transaction.abort()
         return http_conflict(request,
-                             'That name already exists for the project')
-    redir_location = request.route_path('project_edit', project_id=project.id)
+                             'That name already exists for the testable')
+    redir_location = request.route_path('project_edit',
+                                        project_id=testable.project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
 
