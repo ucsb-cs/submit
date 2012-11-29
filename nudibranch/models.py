@@ -171,10 +171,24 @@ class Submission(BasicBase, Base):
     verified_at = Column(DateTime, index=True)
 
     @staticmethod
+    def most_recent_submission(project_id, user_id):
+        '''Given the project id and a user id, gets the most recent
+        submission for the given user, or None if the user has no
+        submissions'''
+        submissions = Submission.sorted_submissions(
+            Submission.query_by(user_id=user_id,
+                                project_id=project_id).all(),
+            reverse=True)
+        if submissions:
+            return submissions[0]
+
+    @staticmethod
     def next_user_with_submissions_submission(user, project):
         '''Gets the first submission available for the next user,
         skipping any users who have no submissions.  Returns None if
-        we are at the end'''
+        we are at the end.
+        NOTE: as written, this will only deterministically work correctly
+        with a non-SQLite backend'''
         while True:
             next_user = project.next_user(user)
             if not next_user:

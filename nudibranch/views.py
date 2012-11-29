@@ -328,18 +328,17 @@ def project_view_detailed(request):
         return HTTPNotFound()
 
     next_user_name = None
-    next_username = None
+    next_user_route = None
     if request.user.is_admin:
-        next_user = project.next_user(user)
-        if next_user:
-            next_username = next_user.username
-            next_user_name = next_user.name
+        pair = next_submission_route(request, project, user)
+        if pair:
+            next_user_name, next_user_route = pair
 
     return {'page_title': 'Project Page',
             'project': project,
             'name': user.name,
             'next_user_name': next_user_name,
-            'next_username': next_username,
+            'next_user_route': next_user_route,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
                                   reverse=True)}
@@ -477,6 +476,32 @@ def to_full_diff(request, test_case_result):
                                           test_case_result.extra))
 
 
+def next_submission_route(request, project, user):
+    '''Gets the route to use for going to the next submission.
+    Takes the current request along with the project and the user
+    behind the current submission.
+    Returns one of:
+    -(next user's name,
+      A route to a page showing the first submission for the next user)
+    -(next user's name,
+      A route to a page showing that the next user has no submissions)
+    -None, indicating we are on the last user'''
+    next_user = project.next_user(user)
+    if next_user:
+        next_user_submission = Submission.most_recent_submission(project.id,
+                                                                 next_user.id)
+        route = None
+        if next_user_submission:
+            route = request.route_path('submission_item',
+                                       submission_id=next_user_submission.id)
+        else:
+            route = request.route_path('project_item_detailed',
+                                       class_name=project.klass.name,
+                                       username=next_user.username,
+                                       project_id=project.id)
+        return (next_user.name, route)
+
+
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -496,10 +521,12 @@ def submission_view(request):
             return HTTPNotFound()
         diff_renderer.add_diff(full_diff)
 
-    # see what the next submission and next user is
-    next_submission_id = None
+    # see what the next submission for this user
     current_user_name = None
-    next_user_submission_id = None
+    next_submission_id = None  # id for this user's next submission
+    next_user_name = None
+    next_user_submission_route = None
+
     if request.user.is_admin:
         user = User.fetch_by_id(submission.user_id)
         if not user:
@@ -511,10 +538,9 @@ def submission_view(request):
         project = Project.fetch_by_id(submission.project_id)
         if not project:
             return HTTPNotFound()
-        next_sub_next = Submission.next_user_with_submissions_submission(
-            user, project)
-        if next_sub_next:
-            next_user_submission_id = next_sub_next.id
+        pair = next_submission_route(request, project, user)
+        if pair:
+            next_user_name, next_user_submission_route = pair
 
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css'],
@@ -524,7 +550,8 @@ def submission_view(request):
             'diff_table': diff_renderer.make_whole_file(),
             'current_user_name': current_user_name,
             'next_submission_id': next_submission_id,
-            'next_user_submission_id': next_user_submission_id}
+            'next_user_name': next_user_name,
+            'next_user_submission_route': next_user_submission_route}
 
 
 @view_config(route_name='test_case', request_method='PUT',
