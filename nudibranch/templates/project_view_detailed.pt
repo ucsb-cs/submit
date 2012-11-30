@@ -12,14 +12,11 @@
     There are your submissions:</p>
   <ul tal:condition="submissions">
     <li tal:repeat="submission submissions">
-      <a href="${_R('submission_item', submission_id=submission.id)}">${str(submission.created_at)}</a></li>
-  </ul>
-  <p tal:condition="request.user.is_admin and not next_user_route">
-    This is the last user for this project</p>
-  <p tal:condition="request.user.is_admin and next_user_route">
-    <a href="${next_user_route}">
-      See submissions for ${next_user_name}, the next user
+      <a href="${_R('submission_item', submission_id=submission.id)}">${str(submission.created_at)}
     </a>
-  </p>
+    </li>
+  </ul>
+  <div tal:condition="request.user.is_admin"
+       tal:replace="structure prev_next_user"></div>
 </div>
 </div>

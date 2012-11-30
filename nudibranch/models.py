@@ -145,19 +145,24 @@ class Project(BasicBase, Base):
         submission.verified_at = func.now()
         return valid
 
+    def _first_with_filter(self, user, pred, reverse=False):
+        lst = sorted([u for u in self.klass.users
+                      if pred(u)],
+                     reverse=reverse)
+        return lst[0] if lst else None
+
     def next_user(self, user):
         '''Returns the next user (determined by name), or None if this
         is the last user'''
-        return (Session().query(User).
-                filter(user_to_class.c.class_id == self.class_id,
-                       User.name > user.name).
-                order_by(User.name).first())
+        # TODO: how are you supposed to do a query across an association
+        # table?
+        return self._first_with_filter(user,
+                                       lambda u: u.name > user.name)
 
     def prev_user(self, user):
-        return (Session().query(User).
-                filter(user_to_class.c.class_id == self.class_id,
-                       User.name > user.name).
-                order_by(User.name).first())
+        return self._first_with_filter(user,
+                                       lambda u: u.name < user.name,
+                                       reverse=True)
 
 
 class Submission(BasicBase, Base):
