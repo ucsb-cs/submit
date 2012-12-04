@@ -132,9 +132,9 @@ def file_item_info(request):
                 max_size=TextNumber('max_size', min_value=0, optional=True),
                 min_lines=TextNumber('min_lines', min_value=0),
                 max_lines=TextNumber('max_lines', min_value=0, optional=True),
-                testable_id=TextNumber('testable_id', min_value=0))
+                project_id=TextNumber('project_id', min_value=0))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
-                         max_lines, testable_id):
+                         max_lines, project_id):
     # Additional verification
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
@@ -145,14 +145,13 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
 
-    testable = Testable.fetch_by_id(testable_id)
-    if not testable:
-        return http_bad_request(request, 'Invalid testable_id')
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
-                         max_lines=max_lines, project_id=testable.project.id)
-    filev.testables.append(testable)
+                         max_lines=max_lines, project_id=project_id)
     session = Session()
     session.add(filev)
     try:
@@ -163,7 +162,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                              'That filename already exists for the project')
 
     redir_location = request.route_path('project_edit',
-                                        project_id=testable.project.id)
+                                        project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
 
@@ -205,7 +204,7 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
         transaction.abort()
         return http_conflict(request,
                              'That filename already exists for the project')
-    return http_ok(request, 'File verifier updated')
+    return http_ok(request, 'updated')
 
 
 @view_config(route_name='home', renderer='templates/home.pt',

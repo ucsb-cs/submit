@@ -46,8 +46,10 @@ def _init_testing_db():
     Session.flush()
 
     # Add two testables associated with project1
-    testable1 = Testable(executable='a.out', make_target='', project=project1)
-    testable2 = Testable(executable='a.out', project=project1)
+    testable1 = Testable(name='Testable 1', executable='a.out', make_target='',
+                         project=project1)
+    testable2 = Testable(name='Testable 2', executable='a.out',
+                         project=project1)
     Session.add_all([testable1, testable2])
     Session.flush()
 
@@ -324,9 +326,9 @@ class FileTests(BaseAPITest):
 class FileVerifierTests(BaseAPITest):
     @staticmethod
     def get_objects(**kwargs):
-        testable = Session.query(Testable).first()
+        project = Session.query(Project).first()
         json_data = {'filename': 'File 3', 'min_size': '0', 'min_lines': '0',
-                     'testable_id': text_type(testable.id)}
+                     'project_id': text_type(project.id)}
         json_data.update(kwargs)
         return json_data
 
@@ -391,12 +393,12 @@ class FileVerifierTests(BaseAPITest):
         request = self.make_request(json_body=json_data)
         info = file_verifier_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        testable = Session.query(Testable).first()
+        project = Session.query(Project).first()
         expected = route_path('project_edit', request,
-                              class_name=testable.project.klass.name,
-                              project_id=testable.project.id)
+                              class_name=project.klass.name,
+                              project_id=project.id)
         self.assertEqual(expected, info['redir_location'])
-        file_verifier = testable.file_verifiers[-1]
+        file_verifier = project.file_verifiers[-1]
         self.assertEqual(json_data['filename'], file_verifier.filename)
 
     def test_update_invalid_duplicate_name(self):
@@ -457,7 +459,7 @@ class FileVerifierTests(BaseAPITest):
         request = self.make_request(json_body=json_data, matchdict=matchdict)
         info = file_verifier_update(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('File verifier updated', info['message'])
+        self.assertEqual('updated', info['message'])
         file_verifier = FileVerifier.fetch_by_id(matchdict['file_verifier_id'])
         self.assertEqual(json_data['filename'], file_verifier.filename)
 

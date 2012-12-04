@@ -106,6 +106,9 @@ class FileVerifier(BasicBase, Base):
     optional = Column(Boolean, default=False, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
+    def __cmp__(self, other):
+        return cmp(self.filename, other.filename)
+
     def verify(self, file):
         msgs = []
         if file.size < self.min_size:
@@ -333,12 +336,14 @@ class TestCaseResult(Base):
 
 class Testable(BasicBase, Base):
     """Represents a set of properties for a single program to test."""
+    __table_args__ = (UniqueConstraint('name', 'project_id'),)
     #build_files = relationship(...)  # Additional files used with Make
     executable = Column(Unicode, nullable=False)
     #execution_files = relationship(...)  # Additional files used
     file_verifiers = relationship(FileVerifier, backref='testables',
                                   secondary=testable_to_file_verifier)
     make_target = Column(Unicode)  # When None, no make is required
+    name = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_cases = relationship('TestCase', backref='testable')
 
