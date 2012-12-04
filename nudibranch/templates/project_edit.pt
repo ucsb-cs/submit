@@ -1,5 +1,13 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
+
+  <script>
+    $(function() {
+      $(".dialog").dialog({autoOpen: false});
+      $("#testable_tab").tabs();
+    });
+  </script>
+
   <div class="header">${page_title}</div>
   <form id="project_form" name="input" action="${action}"
         onsubmit="return form_request(this, 'POST', true);">
@@ -19,63 +27,78 @@
     </fieldset>
   </form>
 
-  <fieldset>
-    <legend>File Verifiers</legend>
-    <fieldset tal:repeat="fv project.file_verifiers">
-      <legend>Verifier ${repeat.fv.number}</legend>
-      <form name="file_verifier" onsubmit="return form_request(this, 'POST', true);"
-            action="${_R('file_verifier_item', file_verifier_id=fv.id)}">
-        <label for="filename_${repeat.fv.index}">Filename</label>
-        <input type="text" name="filename" id="filename_${repeat.fv.index}"
-               value="${fv.filename}" />
+  <h3><span class="help" title="A testable defines the parameters for a single executable that is produced from the student's submission.">Testables</span></h3>
+  <div id="testable_tab">
+    <ul>
+      <li tal:repeat="testable project.testables">
+        <a href="#testable_tab_${repeat.testable.index}">${testable.name}</a>
+      </li>
+      <li><a href="#testable_tab_new">New</a></li>
+    </ul>
+
+    <div tal:repeat="testable project.testables" id="testable_tab_${repeat.testable.index}">
+      <form name="testable" action="${_R('testable_item', testable_id=testable.id)}"
+            onsubmit="return form_request(this, 'POST', true);">
+        <label for="testable_name_${repeat.testable.index}">Name</label>
+        <input type="text" name="name" id="testable_name_${repeat.testable.index}"
+               value="${testable.name}" />
         <br/>
-        <label for="min_size_${repeat.fv.index}">Min Size</label>
-        <input type="text" name="min_size" id="min_size_${repeat.fv.index}"
-               value="${fv.min_size}" />
-        <label for="max_size_${repeat.fv.index}">Max Size</label>
-        <input type="text" name="max_size" id="max_size_${repeat.fv.index}"
-               class="form_optional" placeholder="system max"
-               value="${fv.max_size}" />
+        <label for="make_target_${repeat.testable.index}">Make target</label>
+        <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
+               value="${testable.make_target}" />
         <br/>
-        <label for="min_lines_${repeat.fv.index}">Min Lines</label>
-        <input type="text" name="min_lines" id="min_lines_${repeat.fv.index}"
-               value="${fv.min_lines}" />
-        <label for="max_lines_${repeat.fv.index}">Max Lines</label>
-        <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
-               class="form_optional" placeholder="system max"
-               value="${fv.max_lines}" />
+        <label for="executable_${repeat.testable.index}">Executable</label>
+        <input type="text" name="executable" id="executable_${repeat.testable.index}"
+               value="${testable.executable}" />
         <br/>
-        <input type="submit" name="submit" value="update verifier" />
-      </form>
-    </fieldset>
-    <fieldset style="background: #ccf">
-      <legend>New Verifier</legend>
-      <form name="file_verifier" action="${_R('file_verifier')}"
-            onsubmit="return form_request(this, 'PUT', true);">
-        <label for="filename_new">Filename</label>
-        <input type="text" name="filename" id="filename_new" value="" />
-        <br/>
-        <label for="min_size_new">Min Size</label>
-        <input type="text" name="min_size" id="min_size_new" value="0" />
-        <label for="max_size_new">Max Size</label>
-        <input type="text" name="max_size" id="max_size_new"
-               class="form_optional" placeholder="system max" value="" />
-        <br/>
-        <label for="min_lines_new">Min Lines</label>
-        <input type="text" name="min_lines" id="min_lines_new" value="0" />
-        <label for="max_lines_new">Max Lines</label>
-        <input type="text" name="max_lines" id="max_lines_new"
-               class="form_optional" placeholder="system max" value="" />
+        <fieldset>
+          <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
+          <div tal:repeat="fv sorted(project.file_verifiers)">
+            <input type="checkbox" name="file_verifier_ids[]"
+                   id="testable_fv_${repeat.testable.index}_${repeat.fv.index}"
+                   value="${fv.id}" tal:attributes="checked fv in testable.file_verifiers" />
+            <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename}</label>
+            (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
+          </div>
+          <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
+        </fieldset>
         <input type="hidden" name="project_id" value="${project.id}" />
-        <br/>
-        <input type="submit" name="submit" value="add file verifier" />
+        <input type="submit" name="submit" value="update" />
       </form>
-    </fieldset>
-  </fieldset>
+    </div>
+
+    <div id="testable_tab_new" style="background: #ccf">
+      <form name="testable" action="${_R('testable')}"
+            onsubmit="return form_request(this, 'PUT', true);">
+        <label for="testable_name_new">Name</label>
+        <input type="text" name="name" id="testable_name_new" />
+        <br/>
+        <label for="make_target_new">Make target</label>
+        <input type="text" name="make_target" id="make_target_new" />
+        <br/>
+        <label for="executable_new">Executable</label>
+        <input type="text" name="executable" id="executable_new" />
+        <br/>
+        <fieldset>
+          <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
+          <div tal:repeat="fv sorted(project.file_verifiers)">
+            <input type="checkbox" name="file_verifier_ids[]"
+                   id="testable_fv_new_${repeat.fv.index}"
+                   value="${fv.id}" />
+            <label for="testable_fv_new_${repeat.fv.index}">${fv.filename}</label>
+            (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
+          </div>
+          <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
+        </fieldset>
+        <input type="hidden" name="project_id" value="${project.id}" />
+        <input type="submit" name="submit" value="add" />
+      </form>
+      </div>
+  </div>
 
   <fieldset>
     <legend>Test Cases</legend>
-    <fieldset tal:repeat="tc project.test_cases">
+    <fieldset tal:repeat="tc []">
       <legend>Test Case ${repeat.tc.number}</legend>
       <form name="test_case"
             action="${_R('test_case_item', test_case_id=tc.id)}"
@@ -103,7 +126,7 @@
         <input name="expected_id" id="expected_${repeat.tc.index}" type="file" />
         <input type="hidden" name="expected_id" value="${tc.expected_id}" />
         <br/>
-        <input type="submit" name="submit" value="update test case" />
+        <input type="submit" name="submit" value="update" />
       </form>
     </fieldset>
     <fieldset style="background: #ccf">
@@ -128,9 +151,72 @@
         <input type="hidden" name="expected_id" value="" />
         <input type="hidden" name="project_id" value="${project.id}" />
         <br/>
-        <input type="submit" name="submit" value="add test case" />
+        <input type="submit" name="submit" value="add" />
       </form>
     </fieldset>
   </fieldset>
+
+
+  <!-- Dialog Boxes -->
+  <div id="file_verifier_new" class="dialog" title="Add New Expected File">
+    <fieldset style="background: #ccf">
+      <legend>New Expected File</legend>
+      <form name="file_verifier" action="${_R('file_verifier')}"
+            onsubmit="return form_request(this, 'PUT', true);">
+        <label for="filename_new">Filename</label>
+        <input type="text" name="filename" id="filename_new" value="" />
+        <br/>
+        <label for="min_size_new">Min Size</label>
+        <input type="text" name="min_size" id="min_size_new" value="0" />
+        <br/>
+        <label for="max_size_new">Max Size</label>
+        <input type="text" name="max_size" id="max_size_new"
+               class="form_optional" placeholder="system max" value="" />
+        <br/>
+        <label for="min_lines_new">Min Lines</label>
+        <input type="text" name="min_lines" id="min_lines_new" value="0" />
+        <br/>
+        <label for="max_lines_new">Max Lines</label>
+        <input type="text" name="max_lines" id="max_lines_new"
+               class="form_optional" placeholder="system max" value="" />
+        <input type="hidden" name="project_id" value="${project.id}" />
+        <br/>
+        <input type="submit" name="submit" value="add" />
+      </form>
+    </fieldset>
+  </div>
+  <div tal:repeat="fv sorted(project.file_verifiers)" id="file_verifier_${repeat.fv.index}"
+       class="dialog" title="Update Expected File ${repeat.fv.number}">
+    <fieldset>
+      <legend>Expected File ${repeat.fv.number}</legend>
+      <form name="file_verifier" onsubmit="return form_request(this, 'POST', true);"
+            action="${_R('file_verifier_item', file_verifier_id=fv.id)}">
+        <label for="filename_${repeat.fv.index}">Filename</label>
+        <input type="text" name="filename" id="filename_${repeat.fv.index}"
+               value="${fv.filename}" />
+        <br/>
+        <label for="min_size_${repeat.fv.index}">Min Size</label>
+        <input type="text" name="min_size" id="min_size_${repeat.fv.index}"
+               value="${fv.min_size}" />
+        <br/>
+        <label for="max_size_${repeat.fv.index}">Max Size</label>
+        <input type="text" name="max_size" id="max_size_${repeat.fv.index}"
+               class="form_optional" placeholder="system max"
+               value="${fv.max_size}" />
+        <br/>
+        <label for="min_lines_${repeat.fv.index}">Min Lines</label>
+        <input type="text" name="min_lines" id="min_lines_${repeat.fv.index}"
+               value="${fv.min_lines}" />
+        <br/>
+        <label for="max_lines_${repeat.fv.index}">Max Lines</label>
+        <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
+               class="form_optional" placeholder="system max"
+               value="${fv.max_lines}" />
+        <br/>
+        <input type="submit" name="submit" value="update" />
+      </form>
+    </fieldset>
+  </div>
+
 </div>
 </div>
