@@ -322,7 +322,7 @@ def project_view_detailed(request):
             or project.klass not in user.classes:
         return HTTPNotFound()
     # Authorization checks
-    if not request.user.is_admin and request.user != user:
+    if not request.user.is_at_least_class_admin() and request.user != user:
         return HTTPForbidden()
 
     submissions = Submission.query_by(project_id=project.id, user_id=user.id)
@@ -330,7 +330,7 @@ def project_view_detailed(request):
         return HTTPNotFound()
 
     prev_next_user = None
-    if request.user.is_admin:
+    if request.user.is_at_least_class_admin():
         prev_next_user = PrevNextUser(request, project, user).to_html()
 
     return {'page_title': 'Project Page',
@@ -495,7 +495,7 @@ def submission_view(request):
         diff_renderer.add_diff(full_diff)
 
     prev_next_html = None
-    if request.user.is_admin:
+    if request.user.is_at_least_class_admin():
         try:
             prev_next_html = PrevNextFull(request, submission).to_html()
         except (NoSuchUserException, NoSuchProjectException):
@@ -601,7 +601,7 @@ def user_class_join(request):
 def user_create(request, name, username, password, email):
     session = Session()
     user = User(name=name, username=username, password=password,
-                email=email, is_admin=False)
+                email=email, sec_level='student')
     session.add(user)
     try:
         transaction.commit()

@@ -2,17 +2,17 @@
 <div metal:fill-slot="content">
   <p>Info for ${klass.name}</p>
 
-  <p tal:condition="request.user.is_admin">
+  <p tal:condition="request.user.is_at_least_class_admin()">
     <a href="${_R('project_new', class_name=klass.name)}">Add project</a>
   </p>
 
   <p>Projects</p>
   <ul>
     <li tal:repeat="project klass.projects">
-      <a tal:condition="request.user.is_admin"
+      <a tal:condition="request.user.is_at_least_class_admin()"
 	 href="${_R('project_item_summary', class_name=project.klass.name, project_id=project.id)}">
 	${project.name}</a>
-      <a tal:condition="not request.user.is_admin"
+      <a tal:condition="not request.user.is_at_least_class_admin()"
 	 href="${_R('project_item_detailed', class_name=project.klass.name, project_id=project.id, username=request.user.username)}">
         ${project.name}</a>
     </li>

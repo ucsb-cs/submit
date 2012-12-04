@@ -327,16 +327,36 @@ class TestCaseResult(Base):
         self.created_at = func.now()
 
 
+# ordering of the permission levels, from lowest to highest
+_perm_order = ['student', 'class_admin', 'admin']
+
+
 class User(UserMixin, BasicBase, Base):
     """The UserMixin provides the `username` and `password` attributes.
     `password` is a write-only attribute and can be verified using the
     `verify_password` function."""
     name = Column(Unicode, nullable=False)
     email = Column(Unicode, nullable=False)
-    is_admin = Column(Boolean, default=False, nullable=False)
+    sec_level = Column(Enum('admin', 'class_admin', 'student',
+                            default='student', nullable=False))
     classes = relationship(Class, secondary=user_to_class, backref='users')
     files = relationship(File, secondary=user_to_file, backref='users')
     submissions = relationship('Submission', backref='user')
+
+    def is_admin(self):
+        return self.sec_level == 'admin'
+
+    def is_class_admin(self):
+        return self.sec_level == 'class_admin'
+
+    def is_student(self):
+        return self.sec_level == 'student'
+
+    def is_at_least(self, level):
+        return _perm_order.index(self.sec_level) >= _perm_order.index(level)
+
+    def is_at_least_class_admin(self):
+        return self.is_at_least('class_admin')
 
     @staticmethod
     def login(username, password):
@@ -358,7 +378,7 @@ class User(UserMixin, BasicBase, Base):
             self.email, self.name, self.username)
 
     def __str__(self):
-        admin_str = '(admin)' if self.is_admin else ''
+        admin_str = '(admin)' if self.is_admin() else ''
         return 'Name: {0} Username: {1} Email: {2} {3}'.format(self.name,
                                                                self.username,
                                                                self.email,
@@ -381,7 +401,7 @@ def populate_database():
 
     # Admin user
     admin = User(email='root@localhost', name='Administrator',
-                 username='admin', password='password', is_admin=True)
+                 username='admin', password='password', sec_level='admin')
     # Class
     klass = Class(name='CS32')
     Session.add(klass)

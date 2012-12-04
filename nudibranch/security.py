@@ -10,10 +10,4 @@ def get_user(request):
 
 def group_finder(user_id, request):
     user = request.user
-    if user:
-        if user.is_admin:
-            return ['admin']
-        else:
-            return ['student']
-    else:
-        return None
+    return [user.sec_level] if user else None
