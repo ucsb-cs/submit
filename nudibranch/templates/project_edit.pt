@@ -56,7 +56,7 @@
           <div tal:repeat="fv sorted(project.file_verifiers)">
             <input type="checkbox" name="file_verifier_ids[]"
                    id="testable_fv_${repeat.testable.index}_${repeat.fv.index}"
-                   value="${fv.id}" tal:attributes="checked fv in testable.file_verifiers" />
+                   value="${fv.id}" tal:attributes="checked 'checked' if fv in testable.file_verifiers else None" />
             <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename}</label>
             (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
           </div>
@@ -64,6 +64,18 @@
         </fieldset>
         <input type="hidden" name="project_id" value="${project.id}" />
         <input type="submit" name="submit" value="update" />
+        <br/>
+        <br/>
+
+        <fieldset>
+          <legend>Test Cases</legend>
+          <ul>
+            <li tal:repeat="tc sorted(testable.test_cases)">
+              <span class="faulink" onclick="$('#testable_${repeat.testable.index}_tc_${repeat.tc.index}').dialog('open');">${tc.name}</span>
+            </li>
+            <li>(<span class="faulink" onclick="$('#testable_${repeat.testable.index}_tc_new').dialog('open');">add new test case</span>)</li>
+          </ul>
+        </fieldset>
       </form>
     </div>
 
@@ -96,94 +108,30 @@
       </div>
   </div>
 
-  <fieldset>
-    <legend>Test Cases</legend>
-    <fieldset tal:repeat="tc []">
-      <legend>Test Case ${repeat.tc.number}</legend>
-      <form name="test_case"
-            action="${_R('test_case_item', test_case_id=tc.id)}"
-            onsubmit="return form_request(this, 'POST', true);">
-        <label for="name_${repeat.tc.index}">Test Name</label>
-        <input type="text" name="name" id="name_${repeat.tc.index}" value="${tc.name}" />
-        <br/>
-        <label for="args_${repeat.tc.index}">Execution line</label>
-        <input type="text" name="args" id="args_${repeat.tc.index}"
-               value="${tc.args}" />
-        <br/>
-        <label for="points_${repeat.tc.index}">Points</label>
-        <input type="text" name="points" id="points_${repeat.tc.index}"
-               value="${tc.points}" />
-        <br/>
-        <div tal:condition="tc.stdin_id">
-          <a href="${_R('file_item', sha1sum=tc.stdin.sha1)}">Existing standard input file</a></div>
-        <label for="input_${repeat.tc.index}">Select a new standard input file: </label>
-        <input name="stdin_id" id="input_${repeat.tc.index}" type="file" />
-        <br/>
-        <input type="hidden" name="stdin_id" value="${tc.stdin_id}" />
-        <div tal:condition="tc.expected_id">
-          <a href="${_R('file_item', sha1sum=tc.expected.sha1)}">Existing expected output file</a></div>
-        <label for="expected_${repeat.tc.index}">Select a new expected output file: </label>
-        <input name="expected_id" id="expected_${repeat.tc.index}" type="file" />
-        <input type="hidden" name="expected_id" value="${tc.expected_id}" />
-        <br/>
-        <input type="submit" name="submit" value="update" />
-      </form>
-    </fieldset>
-    <fieldset style="background: #ccf">
-      <legend>New Test Case</legend>
-      <form name="test_case" action="${_R('test_case')}"
-            onsubmit="return form_request(this, 'PUT', true);">
-        <label for="name_new">Test Name</label>
-        <input type="text" name="name" id="name_new" />
-        <br/>
-        <label for="args_new">Execution line</label>
-        <input type="text" name="args" id="args_new" value="a.out" />
-        <br/>
-        <label for="points_new">Points</label>
-        <input type="text" name="points" id="points_new" value="1" />
-        <br/>
-        <label for="input_new">Select a standard input file: </label>
-        <input name="stdin_id" id="input_new" type="file" />
-        <br/>
-        <input type="hidden" name="stdin_id" value="" />
-        <label for="expected_new">Select a expected output file: </label>
-        <input name="expected_id" id="expected_new" type="file" />
-        <input type="hidden" name="expected_id" value="" />
-        <input type="hidden" name="project_id" value="${project.id}" />
-        <br/>
-        <input type="submit" name="submit" value="add" />
-      </form>
-    </fieldset>
-  </fieldset>
-
-
   <!-- Dialog Boxes -->
-  <div id="file_verifier_new" class="dialog" title="Add New Expected File">
-    <fieldset style="background: #ccf">
-      <legend>New Expected File</legend>
-      <form name="file_verifier" action="${_R('file_verifier')}"
-            onsubmit="return form_request(this, 'PUT', true);">
-        <label for="filename_new">Filename</label>
-        <input type="text" name="filename" id="filename_new" value="" />
-        <br/>
-        <label for="min_size_new">Min Size</label>
-        <input type="text" name="min_size" id="min_size_new" value="0" />
-        <br/>
-        <label for="max_size_new">Max Size</label>
-        <input type="text" name="max_size" id="max_size_new"
-               class="form_optional" placeholder="system max" value="" />
-        <br/>
-        <label for="min_lines_new">Min Lines</label>
-        <input type="text" name="min_lines" id="min_lines_new" value="0" />
-        <br/>
-        <label for="max_lines_new">Max Lines</label>
-        <input type="text" name="max_lines" id="max_lines_new"
-               class="form_optional" placeholder="system max" value="" />
-        <input type="hidden" name="project_id" value="${project.id}" />
-        <br/>
-        <input type="submit" name="submit" value="add" />
-      </form>
-    </fieldset>
+  <div id="file_verifier_new" class="dialog" title="Add New Expected File" style="background: #ccf">
+    <form name="file_verifier" action="${_R('file_verifier')}"
+          onsubmit="return form_request(this, 'PUT', true);">
+      <label for="filename_new">Filename</label>
+      <input type="text" name="filename" id="filename_new" value="" />
+      <br/>
+      <label for="min_size_new">Min Size</label>
+      <input type="text" name="min_size" id="min_size_new" value="0" />
+      <br/>
+      <label for="max_size_new">Max Size</label>
+      <input type="text" name="max_size" id="max_size_new"
+             class="form_optional" placeholder="system max" value="" />
+      <br/>
+      <label for="min_lines_new">Min Lines</label>
+      <input type="text" name="min_lines" id="min_lines_new" value="0" />
+      <br/>
+      <label for="max_lines_new">Max Lines</label>
+      <input type="text" name="max_lines" id="max_lines_new"
+             class="form_optional" placeholder="system max" value="" />
+      <input type="hidden" name="project_id" value="${project.id}" />
+      <br/>
+      <input type="submit" name="submit" value="add" />
+    </form>
   </div>
   <div tal:repeat="fv sorted(project.file_verifiers)" id="file_verifier_${repeat.fv.index}"
        class="dialog" title="Update Expected File ${repeat.fv.number}">
@@ -217,6 +165,70 @@
       </form>
     </fieldset>
   </div>
+
+  <div tal:repeat="testable project.testables">
+    <div tal:repeat="tc sorted(testable.test_cases)" class="dialog"
+         id="testable_${repeat.testable.index}_tc_${repeat.tc.index}"
+         title="Update test case ${repeat.tc.number}">
+
+      <form name="test_case"
+            action="${_R('test_case_item', test_case_id=tc.id)}"
+            onsubmit="return form_request(this, 'POST', true);">
+        <label for="testable_${repeat.testable.index}_tc_name_${repeat.tc.index}">Test Name</label>
+        <input type="text" name="name" id="testable_${repeat.testable.index}_tc_name_${repeat.tc.index}" value="${tc.name}" />
+        <br/>
+        <label for="testable_${repeat.testable.index}_tc_args_${repeat.tc.index}">Execution line</label>
+        <input type="text" name="args" id="testable_${repeat.testable.index}_tc_args_${repeat.tc.index}"
+         value="${tc.args}" />
+        <br/>
+        <label for="testable_${repeat.testable.index}_tc_points_${repeat.tc.index}">Points</label>
+        <input type="text" name="points" id="testable_${repeat.testable.index}_tc_points_${repeat.tc.index}"
+               value="${tc.points}" />
+        <br/>
+        <div tal:condition="tc.stdin_id">
+          <a href="${_R('file_item', sha1sum=tc.stdin.sha1)}">Existing standard input file</a>
+        </div>
+        <label for="testable_${repeat.testable.index}_tc_input_${repeat.tc.index}">Select a new standard input file: </label>
+        <input name="stdin_id" id="testable_${repeat.testable.index}_tc_input_${repeat.tc.index}" type="file" />
+        <br/>
+        <input type="hidden" name="stdin_id" value="${tc.stdin_id}" />
+        <div tal:condition="tc.expected_id">
+          <a href="${_R('file_item', sha1sum=tc.expected.sha1)}">Existing expected output file</a>
+        </div>
+        <label for="testable_${repeat.testable.index}_tc_expected_${repeat.tc.index}">Select a new expected output file: </label>
+        <input name="expected_id" id="testable_${repeat.testable.index}_tc_expected_${repeat.tc.index}" type="file" />
+        <input type="hidden" name="expected_id" value="${tc.expected_id}" />
+        <br/>
+        <input type="submit" name="submit" value="update" />
+      </form>
+    </div>
+    <div id="testable_${repeat.testable.index}_tc_new" class="dialog"
+         title="Add new test case" style="background: #ccf">
+      <form name="test_case" action="${_R('test_case')}"
+            onsubmit="return form_request(this, 'PUT', true);">
+        <label for="testable_${repeat.testable.index}_tc_name_new">Test Name</label>
+        <input type="text" name="name" id="testable_${repeat.testable.index}_tc_name_new" />
+        <br/>
+        <label for="testable_${repeat.testable.index}_tc_args_new">Execution line</label>
+        <input type="text" name="args" id="testable_${repeat.testable.index}_tc_args_new" value="a.out" />
+        <br/>
+        <label for="testable_${repeat.testable.index}_tc_points_new">Points</label>
+        <input type="text" name="points" id="testable_${repeat.testable.index}_tc_points_new" value="1" />
+        <br/>
+        <label for="testable_${repeat.testable.index}_tc_input_new">Select a standard input file: </label>
+        <input name="stdin_id" id="testable_${repeat.testable.index}_tc_input_new" type="file" />
+        <br/>
+        <input type="hidden" name="stdin_id" value="" />
+        <label for="testable_${repeat.testable.index}_tc_expected_new">Select a expected output file: </label>
+        <input name="expected_id" id="testable_${repeat.testable.index}_tc_expected_new" type="file" />
+        <input type="hidden" name="expected_id" value="" />
+        <input type="hidden" name="testable_id" value="${testable.id}" />
+        <br/>
+        <input type="submit" name="submit" value="add" />
+      </form>
+    </div>
+  </div>
+
 
 </div>
 </div>

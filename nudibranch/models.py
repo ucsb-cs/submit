@@ -295,6 +295,9 @@ class TestCase(BasicBase, Base):
     stdin_id = Column(Integer, ForeignKey('file.id'))
     test_case_for = relationship('TestCaseResult', backref='test_case')
 
+    def __cmp__(self, other):
+        return cmp(self.name, other.name)
+
     def serialize(self):
         data = dict([(x, getattr(self, x)) for x in ('id', 'args')])
         if self.stdin:
