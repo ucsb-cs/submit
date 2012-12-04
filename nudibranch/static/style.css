@@ -64,3 +64,14 @@ pre {
     font-weight: bold;
     padding-bottom: 6px;
 }
+
+.faulink {
+    color: blue;
+    cursor: pointer;
+}
+
+.help {
+    cursor: help;
+    border-bottom: 1px dotted gray;
+}
+

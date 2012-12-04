@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <title><p tal:condition="page_title" tal:replace="page_title + ' - '">Nudibranch</title>
   <link rel="shortcut icon" href="${_S('nudibranch:static/favicon.ico')}" />
+  <link rel="stylesheet" href="${_S('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}"
+        type="text/css" media="screen" />
   <link rel="stylesheet" href="${_S('nudibranch:static/style.css')}"
         type="text/css" media="screen" />
-  <link tal:repeat="css css_files" rel="stylesheet" 
+  <link tal:repeat="css css_files" rel="stylesheet"
 	href="${_S('nudibranch:static/' + css)}"
         type="text/css" media="screen" />
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
-  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.23/jquery-ui.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
   <script src="${_S('nudibranch:static/application.js')}"></script>
   <script src="${_S('nudibranch:static/form2js.js')}"></script>
   <script src="${_S('nudibranch:static/json2.js')}"></script>
