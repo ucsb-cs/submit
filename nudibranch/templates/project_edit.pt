@@ -39,73 +39,77 @@
     <div tal:repeat="testable project.testables" id="testable_tab_${repeat.testable.index}">
       <form name="testable" action="${_R('testable_item', testable_id=testable.id)}"
             onsubmit="return form_request(this, 'POST', true);">
-        <label for="testable_name_${repeat.testable.index}">Name</label>
-        <input type="text" name="name" id="testable_name_${repeat.testable.index}"
-               value="${testable.name}" />
-        <br/>
-        <label for="make_target_${repeat.testable.index}">Make target</label>
-        <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
-               value="${testable.make_target}" />
-        <br/>
-        <label for="executable_${repeat.testable.index}">Executable</label>
-        <input type="text" name="executable" id="executable_${repeat.testable.index}"
-               value="${testable.executable}" />
-        <br/>
         <fieldset>
-          <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
-          <div tal:repeat="fv sorted(project.file_verifiers)">
-            <input type="checkbox" name="file_verifier_ids[]"
-                   id="testable_fv_${repeat.testable.index}_${repeat.fv.index}"
-                   value="${fv.id}" tal:attributes="checked 'checked' if fv in testable.file_verifiers else None" />
-            <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename}</label>
-            (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
-          </div>
-          <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
+          <legend>Testable Settings</legend>
+          <label for="testable_name_${repeat.testable.index}">Name</label>
+          <input type="text" name="name" id="testable_name_${repeat.testable.index}"
+                 value="${testable.name}" />
+          <br/>
+          <label for="make_target_${repeat.testable.index}">Make target</label>
+          <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
+                 value="${testable.make_target}" />
+          <br/>
+          <label for="executable_${repeat.testable.index}">Executable</label>
+          <input type="text" name="executable" id="executable_${repeat.testable.index}"
+                 value="${testable.executable}" />
+          <br/>
+          <fieldset>
+            <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
+            <div tal:repeat="fv sorted(project.file_verifiers)">
+              <input type="checkbox" name="file_verifier_ids[]"
+                     id="testable_fv_${repeat.testable.index}_${repeat.fv.index}"
+                     value="${fv.id}" tal:attributes="checked 'checked' if fv in testable.file_verifiers else None" />
+              <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename}</label>
+              (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
+            </div>
+            <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
+          </fieldset>
+          <input type="hidden" name="project_id" value="${project.id}" />
+          <input type="submit" name="submit" value="update" />
         </fieldset>
-        <input type="hidden" name="project_id" value="${project.id}" />
-        <input type="submit" name="submit" value="update" />
-        <br/>
-        <br/>
+      </form>
 
-        <fieldset>
-          <legend>Test Cases</legend>
-          <ul>
-            <li tal:repeat="tc sorted(testable.test_cases)">
-              <span class="faulink" onclick="$('#testable_${repeat.testable.index}_tc_${repeat.tc.index}').dialog('open');">${tc.name}</span>
-            </li>
-            <li>(<span class="faulink" onclick="$('#testable_${repeat.testable.index}_tc_new').dialog('open');">add new test case</span>)</li>
-          </ul>
+      <fieldset>
+        <legend>Test Cases</legend>
+        <ul>
+          <li tal:repeat="tc sorted(testable.test_cases)">
+            <span class="faulink" onclick="$('#testable_${repeat.testable.index}_tc_${repeat.tc.index}').dialog('open');">${tc.name}</span>
+          </li>
+          <li>(<span class="faulink" onclick="$('#testable_${repeat.testable.index}_tc_new').dialog('open');">add new test case</span>)</li>
+        </ul>
+      </fieldset>
+    </div>
+
+    <div id="testable_tab_new">
+      <form name="testable" action="${_R('testable')}"
+            onsubmit="return form_request(this, 'PUT', true);">
+        <fieldset style="background: #ccf">
+          <legend>Testable Settings</legend>
+          <label for="testable_name_new">Name</label>
+          <input type="text" name="name" id="testable_name_new" />
+          <br/>
+          <label for="make_target_new">Make target</label>
+          <input type="text" name="make_target" id="make_target_new" />
+          <br/>
+          <label for="executable_new">Executable</label>
+          <input type="text" name="executable" id="executable_new" />
+          <br/>
+          <fieldset>
+            <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
+            <div tal:repeat="fv sorted(project.file_verifiers)">
+              <input type="checkbox" name="file_verifier_ids[]"
+                     id="testable_fv_new_${repeat.fv.index}"
+                     value="${fv.id}" />
+              <label for="testable_fv_new_${repeat.fv.index}">${fv.filename}</label>
+              (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
+            </div>
+            <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
+          </fieldset>
+          <input type="hidden" name="project_id" value="${project.id}" />
+          <input type="submit" name="submit" value="add" />
         </fieldset>
       </form>
     </div>
-
-    <div id="testable_tab_new" style="background: #ccf">
-      <form name="testable" action="${_R('testable')}"
-            onsubmit="return form_request(this, 'PUT', true);">
-        <label for="testable_name_new">Name</label>
-        <input type="text" name="name" id="testable_name_new" />
-        <br/>
-        <label for="make_target_new">Make target</label>
-        <input type="text" name="make_target" id="make_target_new" />
-        <br/>
-        <label for="executable_new">Executable</label>
-        <input type="text" name="executable" id="executable_new" />
-        <br/>
-        <fieldset>
-          <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
-          <div tal:repeat="fv sorted(project.file_verifiers)">
-            <input type="checkbox" name="file_verifier_ids[]"
-                   id="testable_fv_new_${repeat.fv.index}"
-                   value="${fv.id}" />
-            <label for="testable_fv_new_${repeat.fv.index}">${fv.filename}</label>
-            (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
-          </div>
-          <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
-        </fieldset>
-        <input type="hidden" name="project_id" value="${project.id}" />
-        <input type="submit" name="submit" value="add" />
-      </form>
-      </div>
   </div>
 
   <!-- Dialog Boxes -->
