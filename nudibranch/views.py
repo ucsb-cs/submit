@@ -656,8 +656,47 @@ def testable_create(request, name, make_target, executable, file_verifier_ids,
 
     redir_location = request.route_path('project_edit',
                                         project_id=project_id)
-    transaction.commit()
     return http_created(request, redir_location=redir_location)
+
+
+@view_config(route_name='testable_item', request_method='POST',
+             permission='admin', renderer='json')
+@validated_form(name=String('name', min_length=1),
+                make_target=String('make_target', min_length=1),
+                executable=String('executable', min_length=1),
+                file_verifier_ids=List('file_verifier_ids',
+                                       TextNumber('', min_value=0),
+                                       optional=True))
+def testable_edit(request, name, make_target, executable, file_verifier_ids):
+    testable_id = request.matchdict['testable_id']
+    testable = Testable.fetch_by_id(testable_id)
+    if not testable:
+        return http_bad_request(request, 'Invalid testable_id')
+
+    if not file_verifier_ids:
+        file_verifier_ids = []
+    file_verifiers = []
+    for file_verifier_id in file_verifier_ids:
+        file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
+        if not file_verifier:
+            return http_bad_request(request, 'Invalid file_verifier_id')
+        file_verifiers.append(file_verifier)
+
+    if not testable.update(_ignore_order=True, name=name,
+                           make_target=make_target,
+                           executable=executable,
+                           file_verifiers=file_verifiers):
+        return http_ok(request, 'Nothing to change')
+
+    session = Session()
+    session.add(testable)
+    try:
+        transaction.commit()
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'That name already exists for the project')
+    return http_ok(request, 'Testable updated')
 
 
 @view_config(route_name='user_class_join', request_method='POST',

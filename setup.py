@@ -14,7 +14,7 @@ requires = [
     'pyramid_addons>=0.8.1',
     'pyramid_tm>=0.5',
     'python-daemon>=1.5.5',
-    'sqla_mixins>=0.3',
+    'sqla_mixins>=0.4',
     'sqlalchemy>=0.7.8',
     'zope.sqlalchemy>=0.7.1']
 
