@@ -35,6 +35,8 @@ def add_routes(config):
     config.add_route('submission_item', '/submission/{submission_id}')
     config.add_route('test_case', '/test_case')
     config.add_route('test_case_item', '/test_case/{test_case_id}')
+    config.add_route('testable', '/testable')
+    config.add_route('testable_item', '/testable/{testable_id}')
     config.add_route('user', '/user')
     config.add_route('user_class_join', '/user/{username}/{class_name}')
     config.add_route('user_item', '/user/{username}')

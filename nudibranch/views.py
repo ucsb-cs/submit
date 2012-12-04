@@ -574,7 +574,7 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
         return id_check
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
                          points=points, stdin_id=stdin_id,
-                         testable_id=testable.id)
+                         testable=testable)
     session = Session()
     session.add(test_case)
     try:
@@ -618,6 +618,46 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
         return http_conflict(request,
                              'That name already exists for the project')
     return http_ok(request, 'Test case updated')
+
+
+@view_config(route_name='testable', request_method='PUT',
+             permission='admin', renderer='json')
+@validated_form(name=String('name', min_length=1),
+                make_target=String('make_target', min_length=1),
+                executable=String('executable', min_length=1),
+                file_verifier_ids=List('file_verifier_ids',
+                                       TextNumber('', min_value=0),
+                                       optional=True),
+                project_id=TextNumber('project_id', min_value=0))
+def testable_create(request, name, make_target, executable, file_verifier_ids,
+                    project_id):
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+
+    testable = Testable(name=name, make_target=make_target,
+                        executable=executable, project=project)
+
+    if not file_verifier_ids:
+        file_verifier_ids = []
+    for file_verifier_id in file_verifier_ids:
+        file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
+        if not file_verifier:
+            return http_bad_request(request, 'Invalid file_verifier_id')
+        testable.file_verifiers.append(file_verifier)
+    session = Session()
+    session.add(testable)
+    try:
+        transaction.commit()
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'That name already exists for the project')
+
+    redir_location = request.route_path('project_edit',
+                                        project_id=project_id)
+    transaction.commit()
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='user_class_join', request_method='POST',
