@@ -8,7 +8,7 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, OneOfEnum, String, TextNumber,
+from pyramid_addons.validation import (List, Enum, String, TextNumber,
                                        WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
@@ -598,8 +598,8 @@ def user_class_join(request):
                 username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6),
-                level=OneOfEnum('level', 
-                                'student', 'class_admin'))
+                level=Enum('level', 
+                           'student', 'class_admin'))
 def user_create(request, name, username, password, email, level):
     session = Session()
     user = User(name=name, username=username, password=password,
