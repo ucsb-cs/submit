@@ -40,6 +40,8 @@ def add_routes(config):
     config.add_route('user_class_join', '/user/{username}/{class_name}')
     config.add_route('user_item', '/user/{username}')
 
+    config.add_route('admin_utils', '/admin_utils')
+
     # Form view routes
     config.add_route('class_new', '/form/class')
     config.add_route('class_edit', '/form/class/{class_name}')

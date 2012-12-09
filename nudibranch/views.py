@@ -8,7 +8,7 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, String, TextNumber,
+from pyramid_addons.validation import (List, OneOfEnum, String, TextNumber,
                                        WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
@@ -597,11 +597,13 @@ def user_class_join(request):
 @validated_form(name=String('name', min_length=3),
                 username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
-                email=String('email', min_length=6))
-def user_create(request, name, username, password, email):
+                email=String('email', min_length=6),
+                level=OneOfEnum('level', 
+                                'student', 'class_admin'))
+def user_create(request, name, username, password, email, level):
     session = Session()
     user = User(name=name, username=username, password=password,
-                email=email, sec_level='student')
+                email=email, sec_level=level)
     session.add(user)
     try:
         transaction.commit()
@@ -638,3 +640,11 @@ def user_view(request):
     if not user:
         return HTTPNotFound()
     return {'page_title': 'User Page', 'user': user}
+
+
+@view_config(route_name='admin_utils', request_method='GET',
+             permission='admin', 
+             renderer='templates/admin_utils.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def admin_view(request):
+    return {'page_title': 'Administrator Utilities'}
