@@ -16,13 +16,13 @@
       <label for="email">E-mail</label><br/>
       <input type="text" name="email" id="email" /><br/>
 
-      <div tal:condition="request.user and request.user.is_at_least_class_admin()">
-	<label for="level">Permission level</label><br/>
-	<input type="radio" name="level" id="level" value="student" checked="checked">Student<br/>
-	<input type="radio" name="level" id="level" value="class_admin">Class Administrator<br/>
+      <div tal:condition="admin_classes">
+	<label for="admin_for">Extra Permissions</label><br/>
+	<div tal:repeat="klass admin_classes">
+	  <input type="checkbox" name="admin_for[]" 
+		 value="${klass.name}">Class Administrator for ${klass.name}<br/>
+	</div>
       </div>
-      <input tal:condition="not (request.user and request.user.is_at_least_class_admin())"
-	     type="hidden" name="level" id="level" value="student">
     </p>
 
     <input type="submit" name="submit" value="Create"/>

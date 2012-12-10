@@ -8,7 +8,7 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, Enum, String, TextNumber,
+from pyramid_addons.validation import (List, Enum, Equals, String, TextNumber, Or,
                                        WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
@@ -632,12 +632,30 @@ def user_class_join(request):
                 username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6),
-                level=Enum('level', 
-                           'student', 'class_admin'))
-def user_create(request, name, username, password, email, level):
+                admin_for=List('admin_for', Or('', Equals('', None), String(''))))
+def user_create(request, name, username, password, email, admin_for):
+    # get the classes we are requesting, and make sure
+    # they are all valid
+    asking_classes = [Class.fetch_by(name=class_name)
+                      for class_name in admin_for
+                      if class_name]
+    if None in asking_classes:
+        return http_bad_request(request, 'Nonexistent class')
+
+    # make sure we can actually grant the permissions we
+    # are requesting
+    if admin_for and not request.user.is_admin:
+        can_add_permission_for = frozenset(request.user.admin_for)
+        asking_permission_for = frozenset(asking_classes)
+        if len(asking_permission_for - can_add_permission_for) > 0:
+            return http_bad_request(
+                request, 
+                "Don't have permissions to add permissions")
+    
     session = Session()
     user = User(name=name, username=username, password=password,
-                email=email, sec_level=level)
+                email=email, is_admin=False)
+    user.admin_for.extend(asking_classes)
     session.add(user)
     try:
         transaction.commit()
@@ -654,7 +672,15 @@ def user_create(request, name, username, password, email, level):
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):
-    return {'page_title': 'Create User'}
+    can_add_admin_for = None
+    if request.user.is_admin:
+        can_add_admin_for = Class.all_classes_by_name()
+    elif request.user.admin_for:
+        can_add_admin_for = sorted(request.user.admin_for,
+                                   key=lambda k: k.name)
+
+    return {'page_title': 'Create User',
+            'admin_classes': can_add_admin_for}
 
 
 @view_config(route_name='user', request_method='GET', permission='admin',

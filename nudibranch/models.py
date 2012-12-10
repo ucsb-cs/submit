@@ -53,6 +53,10 @@ class Class(BasicBase, Base):
     def __str__(self):
         return 'Class Name: {0}'.format(self.name)
 
+    @staticmethod
+    def all_classes_by_name():
+        return Session().query(Class).order_by(Class.name).all()
+
 
 class File(BasicBase, Base):
     lines = Column(Integer, nullable=False)
