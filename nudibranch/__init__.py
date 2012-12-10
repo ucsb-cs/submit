@@ -9,7 +9,6 @@ from .security import get_user, group_finder
 
 class Root(object):
     __acl__ = [(Allow, Authenticated, 'authenticated'),
-               (Allow, 'class_admin', ('authenticated', 'class_admin')),
                (Allow, 'admin', ALL_PERMISSIONS)]
 
     def __init__(self, request):

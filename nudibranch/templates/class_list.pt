@@ -1,6 +1,6 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <p tal:condition="request.user.is_admin()">
+  <p tal:condition="request.user.is_admin">
     <a href="${_R('class_new')}">Create new class</a>
   </p>
   <div tal:repeat="klass classes">

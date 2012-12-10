@@ -35,6 +35,13 @@ user_to_file = Table('user_to_file', Base.metadata,
                      Column('file_id', Integer, ForeignKey('file.id'),
                             nullable=False))
 
+# which classes a user is an admin for
+user_to_class_admin = Table('user_to_class_admin', Base.metadata,
+                            Column('user_id', Integer, ForeignKey('user.id'),
+                                   nullable=False),
+                            Column('class_id', Integer, ForeignKey('class.id'),
+                                   nullable=False))
+
 
 class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
@@ -327,36 +334,75 @@ class TestCaseResult(Base):
         self.created_at = func.now()
 
 
-# ordering of the permission levels, from lowest to highest
-_perm_order = ['student', 'class_admin', 'admin']
-
-
 class User(UserMixin, BasicBase, Base):
     """The UserMixin provides the `username` and `password` attributes.
     `password` is a write-only attribute and can be verified using the
     `verify_password` function."""
     name = Column(Unicode, nullable=False)
     email = Column(Unicode, nullable=False)
-    sec_level = Column(Enum('admin', 'class_admin', 'student',
-                            default='student', nullable=False))
+    is_admin = Column(Boolean, default=False, nullable=False)
     classes = relationship(Class, secondary=user_to_class, backref='users')
     files = relationship(File, secondary=user_to_file, backref='users')
+    admin_for = relationship(Class, secondary=user_to_class_admin, 
+                             backref='admins')
     submissions = relationship('Submission', backref='user')
 
-    def is_admin(self):
-        return self.sec_level == 'admin'
+    @staticmethod
+    def is_int(value):
+        try:
+            int(value)
+            return True
+        except ValueError:
+            pass
+        return False
 
-    def is_class_admin(self):
-        return self.sec_level == 'class_admin'
+    def is_admin_for_class(self, cls):
+        '''Takes either a class, a class name, or a class id.
+        Note that the toplevel admin is considered viable.
+        If we are given a string representation of a class id,
+        it will try it as a class name first, then as a normal id'''
+        if self.is_admin:
+            return True
+        if isinstance(cls, int):
+            cls = Class.fetch_by(id=cls)
+        elif isinstance(cls, basestring):
+            orig = cls
+            cls = Class.fetch_by(name=cls)
+            if not cls and is_int(orig):
+                cls = Class.fetch_by(id=orig)
+        return cls and cls in self.admin_for
 
-    def is_student(self):
-        return self.sec_level == 'student'
+    def is_admin_for_project(self, project):
+        '''Takes either a project or a project id.
+        The project id may be a string representation of the id'''
+        if isinstance(project, (basestring, int)):
+            project = Project.fetch_by(id=project)
+        return project and self.is_admin_for_class(
+            project.class_id)
 
-    def is_at_least(self, level):
-        return _perm_order.index(self.sec_level) >= _perm_order.index(level)
+    def is_admin_for_file_verifier(self, file_verifier):
+        '''Takes either a file verifier or a file verifier id.
+        The file verifier id may be a string representation.'''
+        if isinstance(file_verifier, (basestring, int)):
+            file_verifier = FileVerifier.fetch_by(id=file_verifier)
+        return file_verifier and self.is_admin_for_project(
+            file_verifier.project_id)
 
-    def is_at_least_class_admin(self):
-        return self.is_at_least('class_admin')
+    def is_admin_for_test_case(self, test_case):
+        '''Takes either a test case or a test case id.
+        The test case id may be a string representation.'''
+        if isinstance(test_case, (basestring, int)):
+            test_case = TestCase.fetch_by(id=test_case)
+        return test_case and self.is_admin_for_project(
+            test_case.project_id)
+
+    def is_admin_for_submission(self, submission):
+        '''Takes either a submission or a submission id.
+        The submission id may be a string representation.'''
+        if isinstance(submission, (basestring, int)):
+            submission = Submission.fetch_by(id=submission)
+        return submission and self.is_admin_for_project(
+            submission.project_id)
 
     @staticmethod
     def login(username, password):
@@ -378,7 +424,7 @@ class User(UserMixin, BasicBase, Base):
             self.email, self.name, self.username)
 
     def __str__(self):
-        admin_str = '(admin)' if self.is_admin() else ''
+        admin_str = '(admin)' if self.is_admin else ''
         return 'Name: {0} Username: {1} Email: {2} {3}'.format(self.name,
                                                                self.username,
                                                                self.email,

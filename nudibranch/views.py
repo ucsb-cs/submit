@@ -23,7 +23,6 @@ from .models import (Class, File, FileVerifier, Project, Session, Submission,
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 
-
 @notfound_view_config()
 def not_found(request):
     return Response('Not Found', status='404 Not Found')
@@ -128,7 +127,7 @@ def file_item_info(request):
 
 
 @view_config(route_name='file_verifier', request_method='PUT',
-             permission='admin', renderer='json')
+             permission='authenticated', renderer='json')
 @validated_form(filename=String('filename', min_length=1),
                 min_size=TextNumber('min_size', min_value=0),
                 max_size=TextNumber('max_size', min_value=0, optional=True),
@@ -138,6 +137,9 @@ def file_item_info(request):
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, project_id):
     # Additional verification
+    if not request.user.is_admin_for_project(project_id):
+        return HTTPForbidden()
+
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -170,7 +172,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 
 
 @view_config(route_name='file_verifier_item', request_method='POST',
-             permission='admin', renderer='json')
+             permission='authenticated', renderer='json')
 @validated_form(filename=String('filename', min_length=1),
                 min_size=TextNumber('min_size', min_value=0),
                 max_size=TextNumber('max_size', min_value=0, optional=True),
@@ -179,6 +181,10 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
                          max_lines):
     # Additional verification
+    if not request.user.is_admin_for_file_verifier(
+        request.matchdict['file_verifier_id']):
+        return HTTPForbidden()
+
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -219,13 +225,17 @@ def home(request):
     return {'page_title': 'Home'}
 
 
-@view_config(route_name='project', request_method='PUT', permission='admin',
+@view_config(route_name='project', request_method='PUT', permission='authenticated',
              renderer='json')
 @validated_form(name=String('name', min_length=2),
                 class_id=TextNumber('class_id', min_value=0),
                 makefile_id=TextNumber('makefile_id', min_value=0,
                                        optional=True))
 def project_create(request, name, class_id, makefile_id):
+    # make sure we're at least a class admin
+    if not request.user.is_admin_for_class(class_id):
+        return HTTPForbidden()
+
     klass = Class.fetch_by_id(class_id)
     if not klass:
         return http_bad_request(request, 'Invalid class_id')
@@ -249,9 +259,13 @@ def project_create(request, name, class_id, makefile_id):
 
 @view_config(route_name='project_edit',
              renderer='templates/project_edit.pt',
-             request_method='GET', permission='admin')
+             request_method='GET', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def project_edit(request):
+    if not request.user.is_admin_for_project(
+        request.matchdict['project_id']):
+        return HTTPForbidden()
+
     project = Project.fetch_by_id(request.matchdict['project_id'])
     if not project:
         return HTTPNotFound()
@@ -265,9 +279,13 @@ def project_edit(request):
 
 @view_config(route_name='project_new',
              renderer='templates/project_new.pt',
-             request_method='GET', permission='admin')
+             request_method='GET', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def project_new(request):
+    if not request.user.is_admin_for_class(
+        request.matchdict['class_name']):
+        return HTTPForbidden()
+
     klass = Class.fetch_by(name=request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
@@ -277,11 +295,15 @@ def project_new(request):
 
 
 @view_config(route_name='project_item_summary', request_method='POST',
-             permission='admin', renderer='json')
+             permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=2),
                 makefile_id=TextNumber('makefile_id', min_value=0,
                                        optional=True))
 def project_update(request, name, makefile_id):
+    if not request.user.is_admin_for_project(
+        request.matchdict['project_id']):
+        return HTTPForbidden()
+
     project_id = request.matchdict['project_id']
     class_name = request.matchdict['class_name']
     project = Project.fetch_by_id(project_id)
@@ -322,7 +344,8 @@ def project_view_detailed(request):
             or project.klass not in user.classes:
         return HTTPNotFound()
     # Authorization checks
-    if not request.user.is_at_least_class_admin() and request.user != user:
+    if not request.user.is_admin_for_project(project) \
+            and request.user != user:
         return HTTPForbidden()
 
     submissions = Submission.query_by(project_id=project.id, user_id=user.id)
@@ -330,7 +353,7 @@ def project_view_detailed(request):
         return HTTPNotFound()
 
     prev_next_user = None
-    if request.user.is_at_least_class_admin():
+    if request.user.is_admin_for_project(project):
         prev_next_user = PrevNextUser(request, project, user).to_html()
 
     return {'page_title': 'Project Page',
@@ -346,9 +369,13 @@ def project_view_detailed(request):
 @view_config(route_name='project_item_summary',
              renderer='templates/project_view_summary.pt',
              request_method=('GET', 'HEAD'),
-             permission='admin')
+             permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_summary(request):
+    if not request.user.is_admin_for_project(
+        request.matchdict['project_id']):
+        return HTTPForbidden()
+
     project = Project.fetch_by_id(request.matchdict['project_id'])
     class_name = request.matchdict['class_name']
     if not project or project.klass.name != class_name:
@@ -495,7 +522,7 @@ def submission_view(request):
         diff_renderer.add_diff(full_diff)
 
     prev_next_html = None
-    if request.user.is_at_least_class_admin():
+    if request.user.is_admin_for_submission(submission):
         try:
             prev_next_html = PrevNextFull(request, submission).to_html()
         except (NoSuchUserException, NoSuchProjectException):
@@ -511,7 +538,7 @@ def submission_view(request):
 
 
 @view_config(route_name='test_case', request_method='PUT',
-             permission='admin',
+             permission='authenticated',
              renderer='json')
 @validated_form(name=String('name', min_length=1),
                 args=String('args', min_length=1),
@@ -521,6 +548,9 @@ def submission_view(request):
                 stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
 def test_case_create(request, name, args, expected_id, points, project_id,
                      stdin_id):
+    if not request.user.is_admin_for_project(project_id):
+        return HTTPForbidden()
+        
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
@@ -545,13 +575,17 @@ def test_case_create(request, name, args, expected_id, points, project_id,
 
 
 @view_config(route_name='test_case_item', request_method='POST',
-             permission='admin', renderer='json')
+             permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
                 args=String('args', min_length=1),
                 expected_id=TextNumber('expected_id', min_value=0),
                 points=TextNumber('points'),
                 stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
 def test_case_update(request, name, args, expected_id, points, stdin_id):
+    if not request.user.is_admin_for_test_case(
+        request.matchdict['test_case_id']):
+        return HTTPForbidden()
+
     test_case_id = request.matchdict['test_case_id']
     test_case = TestCase.fetch_by_id(test_case_id)
     if not test_case:

@@ -1,5 +1,5 @@
 from pyramid.security import unauthenticated_userid
-from .models import User
+from .models import User, Class
 
 
 def get_user(request):
@@ -10,4 +10,5 @@ def get_user(request):
 
 def group_finder(user_id, request):
     user = request.user
-    return [user.sec_level] if user else None
+    if user:
+        return ['admin'] if user.is_admin else ['student']

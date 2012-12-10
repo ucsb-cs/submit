@@ -13,7 +13,7 @@
 
   <div tal:replace="structure diff_table"></div>
   <hr>
-  <div tal:condition="request.user.is_at_least_class_admin()"
+  <div tal:condition="request.user.is_admin_for_submission(submission)"
        tal:replace="structure prev_next"></div>
 </div>
 </div>
