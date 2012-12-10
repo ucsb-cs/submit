@@ -23,6 +23,8 @@
 		 value="${klass.name}">Class Administrator for ${klass.name}<br/>
 	</div>
       </div>
+      <input tal:condition="not admin_classes"
+	     type="hidden" name="admin_for[]">
     </p>
 
     <input type="submit" name="submit" value="Create"/>

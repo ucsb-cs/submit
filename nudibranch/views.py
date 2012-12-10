@@ -644,7 +644,7 @@ def user_create(request, name, username, password, email, admin_for):
 
     # make sure we can actually grant the permissions we
     # are requesting
-    if admin_for and not request.user.is_admin:
+    if asking_classes and not request.user.is_admin:
         can_add_permission_for = frozenset(request.user.admin_for)
         asking_permission_for = frozenset(asking_classes)
         if len(asking_permission_for - can_add_permission_for) > 0:
@@ -673,11 +673,12 @@ def user_create(request, name, username, password, email, admin_for):
 @site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):
     can_add_admin_for = None
-    if request.user.is_admin:
-        can_add_admin_for = Class.all_classes_by_name()
-    elif request.user.admin_for:
-        can_add_admin_for = sorted(request.user.admin_for,
-                                   key=lambda k: k.name)
+    if request.user:
+        if request.user.is_admin:
+            can_add_admin_for = Class.all_classes_by_name()
+        elif request.user.admin_for:
+            can_add_admin_for = sorted(request.user.admin_for,
+                                       key=lambda k: k.name)
 
     return {'page_title': 'Create User',
             'admin_classes': can_add_admin_for}
