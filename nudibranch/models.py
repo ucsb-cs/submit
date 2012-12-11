@@ -415,45 +415,57 @@ class User(UserMixin, BasicBase, Base):
                 cls = Class.fetch_by(id=orig)
         return cls and cls in self.admin_for
 
+    @staticmethod
+    def get_value(cls, value):
+        '''Takes the class of the item that we want to
+        query, along with a potential instance of that class.
+        If the value is an instance of int or basestring, then
+        we will treat it like an id for that instance.'''
+        if isinstance(value, (basestring, int)):
+            value = cls.fetch_by(id=value)
+        return value if isinstance(value, cls) else None
+
+    @staticmethod
+    def is_admin_for_something(cls, value, chain):
+        '''chain is called only on something of the 
+        appropriate type'''
+        value = User.get_value(cls, value)
+        return value and chain(value)
+
     def is_admin_for_project(self, project):
         '''Takes either a project or a project id.
         The project id may be a string representation of the id'''
-        if isinstance(project, (basestring, int)):
-            project = Project.fetch_by(id=project)
-        return project and self.is_admin_for_class(
-            project.class_id)
+        return User.is_admin_for_something(
+            Project, project,
+            lambda p: self.is_admin_for_class(p.class_id))
 
     def is_admin_for_file_verifier(self, file_verifier):
         '''Takes either a file verifier or a file verifier id.
         The file verifier id may be a string representation.'''
-        if isinstance(file_verifier, (basestring, int)):
-            file_verifier = FileVerifier.fetch_by(id=file_verifier)
-        return file_verifier and self.is_admin_for_project(
-            file_verifier.project_id)
+        return User.is_admin_for_something(
+            FileVerifier, file_verifier,
+            lambda f: self.is_admin_for_project(f.project))
 
     def is_admin_for_test_case(self, test_case):
         '''Takes either a test case or a test case id.
         The test case id may be a string representation.'''
-        if isinstance(test_case, (basestring, int)):
-            test_case = TestCase.fetch_by(id=test_case)
-        return test_case and self.is_admin_for_project(
-            test_case.project_id)
+        return User.is_admin_for_something(
+            TestCase, test_case,
+            lambda t: self.is_admin_for_project(t.project_id))
 
     def is_admin_for_testable(self, testable):
         '''Takes either a testabe or a testable id.
         The testable id may be a string representation.'''
-        if isinstance(testable, (basestring, int)):
-            testable = Testable.fetch_by(id=testable)
-        return testable and self.is_admin_for_project(
-            testable.project_id)
+        return User.is_admin_for_something(
+            Testable, testable,
+            lambda t: self.is_admin_for_project(t.project_id))
 
     def is_admin_for_submission(self, submission):
         '''Takes either a submission or a submission id.
         The submission id may be a string representation.'''
-        if isinstance(submission, (basestring, int)):
-            submission = Submission.fetch_by(id=submission)
-        return submission and self.is_admin_for_project(
-            submission.project_id)
+        return User.is_admin_for_something(
+            Submission, submission,
+            lambda s: self.is_admin_for_project(s.project_id))
 
     @staticmethod
     def login(username, password):
