@@ -13,7 +13,7 @@ class DummyTemplateAttr(object):
 
 def readlines(path):
     with open(path, 'r') as fh:
-        return fh.readlines()
+        return fh.read().splitlines()
 
 
 def verify_file_ids(request, **kwargs):
