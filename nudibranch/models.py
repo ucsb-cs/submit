@@ -427,7 +427,7 @@ class User(UserMixin, BasicBase, Base):
 
     @staticmethod
     def is_admin_for_something(cls, value, chain):
-        '''chain is called only on something of the 
+        '''chain is called only on something of the
         appropriate type'''
         value = User.get_value(cls, value)
         return value and chain(value)

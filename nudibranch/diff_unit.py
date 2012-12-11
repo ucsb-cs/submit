@@ -33,7 +33,8 @@ class DiffWithMetadata(object):
     Not intended to be stored.'''
 
     INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
-    CORRECT_HTML_TEST_NAME = '<pre style="color:green">{0}</pre>'
+    CORRECT_HTML_TEST_NAME = \
+        '<p style="color:green;margin:0;padding:0;">{0}</p>'
     HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
 
     def __init__(self, diff, test_num, test_name, test_points, extra_info):
