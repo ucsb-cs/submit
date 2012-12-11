@@ -552,7 +552,7 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
     if not testable:
         return http_bad_request(request, 'Invalid testable_id')
 
-    if not request.user.is_admin_for_project(project):
+    if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
 
     id_check = verify_file_ids(request, expected_id=expected_id,

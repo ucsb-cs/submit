@@ -432,6 +432,14 @@ class User(UserMixin, BasicBase, Base):
         return test_case and self.is_admin_for_project(
             test_case.project_id)
 
+    def is_admin_for_testable(self, testable):
+        '''Takes either a testabe or a testable id.
+        The testable id may be a string representation.'''
+        if isinstance(testable, (basestring, int)):
+            testable = Testable.fetch_by(id=testable)
+        return testable and self.is_admin_for_project(
+            testable.project_id)
+
     def is_admin_for_submission(self, submission):
         '''Takes either a submission or a submission id.
         The submission id may be a string representation.'''
