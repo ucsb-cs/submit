@@ -8,8 +8,9 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, Enum, Equals, String, TextNumber, Or,
-                                       WhiteSpaceString, validated_form)
+from pyramid_addons.validation import (List, Equals, Or, String,
+                                       TextNumber, WhiteSpaceString,
+                                       validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import forget, remember
@@ -22,6 +23,7 @@ from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, TestCase, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
+
 
 @notfound_view_config()
 def not_found(request):
@@ -136,8 +138,11 @@ def file_item_info(request):
                 project_id=TextNumber('project_id', min_value=0))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, project_id):
-    # Additional verification
-    if not request.user.is_admin_for_project(project_id):
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+
+    if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
 
     if max_size is not None and max_size < min_size:
@@ -148,10 +153,6 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request, 'min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
-
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, 'Invalid project_id')
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
@@ -181,8 +182,12 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
                          max_lines):
     # Additional verification
-    if not request.user.is_admin_for_file_verifier(
-        request.matchdict['file_verifier_id']):
+    file_verifier_id = request.matchdict['file_verifier_id']
+    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
+    if not file_verifier:
+        return http_bad_request(request, 'Invalid file_verifier_id')
+
+    if not request.user.is_admin_for_file_verifier(file_verifier):
         return HTTPForbidden()
 
     if max_size is not None and max_size < min_size:
@@ -193,11 +198,6 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request, 'min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
-
-    file_verifier_id = request.matchdict['file_verifier_id']
-    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
-    if not file_verifier:
-        return http_bad_request(request, 'Invalid file_verifier_id')
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
@@ -225,20 +225,20 @@ def home(request):
     return {'page_title': 'Home'}
 
 
-@view_config(route_name='project', request_method='PUT', permission='authenticated',
-             renderer='json')
+@view_config(route_name='project', request_method='PUT',
+             permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=2),
                 class_id=TextNumber('class_id', min_value=0),
                 makefile_id=TextNumber('makefile_id', min_value=0,
                                        optional=True))
 def project_create(request, name, class_id, makefile_id):
-    # make sure we're at least a class admin
-    if not request.user.is_admin_for_class(class_id):
-        return HTTPForbidden()
-
     klass = Class.fetch_by_id(class_id)
     if not klass:
         return http_bad_request(request, 'Invalid class_id')
+
+    if not request.user.is_admin_for_class(klass):
+        return HTTPForbidden()
+
     id_check = verify_file_ids(request, makefile_id=makefile_id)
     if id_check:
         return id_check
@@ -262,13 +262,13 @@ def project_create(request, name, class_id, makefile_id):
              request_method='GET', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def project_edit(request):
-    if not request.user.is_admin_for_project(
-        request.matchdict['project_id']):
-        return HTTPForbidden()
-
     project = Project.fetch_by_id(request.matchdict['project_id'])
     if not project:
         return HTTPNotFound()
+
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
+
     action = request.route_path('project_item_summary',
                                 class_name=project.klass.name,
                                 project_id=project.id)
@@ -282,13 +282,13 @@ def project_edit(request):
              request_method='GET', permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def project_new(request):
-    if not request.user.is_admin_for_class(
-        request.matchdict['class_name']):
-        return HTTPForbidden()
-
     klass = Class.fetch_by(name=request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
+
+    if not request.user.is_admin_for_class(klass):
+        return HTTPForbidden()
+
     dummy_project = DummyTemplateAttr(None)
     dummy_project.klass = klass
     return {'page_title': 'Create Project', 'project': dummy_project}
@@ -300,15 +300,15 @@ def project_new(request):
                 makefile_id=TextNumber('makefile_id', min_value=0,
                                        optional=True))
 def project_update(request, name, makefile_id):
-    if not request.user.is_admin_for_project(
-        request.matchdict['project_id']):
-        return HTTPForbidden()
-
     project_id = request.matchdict['project_id']
-    class_name = request.matchdict['class_name']
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
+
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
+
+    class_name = request.matchdict['class_name']
     if project.klass.name != class_name:
         return http_bad_request(request, 'Inconsistent class specification')
     id_check = verify_file_ids(request, makefile_id=makefile_id)
@@ -343,9 +343,10 @@ def project_view_detailed(request):
     if not (user and project) or project.klass.name != class_name \
             or project.klass not in user.classes:
         return HTTPNotFound()
+
     # Authorization checks
-    if not request.user.is_admin_for_project(project) \
-            and request.user != user:
+    project_admin = request.user.is_admin_for_project(project)
+    if not project_admin and request.user != user:
         return HTTPForbidden()
 
     submissions = Submission.query_by(project_id=project.id, user_id=user.id)
@@ -353,7 +354,7 @@ def project_view_detailed(request):
         return HTTPNotFound()
 
     prev_next_user = None
-    if request.user.is_admin_for_project(project):
+    if project_admin:
         prev_next_user = PrevNextUser(request, project, user).to_html()
 
     return {'page_title': 'Project Page',
@@ -372,14 +373,13 @@ def project_view_detailed(request):
              permission='authenticated')
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_summary(request):
-    if not request.user.is_admin_for_project(
-        request.matchdict['project_id']):
-        return HTTPForbidden()
-
-    project = Project.fetch_by_id(request.matchdict['project_id'])
     class_name = request.matchdict['class_name']
+    project = Project.fetch_by_id(request.matchdict['project_id'])
     if not project or project.klass.name != class_name:
         return HTTPNotFound()
+
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
 
     submissions = {}
     user_truncated = set()
@@ -548,12 +548,13 @@ def submission_view(request):
                 stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
 def test_case_create(request, name, args, expected_id, points, project_id,
                      stdin_id):
-    if not request.user.is_admin_for_project(project_id):
-        return HTTPForbidden()
-        
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
+
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
+
     id_check = verify_file_ids(request, expected_id=expected_id,
                                stdin_id=stdin_id)
     if id_check:
@@ -582,14 +583,14 @@ def test_case_create(request, name, args, expected_id, points, project_id,
                 points=TextNumber('points'),
                 stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
 def test_case_update(request, name, args, expected_id, points, stdin_id):
-    if not request.user.is_admin_for_test_case(
-        request.matchdict['test_case_id']):
-        return HTTPForbidden()
-
     test_case_id = request.matchdict['test_case_id']
     test_case = TestCase.fetch_by_id(test_case_id)
     if not test_case:
         return http_bad_request(request, 'Invalid test_case_id')
+
+    if not request.user.is_admin_for_test_case(test_case):
+        return HTTPForbidden()
+
     id_check = verify_file_ids(request, expected_id=expected_id,
                                stdin_id=stdin_id)
     if id_check:
@@ -632,7 +633,8 @@ def user_class_join(request):
                 username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6),
-                admin_for=List('admin_for', Or('', Equals('', None), String(''))))
+                admin_for=List('admin_for',
+                               Or('', Equals('', None), String(''))))
 def user_create(request, name, username, password, email, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
@@ -649,9 +651,9 @@ def user_create(request, name, username, password, email, admin_for):
         asking_permission_for = frozenset(asking_classes)
         if len(asking_permission_for - can_add_permission_for) > 0:
             return http_bad_request(
-                request, 
+                request,
                 "Don't have permissions to add permissions")
-    
+
     session = Session()
     user = User(name=name, username=username, password=password,
                 email=email, is_admin=False)
@@ -704,14 +706,15 @@ def user_view(request):
 
 
 @view_config(route_name='admin_utils', request_method='GET',
-             permission='admin', 
+             permission='admin',
              renderer='templates/admin_utils.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def admin_view(request):
     return {'page_title': 'Administrator Utilities'}
 
+
 @view_config(route_name='class_admin_utils', request_method='GET',
-             permission='authenticated', 
+             permission='authenticated',
              renderer='templates/class_admin_utils.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def class_admin_view(request):

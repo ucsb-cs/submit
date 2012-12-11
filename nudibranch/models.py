@@ -347,7 +347,7 @@ class User(UserMixin, BasicBase, Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     classes = relationship(Class, secondary=user_to_class, backref='users')
     files = relationship(File, secondary=user_to_file, backref='users')
-    admin_for = relationship(Class, secondary=user_to_class_admin, 
+    admin_for = relationship(Class, secondary=user_to_class_admin,
                              backref='admins')
     submissions = relationship('Submission', backref='user')
 
@@ -375,7 +375,7 @@ class User(UserMixin, BasicBase, Base):
         elif isinstance(cls, basestring):
             orig = cls
             cls = Class.fetch_by(name=cls)
-            if not cls and is_int(orig):
+            if not cls and User.is_int(orig):
                 cls = Class.fetch_by(id=orig)
         return cls and cls in self.admin_for
 

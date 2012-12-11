@@ -1,5 +1,5 @@
 from pyramid.security import unauthenticated_userid
-from .models import User, Class
+from .models import User
 
 
 def get_user(request):
