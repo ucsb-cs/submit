@@ -1,5 +1,11 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
+  <div tal:condition="prev_next">
+    <hr>
+    <div tal:replace="structure prev_next"></div>
+    <hr>
+  </div>
+
   <p>Submitted ${_pd(submission.created_at)}</p>
   <div tal:condition="submission.verified_at">
     <p>Submission verified ${_pd(submission.verified_at)}</p>
@@ -12,8 +18,5 @@
   </div>
 
   <div tal:replace="structure diff_table"></div>
-  <hr>
-  <div tal:condition="request.user.is_admin_for_submission(submission)"
-       tal:replace="structure prev_next"></div>
 </div>
 </div>

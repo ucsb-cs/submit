@@ -1,5 +1,11 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
+  <div tal:condition="prev_next_user">
+    <hr>
+    <div tal:replace="structure prev_next_user"></div>
+    <hr>
+  </div>
+
   <p>Info for ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
   <p tal:condition="request.user.is_admin_for_project(project) and not submissions">
@@ -16,7 +22,5 @@
     </a>
     </li>
   </ul>
-  <div tal:condition="request.user.is_admin_for_project(project)"
-       tal:replace="structure prev_next_user"></div>
 </div>
 </div>
