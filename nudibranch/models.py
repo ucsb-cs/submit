@@ -483,7 +483,7 @@ def populate_database():
 
     # Admin user
     admin = User(email='root@localhost', name='Administrator',
-                 username='admin', password='password', sec_level='admin')
+                 username='admin', password='password', is_admin=True)
     # Class
     klass = Class(name='CS32')
     Session.add(klass)
