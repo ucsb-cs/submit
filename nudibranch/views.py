@@ -709,3 +709,12 @@ def user_view(request):
 @site_layout('nudibranch:templates/layout.pt')
 def admin_view(request):
     return {'page_title': 'Administrator Utilities'}
+
+@view_config(route_name='class_admin_utils', request_method='GET',
+             permission='authenticated', 
+             renderer='templates/class_admin_utils.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def class_admin_view(request):
+    if not request.user.is_admin_for_any_class():
+        return HTTPForbidden()
+    return {'page_title': 'Class Administrator Utilities'}

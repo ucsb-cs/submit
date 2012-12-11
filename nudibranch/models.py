@@ -360,6 +360,9 @@ class User(UserMixin, BasicBase, Base):
             pass
         return False
 
+    def is_admin_for_any_class(self):
+        return len(self.admin_for) > 0
+
     def is_admin_for_class(self, cls):
         '''Takes either a class, a class name, or a class id.
         Note that the toplevel admin is considered viable.
