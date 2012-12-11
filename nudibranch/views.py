@@ -612,7 +612,7 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
 
 
 @view_config(route_name='testable', request_method='PUT',
-             permission='admin', renderer='json')
+             permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
                 make_target=String('make_target', min_length=1),
                 executable=String('executable', min_length=1),
@@ -625,6 +625,8 @@ def testable_create(request, name, make_target, executable, file_verifier_ids,
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
 
     testable = Testable(name=name, make_target=make_target,
                         executable=executable, project=project)
@@ -651,7 +653,7 @@ def testable_create(request, name, make_target, executable, file_verifier_ids,
 
 
 @view_config(route_name='testable_item', request_method='POST',
-             permission='admin', renderer='json')
+             permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
                 make_target=String('make_target', min_length=1),
                 executable=String('executable', min_length=1),
@@ -663,6 +665,8 @@ def testable_edit(request, name, make_target, executable, file_verifier_ids):
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
         return http_bad_request(request, 'Invalid testable_id')
+    if not request.user.is_admin_for(testable):
+        return HTTPForbidden()
 
     if not file_verifier_ids:
         file_verifier_ids = []
