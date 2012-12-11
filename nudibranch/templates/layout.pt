@@ -21,7 +21,14 @@
 </head>
 <body>
   <div tal:condition="request.user and request.user.is_admin" style="background: #CCC">
-    ADMIN BAR: <a href="${_R('user')}">Users</a>
+    ADMIN BAR: 
+    <a href="${_R('user')}">Users</a>
+    <span>|</span>
+    <a href="${_R('admin_utils')}">Admin Utilities</a>
+  </div>
+  <div tal:condition="request.user and not request.user.is_admin and request.user.is_admin_for_any_class()" style="background: #CCC">
+    CLASS ADMIN BAR:
+    <a href="${_R('class_admin_utils')}">Class Admin Utilities</a>
   </div>
   <div tal:condition="request.user" style="background: #0C0">
     <form name="logout" action="${_R('session')}"

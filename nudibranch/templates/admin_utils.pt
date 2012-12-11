@@ -1,0 +1,7 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+  <a href="${_R('user_new')}">Make New User</a>
+  <p>
+  <a href="${_R('class')}">Make New Class</a>
+</div>
+</div>

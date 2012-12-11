@@ -30,7 +30,7 @@ def _init_testing_db():
 
     # Add an admin user, two users, and two classes
     admin = User(email='', name='admin', username='admin', password='password',
-                 is_admin=True)
+                 sec_level='admin')
     user1 = User(email='', name='User 1', username='user1', password='pswd1')
     user2 = User(email='', name='User 2', username='user2', password='pswd2')
     user3 = User(email='', name='User 3', username='user3', password='pswd3')

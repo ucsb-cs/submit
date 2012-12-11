@@ -43,6 +43,13 @@ user_to_file = Table('user_to_file', Base.metadata,
                      Column('file_id', Integer, ForeignKey('file.id'),
                             nullable=False))
 
+# which classes a user is an admin for
+user_to_class_admin = Table('user_to_class_admin', Base.metadata,
+                            Column('user_id', Integer, ForeignKey('user.id'),
+                                   nullable=False),
+                            Column('class_id', Integer, ForeignKey('class.id'),
+                                   nullable=False))
+
 
 class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
@@ -53,6 +60,10 @@ class Class(BasicBase, Base):
 
     def __str__(self):
         return 'Class Name: {0}'.format(self.name)
+
+    @staticmethod
+    def all_classes_by_name():
+        return Session().query(Class).order_by(Class.name).all()
 
 
 class File(BasicBase, Base):
@@ -157,19 +168,24 @@ class Project(BasicBase, Base):
         submission.verified_at = func.now()
         return valid
 
+    def _first_with_filter(self, user, pred, reverse=False):
+        lst = sorted([u for u in self.klass.users
+                      if pred(u)],
+                     reverse=reverse)
+        return lst[0] if lst else None
+
     def next_user(self, user):
         '''Returns the next user (determined by name), or None if this
         is the last user'''
-        return (Session().query(User).
-                filter(user_to_class.c.class_id == self.class_id,
-                       User.name > user.name).
-                order_by(User.name).first())
+        # TODO: how are you supposed to do a query across an association
+        # table?
+        return self._first_with_filter(user,
+                                       lambda u: u.name > user.name)
 
     def prev_user(self, user):
-        return (Session().query(User).
-                filter(user_to_class.c.class_id == self.class_id,
-                       User.name > user.name).
-                order_by(User.name).first())
+        return self._first_with_filter(user,
+                                       lambda u: u.name < user.name,
+                                       reverse=True)
 
 
 class Submission(BasicBase, Base):
@@ -360,7 +376,69 @@ class User(UserMixin, BasicBase, Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     classes = relationship(Class, secondary=user_to_class, backref='users')
     files = relationship(File, secondary=user_to_file, backref='users')
-    submissions = relationship(Submission, backref='user')
+    admin_for = relationship(Class, secondary=user_to_class_admin,
+                             backref='admins')
+    submissions = relationship('Submission', backref='user')
+
+    @staticmethod
+    def is_int(value):
+        try:
+            int(value)
+            return True
+        except ValueError:
+            pass
+        return False
+
+    def is_admin_for_any_class(self):
+        return len(self.admin_for) > 0
+
+    def is_admin_for_class(self, cls):
+        '''Takes either a class, a class name, or a class id.
+        Note that the toplevel admin is considered viable.
+        If we are given a string representation of a class id,
+        it will try it as a class name first, then as a normal id'''
+        if self.is_admin:
+            return True
+        if isinstance(cls, int):
+            cls = Class.fetch_by(id=cls)
+        elif isinstance(cls, basestring):
+            orig = cls
+            cls = Class.fetch_by(name=cls)
+            if not cls and User.is_int(orig):
+                cls = Class.fetch_by(id=orig)
+        return cls and cls in self.admin_for
+
+    def is_admin_for_project(self, project):
+        '''Takes either a project or a project id.
+        The project id may be a string representation of the id'''
+        if isinstance(project, (basestring, int)):
+            project = Project.fetch_by(id=project)
+        return project and self.is_admin_for_class(
+            project.class_id)
+
+    def is_admin_for_file_verifier(self, file_verifier):
+        '''Takes either a file verifier or a file verifier id.
+        The file verifier id may be a string representation.'''
+        if isinstance(file_verifier, (basestring, int)):
+            file_verifier = FileVerifier.fetch_by(id=file_verifier)
+        return file_verifier and self.is_admin_for_project(
+            file_verifier.project_id)
+
+    def is_admin_for_test_case(self, test_case):
+        '''Takes either a test case or a test case id.
+        The test case id may be a string representation.'''
+        if isinstance(test_case, (basestring, int)):
+            test_case = TestCase.fetch_by(id=test_case)
+        return test_case and self.is_admin_for_project(
+            test_case.project_id)
+
+    def is_admin_for_submission(self, submission):
+        '''Takes either a submission or a submission id.
+        The submission id may be a string representation.'''
+        if isinstance(submission, (basestring, int)):
+            submission = Submission.fetch_by(id=submission)
+        return submission and self.is_admin_for_project(
+            submission.project_id)
 
     @staticmethod
     def login(username, password):
@@ -405,7 +483,7 @@ def populate_database():
 
     # Admin user
     admin = User(email='root@localhost', name='Administrator',
-                 username='admin', password='password', is_admin=True)
+                 username='admin', password='password', sec_level='admin')
     # Class
     klass = Class(name='CS32')
     Session.add(klass)

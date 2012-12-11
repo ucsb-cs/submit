@@ -15,6 +15,16 @@
 
       <label for="email">E-mail</label><br/>
       <input type="text" name="email" id="email" /><br/>
+
+      <div tal:condition="admin_classes">
+	<label for="admin_for">Extra Permissions</label><br/>
+	<div tal:repeat="klass admin_classes">
+	  <input type="checkbox" name="admin_for[]" 
+		 value="${klass.name}">Class Administrator for ${klass.name}<br/>
+	</div>
+      </div>
+      <input tal:condition="not admin_classes"
+	     type="hidden" name="admin_for[]">
     </p>
 
     <input type="submit" name="submit" value="Create"/>
