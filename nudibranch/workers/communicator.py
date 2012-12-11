@@ -154,7 +154,7 @@ def sync_files_worker(submission_id, user, host, remote_dir):
     # Symlink test inputs and copy build test case specifications
     os.mkdir('inputs')
     test_cases = []
-    for test_case in project.test_cases:
+    for test_case in project.test_cases():
         test_cases.append(test_case.serialize())
         if test_case.stdin:
             destination = os.path.join('inputs', test_case.stdin.sha1)

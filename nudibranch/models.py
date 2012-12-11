@@ -146,6 +146,13 @@ class Project(BasicBase, Base):
     submissions = relationship('Submission', backref='project')
     testables = relationship('Testable', backref='project')
 
+    def test_cases(self):
+        '''Gets all test cases associated with this project by
+        descending through its testables'''
+        return [testcase
+                for testable in self.testables
+                for testcase in testable.test_cases]
+
     def verify_submission(self, submission):
         results = {'missing': [], 'passed': [], 'failed': []}
         file_mapping = dict([(x.filename, x) for x in submission.files])
