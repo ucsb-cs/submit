@@ -103,10 +103,6 @@ def update_or_create_result(submission_id, test_case_id, results):
     diff_file = File.fetch_or_create(pickle.dumps(unit), BASE_FILE_PATH)
     test_case_result.diff = diff_file
 
-    # data = open('tc_{}'.format(test_case_id)).read()
-    # file = File.fetch_or_create(data, BASE_FILE_PATH)
-    # test_case.diff = file
-
     session = Session()
     session.add(test_case_result)
     return test_case_result
