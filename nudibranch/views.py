@@ -665,7 +665,7 @@ def testable_edit(request, name, make_target, executable, file_verifier_ids):
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
         return http_bad_request(request, 'Invalid testable_id')
-    if not request.user.is_admin_for(testable):
+    if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
 
     if not file_verifier_ids:
