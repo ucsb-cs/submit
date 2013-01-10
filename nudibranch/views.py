@@ -717,14 +717,15 @@ def user_class_join(request):
                 username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6),
-                admin_for=List('admin_for',
-                               Or('', Equals('', None), String(''))))
+                admin_for=List('admin_for', TextNumber('', min_value=0),
+                               optional=True))
 def user_create(request, name, username, password, email, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
-    asking_classes = [Class.fetch_by(name=class_name)
-                      for class_name in admin_for
-                      if class_name]
+    if admin_for:
+        asking_classes = [Class.fetch_by_id(x) for x in admin_for]
+    else:
+        asking_classes = []
     if None in asking_classes:
         return http_bad_request(request, 'Nonexistent class')
 
@@ -735,8 +736,7 @@ def user_create(request, name, username, password, email, admin_for):
         asking_permission_for = frozenset(asking_classes)
         if len(asking_permission_for - can_add_permission_for) > 0:
             return http_bad_request(
-                request,
-                "Don't have permissions to add permissions")
+                request, "Don't have permissions to add permissions")
 
     session = Session()
     user = User(name=name, username=username, password=password,
