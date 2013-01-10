@@ -479,18 +479,18 @@ class ProjectTests(BaseAPITest):
         return user, json_data
 
     @staticmethod
-    def get_update_objects(username='admin', md_update=None,
+    def get_update_objects(md_update=None, username='admin',
                            first_project=True, **kwargs):
         if first_project:
             proj = Session.query(Project).first()
         else:
             proj = Session.query(Project).all()[1]
+        user = User.fetch_by(username=username)
         matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
         json_data = {'name': 'Foobar'}
         if md_update:
             matchdict.update(md_update)
         json_data.update(kwargs)
-        user = User.fetch_by(username=username)
         return user, matchdict, json_data
 
     @staticmethod
