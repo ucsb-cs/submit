@@ -8,9 +8,8 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, Equals, Or, String,
-                                       TextNumber, WhiteSpaceString,
-                                       validated_form)
+from pyramid_addons.validation import (List, String, TextNumber,
+                                       WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import Response
 from pyramid.security import forget, remember

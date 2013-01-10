@@ -471,14 +471,16 @@ class FileVerifierTests(BaseAPITest):
 
 class ProjectTests(BaseAPITest):
     @staticmethod
-    def get_objects(**kwargs):
+    def get_objects(username='admin', **kwargs):
+        user = User.fetch_by(username=username)
         klass = Session.query(Class).first()
         json_data = {'name': 'Foobar', 'class_id': text_type(klass.id)}
         json_data.update(kwargs)
-        return json_data
+        return user, json_data
 
     @staticmethod
-    def get_update_objects(md_update=None, first_project=True, **kwargs):
+    def get_update_objects(username='admin', md_update=None,
+                           first_project=True, **kwargs):
         if first_project:
             proj = Session.query(Project).first()
         else:
@@ -488,7 +490,8 @@ class ProjectTests(BaseAPITest):
         if md_update:
             matchdict.update(md_update)
         json_data.update(kwargs)
-        return matchdict, json_data
+        user = User.fetch_by(username=username)
+        return user, matchdict, json_data
 
     @staticmethod
     def get_view_objects(username='user1', **kwargs):
@@ -501,8 +504,8 @@ class ProjectTests(BaseAPITest):
 
     def test_create_invalid_duplicate_name(self):
         from nudibranch.views import project_create
-        json_data = self.get_objects(name='Project 1')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(name='Project 1')
+        request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
         self.assertEqual('Project name already exists for the class',
@@ -510,32 +513,31 @@ class ProjectTests(BaseAPITest):
 
     def test_create_invalid_id_str(self):
         from nudibranch.views import project_create
-        json_data = self.get_objects(class_id=1)
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(class_id=1)
+        request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual(1, len(info['messages']))
 
     def test_create_invalid_id_value(self):
         from nudibranch.views import project_create
-        json_data = self.get_objects(class_id='1337')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(class_id='1337')
+        request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid class_id', info['messages'])
 
     def test_create_invalid_makefile_id(self):
         from nudibranch.views import project_create
-        json_data = self.get_objects(makefile_id='100')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(makefile_id='100')
+        request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid makefile_id', info['messages'])
 
     def test_create_invalid_makefile_id_perms(self):
         from nudibranch.views import project_create
-        user = User.fetch_by(username='admin')
-        json_data = self.get_objects(makefile_id='1')
+        user, json_data = self.get_objects(makefile_id='1')
         request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
@@ -550,8 +552,8 @@ class ProjectTests(BaseAPITest):
 
     def test_create_valid(self):
         from nudibranch.views import project_create
-        json_data = self.get_objects()
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects()
+        request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         expected_prefix = route_path('project_edit', request,
@@ -564,7 +566,9 @@ class ProjectTests(BaseAPITest):
     def test_edit(self):
         from nudibranch.views import project_edit
         project = Session.query(Project).first()
-        request = self.make_request(matchdict={'project_id': project.id})
+        user = User.fetch_by(username='admin')
+        request = self.make_request(matchdict={'project_id': project.id},
+                                    user=user)
         info = project_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Edit Project', info['page_title'])
@@ -573,7 +577,9 @@ class ProjectTests(BaseAPITest):
     def test_new(self):
         from nudibranch.views import project_new
         klass = Session.query(Class).first()
-        request = self.make_request(matchdict={'class_name': klass.name})
+        user = User.fetch_by(username='admin')
+        request = self.make_request(matchdict={'class_name': klass.name},
+                                    user=user)
         info = project_new(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Create Project', info['page_title'])
@@ -581,8 +587,9 @@ class ProjectTests(BaseAPITest):
 
     def test_update_duplicate(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects(name='Project 2')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(name='Project 2')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = project_update(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
         self.assertEqual('Project name already exists for the class',
@@ -590,16 +597,16 @@ class ProjectTests(BaseAPITest):
 
     def test_update_invalid_makefile_id(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects(makefile_id='100')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(makefile_id='100')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = project_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid makefile_id', info['messages'])
 
     def test_update_invalid_makefile_id_perms(self):
         from nudibranch.views import project_update
-        user = User.fetch_by(username='admin')
-        matchdict, json_data = self.get_update_objects(makefile_id='1')
+        user, matchdict, json_data = self.get_update_objects(makefile_id='1')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = project_update(request)
@@ -608,24 +615,29 @@ class ProjectTests(BaseAPITest):
 
     def test_update_invalid_product_id(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects({'project_id': 100})
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(
+            {'project_id': 100})
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = project_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid project_id', info['messages'])
 
     def test_update_inconsistent_class_name(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects({'class_name': 'Ivld'})
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(
+            {'class_name': 'Invalid'})
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = project_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Inconsistent class specification', info['messages'])
 
     def test_update_no_change(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects(name='Project 1')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(name='Project 1')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = project_update(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Nothing to change', info['message'])
@@ -639,9 +651,8 @@ class ProjectTests(BaseAPITest):
 
     def test_update_valid_add_makefile(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects(name='Project 1',
-                                                       makefile_id='2')
-        user = User.fetch_by(username='admin')
+        user, matchdict, json_data = self.get_update_objects(name='Project 1',
+                                                             makefile_id='2')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = project_update(request)
@@ -652,9 +663,8 @@ class ProjectTests(BaseAPITest):
 
     def test_update_valid_remove_makefile(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects(first_project=False,
-                                                       name='Project 2')
-        user = User.fetch_by(username='admin')
+        user, matchdict, json_data = self.get_update_objects(
+            first_project=False, name='Project 2')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = project_update(request)
@@ -665,8 +675,9 @@ class ProjectTests(BaseAPITest):
 
     def test_update_valid_update_name(self):
         from nudibranch.views import project_update
-        matchdict, json_data = self.get_update_objects()
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects()
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = project_update(request)
         proj = Session.query(Project).first()
         self.assertEqual(HTTPOk.code, request.response.status_code)
