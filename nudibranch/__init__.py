@@ -44,6 +44,8 @@ def add_routes(config):
     config.add_route('admin_utils', '/admin_utils')
     config.add_route('class_admin_utils', '/class_admin_utils')
 
+    config.add_route('zipfile_download', '/zipfile_download/{submission_id}')
+
     # Form view routes
     config.add_route('class_new', '/form/class')
     config.add_route('class_edit', '/form/class/{class_name}')

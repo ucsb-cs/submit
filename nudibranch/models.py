@@ -300,10 +300,9 @@ class SubmissionToFile(Base):
     def fetch_file_mapping_for_submission(submission_id):
         '''Given a submission id, it returns a mapping of filenames
         to File objects'''
-        query = Session().query(
-            SubmissionToFile.filename,
-            SubmissionToFile.file).filter_by(submission_id=submission_id)
-        return dict(list(query))
+        results = Session().query(SubmissionToFile).filter_by(
+            submission_id=submission_id)
+        return dict([(stf.filename, stf.file) for stf in results])
 
 
 class TestCase(BasicBase, Base):
@@ -425,45 +424,46 @@ class User(UserMixin, BasicBase, Base):
             value = cls.fetch_by(id=value)
         return value if isinstance(value, cls) else None
 
-    @staticmethod
-    def is_admin_for_something(cls, value, chain):
+    def is_admin_for_something(self, cls, value, chain):
         '''chain is called only on something of the
         appropriate type'''
+        if self.is_admin:
+            return True
         value = User.get_value(cls, value)
         return value and chain(value)
 
     def is_admin_for_project(self, project):
         '''Takes either a project or a project id.
         The project id may be a string representation of the id'''
-        return User.is_admin_for_something(
+        return self.is_admin_for_something(
             Project, project,
             lambda p: self.is_admin_for_class(p.class_id))
 
     def is_admin_for_file_verifier(self, file_verifier):
         '''Takes either a file verifier or a file verifier id.
         The file verifier id may be a string representation.'''
-        return User.is_admin_for_something(
+        return self.is_admin_for_something(
             FileVerifier, file_verifier,
             lambda f: self.is_admin_for_project(f.project))
 
     def is_admin_for_test_case(self, test_case):
         '''Takes either a test case or a test case id.
         The test case id may be a string representation.'''
-        return User.is_admin_for_something(
+        return self.is_admin_for_something(
             TestCase, test_case,
             lambda t: self.is_admin_for_project(t.project_id))
 
     def is_admin_for_testable(self, testable):
         '''Takes either a testabe or a testable id.
         The testable id may be a string representation.'''
-        return User.is_admin_for_something(
+        return self.is_admin_for_something(
             Testable, testable,
             lambda t: self.is_admin_for_project(t.project_id))
 
     def is_admin_for_submission(self, submission):
         '''Takes either a submission or a submission id.
         The submission id may be a string representation.'''
-        return User.is_admin_for_something(
+        return self.is_admin_for_something(
             Submission, submission,
             lambda s: self.is_admin_for_project(s.project_id))
 

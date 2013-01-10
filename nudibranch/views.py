@@ -12,7 +12,7 @@ from pyramid_addons.validation import (List, Equals, Or, String,
                                        TextNumber, WhiteSpaceString,
                                        validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
-from pyramid.response import Response
+from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
@@ -23,10 +23,16 @@ from .models import (Class, File, FileVerifier, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
+from .zipper import ZipSubmission
 
 
 @notfound_view_config()
 def not_found(request):
+    import os.path
+    path = 'nudibranch/static/' + os.path.basename(request.path)
+    print "PATH: " + path
+    if os.path.isfile(path):
+        return FileResponse(path, request=request)
     return Response('Not Found', status='404 Not Found')
 
 
@@ -500,6 +506,24 @@ def to_full_diff(request, test_case_result):
                             test_case.points,
                             DiffExtraInfo(test_case_result.status,
                                           test_case_result.extra))
+
+
+@view_config(route_name='zipfile_download', request_method='GET',
+             permission='authenticated')
+def zipfile_download(request):
+    submission = Submission.fetch_by_id(request.matchdict['submission_id'])
+    if not submission:
+        return HTTPNotFound()
+    if not request.user.is_admin_for_submission(submission):
+        return HTTPForbidden()
+    zipfile = ZipSubmission(submission)
+    response = FileResponse(zipfile.zipfile_path())#, 
+                            #content_type='application/zip',
+                            #request=request)
+    response.headers['Content-type'] = 'application/zip'
+    response.headers['Content-disposition'] = ("attachment",
+                                               "filename={0}".format(zipfile.zipfile_name()))
+    return response
 
 
 @view_config(route_name='submission_item', request_method='GET',
