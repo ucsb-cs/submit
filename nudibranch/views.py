@@ -138,13 +138,6 @@ def file_item_info(request):
                 project_id=TextNumber('project_id', min_value=0))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, project_id):
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, 'Invalid project_id')
-
-    if not request.user.is_admin_for_project(project):
-        return HTTPForbidden()
-
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -153,6 +146,13 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request, 'min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
+
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
@@ -182,14 +182,6 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
                          max_lines):
     # Additional verification
-    file_verifier_id = request.matchdict['file_verifier_id']
-    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
-    if not file_verifier:
-        return http_bad_request(request, 'Invalid file_verifier_id')
-
-    if not request.user.is_admin_for_file_verifier(file_verifier):
-        return HTTPForbidden()
-
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -198,6 +190,14 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request, 'min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
+
+    file_verifier_id = request.matchdict['file_verifier_id']
+    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
+    if not file_verifier:
+        return http_bad_request(request, 'Invalid file_verifier_id')
+
+    if not request.user.is_admin_for_file_verifier(file_verifier):
+        return HTTPForbidden()
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,

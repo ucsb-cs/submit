@@ -325,12 +325,13 @@ class FileTests(BaseAPITest):
 
 class FileVerifierTests(BaseAPITest):
     @staticmethod
-    def get_objects(**kwargs):
+    def get_objects(username='admin', **kwargs):
+        user = User.fetch_by(username=username)
         project = Session.query(Project).first()
         json_data = {'filename': 'File 3', 'min_size': '0', 'min_lines': '0',
                      'project_id': text_type(project.id)}
         json_data.update(kwargs)
-        return json_data
+        return user, json_data
 
     @staticmethod
     def get_update_objects(**kwargs):
@@ -341,8 +342,8 @@ class FileVerifierTests(BaseAPITest):
 
     def test_create_invalid_duplicate_name(self):
         from nudibranch.views import file_verifier_create
-        json_data = self.get_objects(filename='File 2')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(filename='File 2')
+        request = self.make_request(json_body=json_data, user=user)
         info = file_verifier_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
         self.assertEqual('That filename already exists for the project',
@@ -350,23 +351,23 @@ class FileVerifierTests(BaseAPITest):
 
     def test_create_invalid_lines(self):
         from nudibranch.views import file_verifier_create
-        json_data = self.get_objects(min_lines='10', max_lines='9')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(min_lines='10', max_lines='9')
+        request = self.make_request(json_body=json_data, user=user)
         info = file_verifier_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('min_lines cannot be > max_lines', info['messages'])
 
     def test_create_invalid_maxes(self):
         from nudibranch.views import file_verifier_create
-        json_data = self.get_objects(max_lines='10', max_size='9')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(max_lines='10', max_size='9')
+        request = self.make_request(json_body=json_data, user=user)
         info = file_verifier_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('max_lines cannot be > max_size', info['messages'])
 
     def test_create_invalid_mins(self):
         from nudibranch.views import file_verifier_create
-        json_data = self.get_objects(min_lines='1', min_size='0')
+        _, json_data = self.get_objects(min_lines='1', min_size='0')
         request = self.make_request(json_body=json_data)
         info = file_verifier_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
@@ -374,7 +375,7 @@ class FileVerifierTests(BaseAPITest):
 
     def test_create_invalid_size(self):
         from nudibranch.views import file_verifier_create
-        json_data = self.get_objects(min_size='10', max_size='9')
+        _, json_data = self.get_objects(min_size='10', max_size='9')
         request = self.make_request(json_body=json_data)
         info = file_verifier_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
@@ -389,8 +390,8 @@ class FileVerifierTests(BaseAPITest):
 
     def test_create_valid(self):
         from nudibranch.views import file_verifier_create
-        json_data = self.get_objects()
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects()
+        request = self.make_request(json_body=json_data, user=user)
         info = file_verifier_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         project = Session.query(Project).first()
@@ -404,7 +405,9 @@ class FileVerifierTests(BaseAPITest):
     def test_update_invalid_duplicate_name(self):
         from nudibranch.views import file_verifier_update
         matchdict, json_data = self.get_update_objects(filename='File 2')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user = User.fetch_by(username='admin')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = file_verifier_update(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
         self.assertEqual('That filename already exists for the project',
@@ -456,7 +459,9 @@ class FileVerifierTests(BaseAPITest):
     def test_update_valid(self):
         from nudibranch.views import file_verifier_update
         matchdict, json_data = self.get_update_objects()
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user = User.fetch_by(username='admin')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = file_verifier_update(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('updated', info['message'])
