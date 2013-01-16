@@ -1,5 +1,6 @@
 import xml.sax.saxutils
 from pyramid_addons.helpers import http_bad_request
+from .exceptions import InvalidId
 from .models import File
 
 
@@ -28,6 +29,29 @@ def verify_file_ids(request, **kwargs):
 def escape(string):
     return xml.sax.saxutils.escape(string, {'"': "&quot;",
                                             "'": "&apos;"})
+
+def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
+    """Return a list of cls instances for all the ids provided in item_ids.
+
+    :param item_ids: The list of ids to fetch objects for
+    :param cls: The class to fetch the ids from
+    :param attr_name: The name of the attribute for exception purposes
+    :param verification_list: If provided, a list of acceptable instances
+
+    Raise exception http_bad_request exception using attr_name if any do not
+    exist, or are not present in the verification_list.
+
+    """
+    if not item_ids:
+        return []
+    items = []
+    for item_id in item_ids:
+        item = cls.fetch_by_id(item_id)
+        if not item or (verification_list is not None and
+                        item not in verification_list):
+            raise InvalidId(attr_name)
+        items.append(item)
+    return items
 
 
 def offset_from_sorted(item, lst, offset):
