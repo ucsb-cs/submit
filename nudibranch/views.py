@@ -17,9 +17,10 @@ from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
-from .helpers import DummyTemplateAttr, verify_file_ids
-from .models import (Class, File, FileVerifier, Project, Session, Submission,
-                     SubmissionToFile, TestCase, Testable, User)
+from .exceptions import InvalidId
+from .helpers import DummyTemplateAttr, fetch_request_ids, verify_file_ids
+from .models import (BuildFile, Class, File, FileVerifier, Project, Session,
+                     Submission, SubmissionToFile, TestCase, Testable, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 from .zipper import ZipSubmission
@@ -33,6 +34,38 @@ def not_found(request):
     if os.path.isfile(path):
         return FileResponse(path, request=request)
     return Response('Not Found', status='404 Not Found')
+
+
+@view_config(route_name='build_file', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validated_form(build_file_id=TextNumber('build_file_id', min_value=0),
+                filename=String('filename', min_length=1),
+                project_id=TextNumber('project_id', min_value=0))
+def build_file_create(request, build_file_id, filename, project_id):
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
+
+    id_check = verify_file_ids(request, build_file_id=build_file_id)
+    if id_check:
+        return id_check
+
+    build_file = BuildFile(file_id=build_file_id, filename=filename,
+                           project=project)
+    session = Session()
+    session.add(build_file)
+    try:
+        session.flush()  # Cannot commit the transaction here
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request,
+                             'That filename already exists for the project')
+    redir_location = request.route_path('project_edit', project_id=project.id)
+    transaction.commit()
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',
@@ -561,8 +594,7 @@ def submission_view(request):
 
 
 @view_config(route_name='test_case', request_method='PUT',
-             permission='authenticated',
-             renderer='json')
+             permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
                 args=String('args', min_length=1),
                 expected_id=TextNumber('expected_id', min_value=0),
@@ -639,28 +671,37 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
 @validated_form(name=String('name', min_length=1),
                 make_target=String('make_target', min_length=1),
                 executable=String('executable', min_length=1),
+                build_file_ids=List('build_file_ids',
+                                    TextNumber('', min_value=0),
+                                    optional=True),
                 file_verifier_ids=List('file_verifier_ids',
                                        TextNumber('', min_value=0),
                                        optional=True),
                 project_id=TextNumber('project_id', min_value=0))
-def testable_create(request, name, make_target, executable, file_verifier_ids,
-                    project_id):
+def testable_create(request, name, make_target, executable, build_file_ids,
+                    file_verifier_ids, project_id):
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
 
+    try:
+        # Verify the ids actually exist and are associated with the project
+        build_files = fetch_request_ids(build_file_ids, BuildFile,
+                                        'build_file_id',
+                                        project.build_files)
+        file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
+                                           'file_verifier_id',
+                                           project.file_verifiers)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+
     testable = Testable(name=name, make_target=make_target,
                         executable=executable, project=project)
+    map(testable.build_files.append, build_files)
+    map(testable.file_verifiers.append, file_verifiers)
 
-    if not file_verifier_ids:
-        file_verifier_ids = []
-    for file_verifier_id in file_verifier_ids:
-        file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
-        if not file_verifier:
-            return http_bad_request(request, 'Invalid file_verifier_id')
-        testable.file_verifiers.append(file_verifier)
     session = Session()
     session.add(testable)
     try:
@@ -680,10 +721,14 @@ def testable_create(request, name, make_target, executable, file_verifier_ids,
 @validated_form(name=String('name', min_length=1),
                 make_target=String('make_target', min_length=1),
                 executable=String('executable', min_length=1),
+                build_file_ids=List('build_file_ids',
+                                    TextNumber('', min_value=0),
+                                    optional=True),
                 file_verifier_ids=List('file_verifier_ids',
                                        TextNumber('', min_value=0),
                                        optional=True))
-def testable_edit(request, name, make_target, executable, file_verifier_ids):
+def testable_edit(request, name, make_target, executable, build_file_ids,
+                  file_verifier_ids):
     testable_id = request.matchdict['testable_id']
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
@@ -691,18 +736,21 @@ def testable_edit(request, name, make_target, executable, file_verifier_ids):
     if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
 
-    if not file_verifier_ids:
-        file_verifier_ids = []
-    file_verifiers = []
-    for file_verifier_id in file_verifier_ids:
-        file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
-        if not file_verifier:
-            return http_bad_request(request, 'Invalid file_verifier_id')
-        file_verifiers.append(file_verifier)
+    try:
+        # Verify the ids actually exist and are associated with the project
+        build_files = fetch_request_ids(build_file_ids, BuildFile,
+                                        'build_file_id',
+                                        testable.project.build_files)
+        file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
+                                           'file_verifier_id',
+                                           testable.project.file_verifiers)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
 
     if not testable.update(_ignore_order=True, name=name,
                            make_target=make_target,
                            executable=executable,
+                           build_files=build_files,
                            file_verifiers=file_verifiers):
         return http_ok(request, 'Nothing to change')
 

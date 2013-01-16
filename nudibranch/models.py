@@ -23,25 +23,33 @@ Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 builtins._sqla_mixins_session = Session
 
 
-testable_to_file_verifier = Table('testable_to_file_verifier', Base.metadata,
-                                  Column('testable_id', Integer,
-                                         ForeignKey('testable.id'),
-                                         nullable=False),
-                                  Column('file_verifier_id', Integer,
-                                         ForeignKey('fileverifier.id'),
-                                         nullable=False))
+testable_to_build_file = Table(
+    'testable_to_build_file', Base.metadata,
+    Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
+    Column('build_file_id', Integer, ForeignKey('buildfile.id'),
+           nullable=False))
 
-user_to_class = Table('user_to_class', Base.metadata,
-                      Column('user_id', Integer, ForeignKey('user.id'),
-                             nullable=False),
-                      Column('class_id', Integer, ForeignKey('class.id'),
-                             nullable=False))
+testable_to_execution_file = Table(
+    'testable_to_execution_file', Base.metadata,
+    Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
+    Column('execution_file_id', Integer, ForeignKey('executionfile.id'),
+           nullable=False))
 
-user_to_file = Table('user_to_file', Base.metadata,
-                     Column('user_id', Integer, ForeignKey('user.id'),
-                            nullable=False),
-                     Column('file_id', Integer, ForeignKey('file.id'),
-                            nullable=False))
+testable_to_file_verifier = Table(
+    'testable_to_file_verifier', Base.metadata,
+    Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
+    Column('file_verifier_id', Integer,ForeignKey('fileverifier.id'),
+           nullable=False))
+
+user_to_class = Table(
+    'user_to_class', Base.metadata,
+    Column('user_id', Integer, ForeignKey('user.id'), nullable=False),
+    Column('class_id', Integer, ForeignKey('class.id'), nullable=False))
+
+user_to_file = Table(
+    'user_to_file', Base.metadata,
+    Column('user_id', Integer,ForeignKey('user.id'), nullable=False),
+    Column('file_id', Integer, ForeignKey('file.id'), nullable=False))
 
 # which classes a user is an admin for
 user_to_class_admin = Table('user_to_class_admin', Base.metadata,
@@ -49,6 +57,14 @@ user_to_class_admin = Table('user_to_class_admin', Base.metadata,
                                    nullable=False),
                             Column('class_id', Integer, ForeignKey('class.id'),
                                    nullable=False))
+
+
+class BuildFile(BasicBase, Base):
+    __table_args__ = (UniqueConstraint('filename', 'project_id'),)
+    file = relationship('File', backref='build_files')
+    file_id = Column(Integer, ForeignKey('file.id'))
+    filename = Column(Unicode, nullable=False)
+    project_id = Column(Integer, ForeignKey('project.id'))
 
 
 class Class(BasicBase, Base):
@@ -64,6 +80,14 @@ class Class(BasicBase, Base):
     @staticmethod
     def all_classes_by_name():
         return Session().query(Class).order_by(Class.name).all()
+
+
+class ExecutionFile(BasicBase, Base):
+    __table_args__ = (UniqueConstraint('filename', 'project_id'),)
+    file = relationship('File', backref='execution_files')
+    file_id = Column(Integer, ForeignKey('file.id'))
+    filename = Column(Unicode, nullable=False)
+    project_id = Column(Integer, ForeignKey('project.id'))
 
 
 class File(BasicBase, Base):
@@ -138,7 +162,9 @@ class FileVerifier(BasicBase, Base):
 
 class Project(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
+    build_files = relationship(BuildFile, backref='project')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
+    execution_files = relationship(ExecutionFile, backref='project')
     file_verifiers = relationship('FileVerifier', backref='project')
     makefile = relationship(File)
     makefile_id = Column(Integer, ForeignKey('file.id'))
@@ -291,8 +317,8 @@ class Submission(BasicBase, Base):
 class SubmissionToFile(Base):
     __tablename__ = 'submissiontofile'
     file = relationship(File, backref='submission_assocs')
-    file_id = Column(Integer, ForeignKey('file.id'), primary_key=True)
-    filename = Column(Unicode, nullable=False)
+    file_id = Column(Integer, ForeignKey('file.id'))
+    filename = Column(Unicode, nullable=False, primary_key=True)
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            primary_key=True)
 
@@ -362,9 +388,11 @@ class TestCaseResult(Base):
 class Testable(BasicBase, Base):
     """Represents a set of properties for a single program to test."""
     __table_args__ = (UniqueConstraint('name', 'project_id'),)
-    #build_files = relationship(...)  # Additional files used with Make
+    build_files = relationship(BuildFile, backref='testables',
+                               secondary=testable_to_build_file)
     executable = Column(Unicode, nullable=False)
-    #execution_files = relationship(...)  # Additional files used
+    execution_files = relationship(ExecutionFile, backref='testables',
+                                   secondary=testable_to_execution_file)
     file_verifiers = relationship(FileVerifier, backref='testables',
                                   secondary=testable_to_file_verifier)
     make_target = Column(Unicode)  # When None, no make is required

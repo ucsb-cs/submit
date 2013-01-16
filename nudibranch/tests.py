@@ -1,12 +1,12 @@
 from __future__ import unicode_literals
 import sys
 import transaction
-import unittest
+import unittest2
 from chameleon.zpt.template import Macro
 from mock import MagicMock
 from nudibranch import add_routes
-from nudibranch.models import (Class, File, FileVerifier, Project, Session,
-                               Submission, SubmissionToFile, TestCase,
+from nudibranch.models import (BuildFile, Class, File, FileVerifier, Project,
+                               Session, Submission, SubmissionToFile, TestCase,
                                Testable, User, initialize_sql)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
@@ -75,6 +75,11 @@ def _init_testing_db():
     Session.add_all([test_case1, test_case2])
     Session.flush()
 
+    # Add build files
+    build_file1 = BuildFile(filename='foobar', file=file1, project=project1)
+    Session.add(build_file1)
+    Session.flush()
+
     # Make associatations
     admin.files.append(file2)
     user1.classes.append(klass1)
@@ -91,7 +96,7 @@ def _init_testing_db():
     Session.add_all([submission, s2f])
 
 
-class BaseAPITest(unittest.TestCase):
+class BaseAPITest(unittest2.TestCase):
     """Base test class for all API method (or controller) tests."""
 
     def make_request(self, **kwargs):
@@ -1166,7 +1171,7 @@ class UserTests(BaseAPITest):
 
 
 ### Non-view tests
-class DummyTemplateTest(unittest.TestCase):
+class DummyTemplateTest(unittest2.TestCase):
     def test_default_attribute_values(self):
         from nudibranch.views import DummyTemplateAttr
         a = DummyTemplateAttr()
@@ -1188,4 +1193,4 @@ class DummyTemplateTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest2.main()
