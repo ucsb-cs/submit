@@ -33,7 +33,7 @@
       <li tal:repeat="testable project.testables">
         <a href="#testable_tab_${repeat.testable.index}">${testable.name}</a>
       </li>
-      <li><a href="#testable_tab_new">New</a></li>
+      <li style="background: #ccf; font-weight: bold"><a href="#testable_tab_new">New</a></li>
     </ul>
 
     <div tal:repeat="testable project.testables" id="testable_tab_${repeat.testable.index}">
@@ -53,6 +53,18 @@
           <input type="text" name="executable" id="executable_${repeat.testable.index}"
                  value="${testable.executable}" />
           <br/>
+
+          <fieldset>
+            <legend>Select <span class="help" title="Build files are static files that are required to make the executable. Build files can be shadowed by students' files by creating optional expected files.">Build Files</span></legend>
+            <div tal:repeat="bf sorted(project.build_files)">
+              <input type="checkbox" name="build_file_ids[]"
+                     id="testable_bf_${repeat.testable.index}_${repeat.bf.index}"
+                     value="${bf.id}" tal:attributes="checked 'checked' if bf in testable.build_files else None" />
+              <label for="testable_bf_new_${repeat.bf.index}">${bf.filename}</label>
+            </div>
+            <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
+          </fieldset>
+
           <fieldset>
             <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
             <div tal:repeat="fv sorted(project.file_verifiers)">
@@ -80,10 +92,10 @@
       </fieldset>
     </div>
 
-    <div id="testable_tab_new">
+    <div id="testable_tab_new" style="background: #ccf">
       <form name="testable" action="${_R('testable')}"
             onsubmit="return form_request(this, 'PUT', true);">
-        <fieldset style="background: #ccf">
+        <fieldset>
           <legend>Testable Settings</legend>
           <label for="testable_name_new">Name</label>
           <input type="text" name="name" id="testable_name_new" />
@@ -93,7 +105,18 @@
           <br/>
           <label for="executable_new">Executable</label>
           <input type="text" name="executable" id="executable_new" />
-          <br/>
+
+          <fieldset>
+            <legend>Select <span class="help" title="Build files are static files that are required to make the executable. Build files can be shadowed by students' files by creating optional expected files.">Build Files</span></legend>
+            <div tal:repeat="bf sorted(project.build_files)">
+              <input type="checkbox" name="build_file_ids[]"
+                     id="testable_bf_new_${repeat.bf.index}"
+                     value="${bf.id}" />
+              <label for="testable_bf_new_${repeat.bf.index}">${bf.filename}</label>
+            </div>
+            <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
+          </fieldset>
+
           <fieldset>
             <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
             <div tal:repeat="fv sorted(project.file_verifiers)">
@@ -113,11 +136,24 @@
   </div>
 
   <!-- Dialog Boxes -->
+  <div id="build_file_new" class="dialog" title="Add New Build File" style="background: #ccf">
+    <form name="build_file" action="${_R('build_file')}"
+          onsubmit="return form_request(this, 'PUT', true);">
+      <label for="build_filename_new">Filename</label>
+      <input type="text" name="filename" id="build_filename_new" value="" />
+      <label for="build_file_new">Select a build file: </label>
+      <input name="build_file_id" id="build_file_new" type="file" />
+      <br/>
+      <input type="hidden" name="project_id" value="${project.id}" />
+      <input type="submit" name="submit" value="add" />
+    </form>
+  </div>
+
   <div id="file_verifier_new" class="dialog" title="Add New Expected File" style="background: #ccf">
     <form name="file_verifier" action="${_R('file_verifier')}"
           onsubmit="return form_request(this, 'PUT', true);">
-      <label for="filename_new">Filename</label>
-      <input type="text" name="filename" id="filename_new" value="" />
+      <label for="fv_filename_new">Filename</label>
+      <input type="text" name="filename" id="fv_filename_new" value="" />
       <br/>
       <label for="min_size_new">Min Size</label>
       <input type="text" name="min_size" id="min_size_new" value="0" />

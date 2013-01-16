@@ -5,8 +5,8 @@ import unittest
 from chameleon.zpt.template import Macro
 from mock import MagicMock
 from nudibranch import add_routes
-from nudibranch.models import (Class, File, FileVerifier, Project, Session,
-                               Submission, SubmissionToFile, TestCase,
+from nudibranch.models import (BuildFile, Class, File, FileVerifier, Project,
+                               Session, Submission, SubmissionToFile, TestCase,
                                Testable, User, initialize_sql)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
@@ -73,6 +73,11 @@ def _init_testing_db():
     test_case2 = TestCase(name='Test Case 2', args='a.out', points=1,
                           testable=testable1, expected=file2, stdin=file2)
     Session.add_all([test_case1, test_case2])
+    Session.flush()
+
+    # Add build files
+    build_file1 = BuildFile(filename='foobar', file=file1, project=project1)
+    Session.add(build_file1)
     Session.flush()
 
     # Make associatations
