@@ -2,7 +2,7 @@
 <div metal:fill-slot="content">
   <div class="header">Create New User</div>
   <form name="input" action="${_R('user')}"
-        onsubmit="return form_request(this, 'put');">
+        onsubmit="return form_request(this, 'put', true);">
     <p>
       <label for="name">Name</label><br/>
       <input type="text" name="name" id="name"/><br/>
@@ -19,12 +19,10 @@
       <div tal:condition="admin_classes">
 	<label for="admin_for">Extra Permissions</label><br/>
 	<div tal:repeat="klass admin_classes">
-	  <input type="checkbox" name="admin_for[]" 
-		 value="${klass.name}">Class Administrator for ${klass.name}<br/>
+	  <input type="checkbox" name="admin_for[]"
+		 value="${klass.id}">Class Administrator for ${klass.name}<br/>
 	</div>
       </div>
-      <input tal:condition="not admin_classes"
-	     type="hidden" name="admin_for[]">
     </p>
 
     <input type="submit" name="submit" value="Create"/>

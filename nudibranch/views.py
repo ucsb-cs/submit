@@ -8,9 +8,8 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, Equals, Or, String,
-                                       TextNumber, WhiteSpaceString,
-                                       validated_form)
+from pyramid_addons.validation import (List, String, TextNumber,
+                                       WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
@@ -144,13 +143,6 @@ def file_item_info(request):
                 project_id=TextNumber('project_id', min_value=0))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, project_id):
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, 'Invalid project_id')
-
-    if not request.user.is_admin_for_project(project):
-        return HTTPForbidden()
-
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -159,6 +151,13 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request, 'min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
+
+    project = Project.fetch_by_id(project_id)
+    if not project:
+        return http_bad_request(request, 'Invalid project_id')
+
+    if not request.user.is_admin_for_project(project):
+        return HTTPForbidden()
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
@@ -188,14 +187,6 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
                          max_lines):
     # Additional verification
-    file_verifier_id = request.matchdict['file_verifier_id']
-    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
-    if not file_verifier:
-        return http_bad_request(request, 'Invalid file_verifier_id')
-
-    if not request.user.is_admin_for_file_verifier(file_verifier):
-        return HTTPForbidden()
-
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -204,6 +195,14 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request, 'min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request, 'max_lines cannot be > max_size')
+
+    file_verifier_id = request.matchdict['file_verifier_id']
+    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
+    if not file_verifier:
+        return http_bad_request(request, 'Invalid file_verifier_id')
+
+    if not request.user.is_admin_for_file_verifier(file_verifier):
+        return HTTPForbidden()
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
@@ -741,14 +740,15 @@ def user_class_join(request):
                 username=String('username', min_length=3, max_length=16),
                 password=WhiteSpaceString('password', min_length=6),
                 email=String('email', min_length=6),
-                admin_for=List('admin_for',
-                               Or('', Equals('', None), String(''))))
+                admin_for=List('admin_for', TextNumber('', min_value=0),
+                               optional=True))
 def user_create(request, name, username, password, email, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
-    asking_classes = [Class.fetch_by(name=class_name)
-                      for class_name in admin_for
-                      if class_name]
+    if admin_for:
+        asking_classes = [Class.fetch_by_id(x) for x in admin_for]
+    else:
+        asking_classes = []
     if None in asking_classes:
         return http_bad_request(request, 'Nonexistent class')
 
@@ -759,8 +759,7 @@ def user_create(request, name, username, password, email, admin_for):
         asking_permission_for = frozenset(asking_classes)
         if len(asking_permission_for - can_add_permission_for) > 0:
             return http_bad_request(
-                request,
-                "Don't have permissions to add permissions")
+                request, "Don't have permissions to add permissions")
 
     session = Session()
     user = User(name=name, username=username, password=password,

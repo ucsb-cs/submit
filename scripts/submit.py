@@ -65,7 +65,7 @@ class Nudibranch(object):
                 self.username = username
                 break
             else:
-                print(response.json['message'])
+                print(response.json()['message'])
                 username = password = None
 
     def msg(self, message):
@@ -85,7 +85,7 @@ class Nudibranch(object):
                                 filenames=filenames)
         self.msg('Make submission: {0}'.format(response.status_code))
         if response.status_code == 201:
-            url = urljoin(self._url, response.json['redir_location'])
+            url = urljoin(self._url, response.json()['redir_location'])
             print('Submission successful')
             print('Results will be available at: {0}'.format(url))
             return 0
@@ -108,13 +108,13 @@ class Nudibranch(object):
         response = self.request(test_url, 'GET')
         self.msg('Test file: {0}'.format(response.status_code))
         if response.status_code == 200:
-            return response.json['file_id']
+            return response.json()['file_id']
         # Upload the file
         response = self.request(upload_url, 'PUT',
                                 b64data=base64.b64encode(data).decode('ascii'))
         self.msg('Send file: {0}'.format(response.status_code))
         if response.status_code == 200:
-            return response.json['file_id']
+            return response.json()['file_id']
         else:
             return None
 

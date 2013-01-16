@@ -451,7 +451,7 @@ class User(UserMixin, BasicBase, Base):
         The test case id may be a string representation.'''
         return self.is_admin_for_something(
             TestCase, test_case,
-            lambda t: self.is_admin_for_project(t.project_id))
+            lambda t: self.is_admin_for_project(t.testable.project_id))
 
     def is_admin_for_testable(self, testable):
         '''Takes either a testabe or a testable id.
