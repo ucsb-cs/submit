@@ -1,12 +1,6 @@
-import os
-import sys
-import zipfile
-from .models import File, Project, Submission, SubmissionToFile, User
-
-if sys.version_info < (3, 0):
-    builtins = __import__('__builtin__')
-else:
-    import builtins
+from tempfile import NamedTemporaryFile
+from zipfile import ZipFile
+from .models import File, Project, SubmissionToFile, User
 
 
 class MissingSomethingException(Exception):
@@ -21,21 +15,36 @@ class ZipSubmission(object):
     -User-submitted code that can be build with said makefile
     -Test cases, along with any stdin needed to run said test cases'''
     def __init__(self, submission):
+        self.submission = submission
         self.dirname = ZipSubmission.get_dirname_from_submission(submission)
-        with open("nudibranch/static/" + self.zipfile_name(), "wb") as self.backing_file:
-            self.submission = submission
-            self.project = ZipSubmission.get_project_from_submission(
-                submission)
-            self.zip = zipfile.ZipFile(self.backing_file, 'w')
-            self.__add_makefile()
-            self.__add_user_code()
-            self.zip.close()
-        
-    def zipfile_name(self):
+        self.project = ZipSubmission.get_project_from_submission(submission)
+        self.backing_file = None
+
+    def pretty_filename(self):
         return "{0}.zip".format(self.dirname)
 
-    def zipfile_path(self):
+    def actual_filename(self):
         return self.backing_file.name
+
+    def open(self):
+        self.backing_file = NamedTemporaryFile()
+        try:
+            self.zip = ZipFile(self.backing_file, 'w')
+            self.__add_makefile()
+            self.__add_user_code()
+        finally:
+            self.zip.close()
+
+    def close(self):
+        self.backing_file.close()
+        self.backing_file = None
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, tpe, value, traceback):
+        self.close()
 
     def write(self, backing_file, archive_filename):
         '''Writes the given file to the archive with the given name.

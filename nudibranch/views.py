@@ -28,11 +28,6 @@ from .zipper import ZipSubmission
 
 @notfound_view_config()
 def not_found(request):
-    import os.path
-    path = 'nudibranch/static/' + os.path.basename(request.path)
-    print "PATH: " + path
-    if os.path.isfile(path):
-        return FileResponse(path, request=request)
     return Response('Not Found', status='404 Not Found')
 
 
@@ -548,14 +543,17 @@ def zipfile_download(request):
         return HTTPNotFound()
     if not request.user.is_admin_for_submission(submission):
         return HTTPForbidden()
-    zipfile = ZipSubmission(submission)
-    response = FileResponse(zipfile.zipfile_path())#, 
-                            #content_type='application/zip',
-                            #request=request)
-    response.headers['Content-type'] = 'application/zip'
-    response.headers['Content-disposition'] = ("attachment",
-                                               "filename={0}".format(zipfile.zipfile_name()))
-    return response
+    with ZipSubmission(submission) as zipfile:
+        # The str() part is needed, or else these will (for some
+        # yet unknown reason) be converted to unicode, which will
+        # break waitress
+        response = FileResponse(
+            zipfile.actual_filename(),
+            content_type=str('application/zip'))
+        pretty = zipfile.pretty_filename()
+        disposition = 'application/zip; filename="{0}"'.format(pretty)
+        response.headers[str('Content-disposition')] = str(disposition)
+        return response
 
 
 @view_config(route_name='submission_item', request_method='GET',
