@@ -60,9 +60,20 @@
               <input type="checkbox" name="build_file_ids[]"
                      id="testable_bf_${repeat.testable.index}_${repeat.bf.index}"
                      value="${bf.id}" tal:attributes="checked 'checked' if bf in testable.build_files else None" />
-              <label for="testable_bf_new_${repeat.bf.index}">${bf.filename}</label>
+              <label for="testable_bf_${repeat.testable.index}_${repeat.bf.index}">${bf.filename}</label>
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
+          </fieldset>
+
+          <fieldset>
+            <legend>Select <span class="help" title="Execution files are static files that are present in the directory during execution.">Execution Files</span></legend>
+            <div tal:repeat="ef sorted(project.execution_files)">
+              <input type="checkbox" name="execution_file_ids[]"
+                     id="testable_ef_${repeat.testable.index}_${repeat.ef.index}"
+                     value="${ef.id}" tal:attributes="checked 'checked' if ef in testable.execution_files else None" />
+              <label for="testable_ef_${repeat.testable.index}_${repeat.ef.index}">${ef.filename}</label>
+            </div>
+            <span class="faulink" onclick="$('#execution_file_new').dialog('open');">new execution file</span>
           </fieldset>
 
           <fieldset>
@@ -118,6 +129,17 @@
           </fieldset>
 
           <fieldset>
+            <legend>Select <span class="help" title="Execution files are static files that are present in the directory during execution.">Execution Files</span></legend>
+            <div tal:repeat="ef sorted(project.execution_files)">
+              <input type="checkbox" name="execution_file_ids[]"
+                     id="testable_ef_new_${repeat.ef.index}"
+                     value="${ef.id}" />
+              <label for="testable_ef_new_${repeat.ef.index}">${ef.filename}</label>
+            </div>
+            <span class="faulink" onclick="$('#execution_file_new').dialog('open');">new execution file</span>
+          </fieldset>
+
+          <fieldset>
             <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
             <div tal:repeat="fv sorted(project.file_verifiers)">
               <input type="checkbox" name="file_verifier_ids[]"
@@ -143,6 +165,19 @@
       <input type="text" name="filename" id="build_filename_new" value="" />
       <label for="build_file_new">Select a build file: </label>
       <input name="build_file_id" id="build_file_new" type="file" />
+      <br/>
+      <input type="hidden" name="project_id" value="${project.id}" />
+      <input type="submit" name="submit" value="add" />
+    </form>
+  </div>
+
+  <div id="execution_file_new" class="dialog" title="Add New Execution File" style="background: #ccf">
+    <form name="execution_file" action="${_R('execution_file')}"
+          onsubmit="return form_request(this, 'PUT', true);">
+      <label for="execution_filename_new">Filename</label>
+      <input type="text" name="filename" id="execution_filename_new" value="" />
+      <label for="execution_file_new">Select a execution file: </label>
+      <input name="execution_file_id" id="execution_file_new" type="file" />
       <br/>
       <input type="hidden" name="project_id" value="${project.id}" />
       <input type="submit" name="submit" value="add" />

@@ -672,12 +672,15 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
                 build_file_ids=List('build_file_ids',
                                     TextNumber('', min_value=0),
                                     optional=True),
+                execution_file_ids=List('execution_file_ids',
+                                        TextNumber('', min_value=0),
+                                        optional=True),
                 file_verifier_ids=List('file_verifier_ids',
                                        TextNumber('', min_value=0),
                                        optional=True),
                 project_id=TextNumber('project_id', min_value=0))
 def testable_create(request, name, make_target, executable, build_file_ids,
-                    file_verifier_ids, project_id):
+                    execution_file_ids, file_verifier_ids, project_id):
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
@@ -689,6 +692,8 @@ def testable_create(request, name, make_target, executable, build_file_ids,
         build_files = fetch_request_ids(build_file_ids, BuildFile,
                                         'build_file_id',
                                         project.build_files)
+        execution_files = fetch_request_ids(execution_file_ids, ExecutionFile,
+                                            'execution_file_id')
         file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
                                            'file_verifier_id',
                                            project.file_verifiers)
@@ -698,6 +703,7 @@ def testable_create(request, name, make_target, executable, build_file_ids,
     testable = Testable(name=name, make_target=make_target,
                         executable=executable, project=project)
     map(testable.build_files.append, build_files)
+    map(testable.execution_files.append, execution_files)
     map(testable.file_verifiers.append, file_verifiers)
 
     session = Session()
@@ -722,11 +728,14 @@ def testable_create(request, name, make_target, executable, build_file_ids,
                 build_file_ids=List('build_file_ids',
                                     TextNumber('', min_value=0),
                                     optional=True),
+                execution_file_ids=List('execution_file_ids',
+                                        TextNumber('', min_value=0),
+                                        optional=True),
                 file_verifier_ids=List('file_verifier_ids',
                                        TextNumber('', min_value=0),
                                        optional=True))
 def testable_edit(request, name, make_target, executable, build_file_ids,
-                  file_verifier_ids):
+                  execution_file_ids, file_verifier_ids):
     testable_id = request.matchdict['testable_id']
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
@@ -739,6 +748,8 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
         build_files = fetch_request_ids(build_file_ids, BuildFile,
                                         'build_file_id',
                                         testable.project.build_files)
+        execution_files = fetch_request_ids(execution_file_ids, ExecutionFile,
+                                            'execution_file_id')
         file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
                                            'file_verifier_id',
                                            testable.project.file_verifiers)
@@ -749,6 +760,7 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
                            make_target=make_target,
                            executable=executable,
                            build_files=build_files,
+                           execution_files=execution_files,
                            file_verifiers=file_verifiers):
         return http_ok(request, 'Nothing to change')
 
