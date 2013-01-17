@@ -544,9 +544,10 @@ def zipfile_download(request):
     if not request.user.is_admin_for_submission(submission):
         return HTTPForbidden()
     with ZipSubmission(submission) as zipfile:
-        # The str() part is needed, or else these will (for some
-        # yet unknown reason) be converted to unicode, which will
-        # break waitress
+        # The str() part is needed, or else these will be converted
+        # to unicode due to the text_type import in tests.py.
+        # Non-string (including unicode) content headers cause
+        # assertion failures in waitress
         response = FileResponse(
             zipfile.actual_filename(),
             content_type=str('application/zip'))
