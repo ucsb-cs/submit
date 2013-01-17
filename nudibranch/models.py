@@ -38,7 +38,7 @@ testable_to_execution_file = Table(
 testable_to_file_verifier = Table(
     'testable_to_file_verifier', Base.metadata,
     Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
-    Column('file_verifier_id', Integer,ForeignKey('fileverifier.id'),
+    Column('file_verifier_id', Integer, ForeignKey('fileverifier.id'),
            nullable=False))
 
 user_to_class = Table(
@@ -48,7 +48,7 @@ user_to_class = Table(
 
 user_to_file = Table(
     'user_to_file', Base.metadata,
-    Column('user_id', Integer,ForeignKey('user.id'), nullable=False),
+    Column('user_id', Integer, ForeignKey('user.id'), nullable=False),
     Column('file_id', Integer, ForeignKey('file.id'), nullable=False))
 
 # which classes a user is an admin for

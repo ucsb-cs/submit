@@ -18,9 +18,10 @@ from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
-from .helpers import DummyTemplateAttr, fetch_request_ids, verify_file_ids
-from .models import (BuildFile, Class, File, FileVerifier, Project, Session,
-                     Submission, SubmissionToFile, TestCase, Testable, User)
+from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
+from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
+                     Project, Session, Submission, SubmissionToFile, TestCase,
+                     Testable, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 
@@ -30,12 +31,8 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-@view_config(route_name='build_file', request_method='PUT',
-             permission='authenticated', renderer='json')
-@validated_form(build_file_id=TextNumber('build_file_id', min_value=0),
-                filename=String('filename', min_length=1),
-                project_id=TextNumber('project_id', min_value=0))
-def build_file_create(request, build_file_id, filename, project_id):
+def project_file_create(request, file_id, filename, project_id, cls,
+                        attr_name):
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
@@ -43,14 +40,15 @@ def build_file_create(request, build_file_id, filename, project_id):
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, build_file_id=build_file_id)
-    if id_check:
-        return id_check
+    try:
+        kwargs = {attr_name: file_id}
+        verify_user_file_ids(request.user, **kwargs)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
 
-    build_file = BuildFile(file_id=build_file_id, filename=filename,
-                           project=project)
+    file = cls(file_id=file_id, filename=filename, project=project)
     session = Session()
-    session.add(build_file)
+    session.add(file)
     try:
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
@@ -60,6 +58,26 @@ def build_file_create(request, build_file_id, filename, project_id):
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
+
+
+@view_config(route_name='build_file', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validated_form(build_file_id=TextNumber('build_file_id', min_value=0),
+                filename=String('filename', min_length=1),
+                project_id=TextNumber('project_id', min_value=0))
+def build_file_create(request, build_file_id, filename, project_id):
+    return project_file_create(request, build_file_id, filename, project_id,
+                               BuildFile, 'build_file_id')
+
+
+@view_config(route_name='execution_file', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validated_form(execution_file_id=TextNumber('execution_file_id', min_value=0),
+                filename=String('filename', min_length=1),
+                project_id=TextNumber('project_id', min_value=0))
+def execution_file_create(request, execution_file_id, filename, project_id):
+    return project_file_create(request, execution_file_id, filename,
+                               project_id, ExecutionFile, 'execution_file_id')
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',
@@ -271,9 +289,10 @@ def project_create(request, name, class_id, makefile_id):
     if not request.user.is_admin_for_class(klass):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, makefile_id=makefile_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, makefile_id=makefile_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
     project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
     session = Session()
     session.add(project)
@@ -343,9 +362,10 @@ def project_update(request, name, makefile_id):
     class_name = request.matchdict['class_name']
     if project.klass.name != class_name:
         return http_bad_request(request, 'Inconsistent class specification')
-    id_check = verify_file_ids(request, makefile_id=makefile_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, makefile_id=makefile_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
 
     if not project.update(name=name, makefile_id=makefile_id):
         return http_ok(request, 'Nothing to change')
@@ -586,10 +606,11 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
     if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, expected_id=expected_id,
-                               stdin_id=stdin_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, expected_id=expected_id,
+                             stdin_id=stdin_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
                          points=points, stdin_id=stdin_id,
                          testable=testable)
@@ -623,10 +644,11 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
     if not request.user.is_admin_for_test_case(test_case):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, expected_id=expected_id,
-                               stdin_id=stdin_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, expected_id=expected_id,
+                             stdin_id=stdin_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
 
     if not test_case.update(name=name, args=args, expected_id=expected_id,
                             points=points, stdin_id=stdin_id):

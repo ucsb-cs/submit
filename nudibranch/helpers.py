@@ -1,5 +1,4 @@
 import xml.sax.saxutils
-from pyramid_addons.helpers import http_bad_request
 from .exceptions import InvalidId
 from .models import File
 
@@ -17,18 +16,24 @@ def readlines(path):
         return fh.read().splitlines()
 
 
-def verify_file_ids(request, **kwargs):
-    for name, item_id in kwargs.items():
+def verify_user_file_ids(user, **kwargs):
+    """Raise InvalidId exception if a file_id is not valid.
+
+    To be valid the file object must exist, and must be in the user.files list.
+
+    """
+    for attr_name, item_id in kwargs.items():
         if item_id:
             item_file = File.fetch_by_id(item_id)
-            if not item_file or item_file not in request.user.files:
-                return http_bad_request(request, 'Invalid {0}'.format(name))
+            if not item_file or item_file not in user.files:
+                raise InvalidId(attr_name)
     return None
 
 
 def escape(string):
     return xml.sax.saxutils.escape(string, {'"': "&quot;",
                                             "'": "&apos;"})
+
 
 def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
     """Return a list of cls instances for all the ids provided in item_ids.
