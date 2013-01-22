@@ -185,9 +185,12 @@ def file_item_info(request):
                 max_size=TextNumber('max_size', min_value=0, optional=True),
                 min_lines=TextNumber('min_lines', min_value=0),
                 max_lines=TextNumber('max_lines', min_value=0, optional=True),
+                optional=TextNumber('optional', min_value=0, max_value=1,
+                                    optional=True),
                 project_id=TextNumber('project_id', min_value=0))
+
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
-                         max_lines, project_id):
+                         max_lines, optional, project_id):
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -206,7 +209,8 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
-                         max_lines=max_lines, project_id=project_id)
+                         max_lines=max_lines, optional=bool(optional),
+                         project_id=project_id)
     session = Session()
     session.add(filev)
     try:
@@ -228,9 +232,11 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                 min_size=TextNumber('min_size', min_value=0),
                 max_size=TextNumber('max_size', min_value=0, optional=True),
                 min_lines=TextNumber('min_lines', min_value=0),
-                max_lines=TextNumber('max_lines', min_value=0, optional=True))
+                max_lines=TextNumber('max_lines', min_value=0, optional=True),
+                optional=TextNumber('optional', min_value=0, max_value=1,
+                                    optional=True))
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
-                         max_lines):
+                         max_lines, optional):
     # Additional verification
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
@@ -251,7 +257,7 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
-                                max_lines=max_lines):
+                                max_lines=max_lines, optional=bool(optional)):
         return http_ok(request, 'Nothing to change')
 
     session = Session()

@@ -82,7 +82,7 @@
               <input type="checkbox" name="file_verifier_ids[]"
                      id="testable_fv_${repeat.testable.index}_${repeat.fv.index}"
                      value="${fv.id}" tal:attributes="checked 'checked' if fv in testable.file_verifiers else None" />
-              <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename}</label>
+              <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename} <span tal:condition="fv.optional">[optional]</span></label>
               (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
             </div>
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
@@ -145,7 +145,7 @@
               <input type="checkbox" name="file_verifier_ids[]"
                      id="testable_fv_new_${repeat.fv.index}"
                      value="${fv.id}" />
-              <label for="testable_fv_new_${repeat.fv.index}">${fv.filename}</label>
+              <label for="testable_fv_new_${repeat.fv.index}">${fv.filename} <span tal:condition="fv.optional">[optional]</span></label>
               (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
             </div>
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
@@ -203,6 +203,9 @@
       <label for="max_lines_new">Max Lines</label>
       <input type="text" name="max_lines" id="max_lines_new"
              class="form_optional" placeholder="system max" value="" />
+      <br/>
+      <label for="optional_new">Optional</label>
+      <input type="checkbox" name="optional" id="optional_new" value="1" />
       <input type="hidden" name="project_id" value="${project.id}" />
       <br/>
       <input type="submit" name="submit" value="add" />
@@ -235,6 +238,10 @@
         <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
                class="form_optional" placeholder="system max"
                value="${fv.max_lines}" />
+        <br/>
+        <label for="optional_${repeat.fv.index}">Optional</label>
+        <input type="checkbox" name="optional" id="optional_${repeat.fv.index}"
+               value="1" tal:attributes="checked 'checked' if fv.optional else None"/>
         <br/>
         <input type="submit" name="submit" value="update" />
       </form>
