@@ -8,10 +8,11 @@
 
   <p>Info for ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
+    <p>Make a submission via <code>submit.py -p ${project.klass.name}:${project.id} file [file...]</code></p>
   <p tal:condition="request.user.is_admin_for_project(project) and not submissions">
     ${name} has no submissions</p>
-  <p tal:condition="not request.user.is_admin_for_project(project) and not submissions">
-    You have no submissions</p>
+  <p tal:condition="not request.user.is_admin_for_project(project) and not submissions">You have no submissions</p>
+
   <p tal:condition="request.user.is_admin_for_project(project) and submissions">
     These are the submissions for ${name}:</p>
   <p tal:condition="not request.user.is_admin_for_project(project) and submissions">
