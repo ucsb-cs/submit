@@ -144,8 +144,8 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
         source = File.file_path(BASE_FILE_PATH, sha1)
         os.symlink(source, os.path.join('src', name))
 
-    # Symlink Makefile to current directory
-    if project.makefile:
+    # Symlink Makefile to current directory if necessary
+    if project.makefile and testable.make_target:
         source = File.file_path(BASE_FILE_PATH, project.makefile.sha1)
         os.symlink(source, 'Makefile')
 

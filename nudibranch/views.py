@@ -672,7 +672,7 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
 @view_config(route_name='testable', request_method='PUT',
              permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
-                make_target=String('make_target', min_length=1),
+                make_target=String('make_target', min_length=1, optional=True),
                 executable=String('executable', min_length=1),
                 build_file_ids=List('build_file_ids',
                                     TextNumber('', min_value=0),
@@ -728,7 +728,7 @@ def testable_create(request, name, make_target, executable, build_file_ids,
 @view_config(route_name='testable_item', request_method='POST',
              permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
-                make_target=String('make_target', min_length=1),
+                make_target=String('make_target', min_length=1, optional=True),
                 executable=String('executable', min_length=1),
                 build_file_ids=List('build_file_ids',
                                     TextNumber('', min_value=0),

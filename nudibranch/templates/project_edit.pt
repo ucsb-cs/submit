@@ -47,7 +47,7 @@
           <br/>
           <label for="make_target_${repeat.testable.index}">Make target</label>
           <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
-                 value="${testable.make_target}" />
+                 value="${testable.make_target}" placeholder="don't run make" />
           <br/>
           <label for="executable_${repeat.testable.index}">Executable</label>
           <input type="text" name="executable" id="executable_${repeat.testable.index}"
@@ -112,7 +112,7 @@
           <input type="text" name="name" id="testable_name_new" />
           <br/>
           <label for="make_target_new">Make target</label>
-          <input type="text" name="make_target" id="make_target_new" />
+          <input type="text" name="make_target" id="make_target_new" placeholder="don't run make"/>
           <br/>
           <label for="executable_new">Executable</label>
           <input type="text" name="executable" id="executable_new" />
