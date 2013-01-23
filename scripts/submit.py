@@ -98,7 +98,7 @@ class Nudibranch(object):
             url, *args, verify=False, timeout=self.request_timeout)
 
     def send_file(self, the_file):
-        print('Sending {0}'.format(the_file.name))
+        print('Sending {0}'.format(os.path.basename(the_file.name)))
         data = the_file.read()
         sha1sum = hashlib.sha1(data).hexdigest()
         test_url = self.url('file_item_info', sha1sum=sha1sum)
@@ -128,7 +128,8 @@ class Nudibranch(object):
         for the_file in files:
             file_id = self.send_file(the_file)
             if file_id is not None:
-                file_mapping.append((file_id, the_file.name))
+                filename = os.path.basename(the_file.name)
+                file_mapping.append((file_id, filename))
             else:
                 success = False
         if not success:

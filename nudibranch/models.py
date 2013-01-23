@@ -38,7 +38,7 @@ testable_to_execution_file = Table(
 testable_to_file_verifier = Table(
     'testable_to_file_verifier', Base.metadata,
     Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
-    Column('file_verifier_id', Integer,ForeignKey('fileverifier.id'),
+    Column('file_verifier_id', Integer, ForeignKey('fileverifier.id'),
            nullable=False))
 
 user_to_class = Table(
@@ -48,7 +48,7 @@ user_to_class = Table(
 
 user_to_file = Table(
     'user_to_file', Base.metadata,
-    Column('user_id', Integer,ForeignKey('user.id'), nullable=False),
+    Column('user_id', Integer, ForeignKey('user.id'), nullable=False),
     Column('file_id', Integer, ForeignKey('file.id'), nullable=False))
 
 # which classes a user is an admin for
@@ -76,6 +76,9 @@ class Class(BasicBase, Base):
 
     def __str__(self):
         return 'Class Name: {0}'.format(self.name)
+
+    def __cmp__(self, other):
+        return cmp(self.name, other.name)
 
     @staticmethod
     def all_classes_by_name():
@@ -172,34 +175,56 @@ class Project(BasicBase, Base):
     submissions = relationship('Submission', backref='project')
     testables = relationship('Testable', backref='project')
 
-    def test_cases(self):
-        '''Gets all test cases associated with this project by
-        descending through its testables'''
-        return [testcase
-                for testable in self.testables
-                for testcase in testable.test_cases]
-
     def verify_submission(self, submission):
-        results = {'missing': [], 'passed': [], 'failed': []}
+        """Return list of testables that can be built.
+
+        Store into submission.results a dictionary with possible keys:
+          :key invalid: a mapping of filenames to reason(s) why that file is
+              invalid
+          :key extra: a list of filenames that aren't needed
+          :key map: a mapping of set of filenames that are invalid to a list of
+              testgroups that won't build because of those files
+
+        """
+
+        results = {}
+        valid_files = set()
         file_mapping = dict([(x.filename, x) for x in submission.files])
-        valid = True
-        for fv in self.file_verifiers:
+
+        # Create a list of in-use file verifiers
+        file_verifiers = [fv for testable in self.testables
+                          for fv in testable.file_verifiers]
+
+        for fv in file_verifiers:
             name = fv.filename
             if name in file_mapping:
                 passed, messages = fv.verify(file_mapping[name].file)
-                valid &= passed
                 if passed:
-                    results['passed'].append(name)
+                    valid_files.add(name)
                 else:
-                    results['failed'].append((name, messages))
+                    results['invalid'][name] = messages
                 del file_mapping[name]
-            else:
-                valid = False
-                results['missing'].append(name)
-        results['extra'] = list(file_mapping.keys())
+            elif not fv.optional:
+                results.setdefault('invalid', {})[name] = 'file missing'
+        if file_mapping:
+            results['extra'] = list(file_mapping.keys())
+
+        # Determine valid testables
+        tb_map = {}
+        retval = []
+        for testable in self.testables:
+            missing = tuple(set(x.filename for x in testable.file_verifiers
+                                if not x.optional) - valid_files)
+            if missing:
+                tb_map.setdefault(missing, []).append(testable.id)
+            elif testable.file_verifiers:
+                retval.append(testable)
+        if tb_map:
+            results['map'] = tb_map
+
         submission.verification_results = results
         submission.verified_at = func.now()
-        return valid
+        return retval
 
     def _first_with_filter(self, user, pred, reverse=False):
         lst = sorted([u for u in self.klass.users
@@ -423,6 +448,14 @@ class User(UserMixin, BasicBase, Base):
             pass
         return False
 
+    def classes_can_admin(self):
+        '''Gets all the classes that this user can administrate.
+        Returned in order by name'''
+        if self.is_admin:
+            return Class.all_classes_by_name()
+        else:
+            return sorted(self.admin_for)
+
     def is_admin_for_any_class(self):
         return len(self.admin_for) > 0
 
@@ -453,8 +486,8 @@ class User(UserMixin, BasicBase, Base):
         return value if isinstance(value, cls) else None
 
     def is_admin_for_something(self, cls, value, chain):
-        '''chain is called only on something of the
-        appropriate type'''
+        '''chain is called only on something that is an instance
+        of type cls'''
         if self.is_admin:
             return True
         value = User.get_value(cls, value)

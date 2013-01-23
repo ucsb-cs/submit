@@ -34,7 +34,7 @@
     <form name="logout" action="${_R('session')}"
           onsubmit="return form_request(this, 'delete');">
       Hello <a href="${_R('user_item', username=request.user.username)}">
-        ${request.user.username}</a>! | <a href="${_R('class')}">Classes</a>
+        ${request.user.username}</a>! | <a href="${_R('class_join_list')}">Join Classes</a>
       <input type="submit" name="submit" value="Logout" />
     </form>
   </div>

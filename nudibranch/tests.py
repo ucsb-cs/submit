@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 import sys
 import transaction
-import unittest2
+import unittest
 from chameleon.zpt.template import Macro
 from mock import MagicMock
 from nudibranch import add_routes
@@ -96,7 +96,7 @@ def _init_testing_db():
     Session.add_all([submission, s2f])
 
 
-class BaseAPITest(unittest2.TestCase):
+class BaseAPITest(unittest.TestCase):
     """Base test class for all API method (or controller) tests."""
 
     def make_request(self, **kwargs):
@@ -1161,7 +1161,7 @@ class UserTests(BaseAPITest):
         request = self.make_request(matchdict={'username': 'user1'})
         info = user_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('user1', info['user'].username)
+        self.assertEqual('User 1', info['name'])
 
     def test_user_view_invalid(self):
         from nudibranch.views import user_view
@@ -1171,7 +1171,7 @@ class UserTests(BaseAPITest):
 
 
 ### Non-view tests
-class DummyTemplateTest(unittest2.TestCase):
+class DummyTemplateTest(unittest.TestCase):
     def test_default_attribute_values(self):
         from nudibranch.views import DummyTemplateAttr
         a = DummyTemplateAttr()
@@ -1193,4 +1193,4 @@ class DummyTemplateTest(unittest2.TestCase):
 
 
 if __name__ == '__main__':
-    unittest2.main()
+    unittest.main()

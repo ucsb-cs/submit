@@ -18,9 +18,10 @@ from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
-from .helpers import DummyTemplateAttr, fetch_request_ids, verify_file_ids
-from .models import (BuildFile, Class, File, FileVerifier, Project, Session,
-                     Submission, SubmissionToFile, TestCase, Testable, User)
+from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
+from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
+                     Project, Session, Submission, SubmissionToFile, TestCase,
+                     Testable, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 from .zipper import ZipSubmission
@@ -31,12 +32,8 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-@view_config(route_name='build_file', request_method='PUT',
-             permission='authenticated', renderer='json')
-@validated_form(build_file_id=TextNumber('build_file_id', min_value=0),
-                filename=String('filename', min_length=1),
-                project_id=TextNumber('project_id', min_value=0))
-def build_file_create(request, build_file_id, filename, project_id):
+def project_file_create(request, file_id, filename, project_id, cls,
+                        attr_name):
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
@@ -44,14 +41,15 @@ def build_file_create(request, build_file_id, filename, project_id):
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, build_file_id=build_file_id)
-    if id_check:
-        return id_check
+    try:
+        kwargs = {attr_name: file_id}
+        verify_user_file_ids(request.user, **kwargs)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
 
-    build_file = BuildFile(file_id=build_file_id, filename=filename,
-                           project=project)
+    file = cls(file_id=file_id, filename=filename, project=project)
     session = Session()
-    session.add(build_file)
+    session.add(file)
     try:
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
@@ -61,6 +59,26 @@ def build_file_create(request, build_file_id, filename, project_id):
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
+
+
+@view_config(route_name='build_file', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validated_form(build_file_id=TextNumber('build_file_id', min_value=0),
+                filename=String('filename', min_length=1),
+                project_id=TextNumber('project_id', min_value=0))
+def build_file_create(request, build_file_id, filename, project_id):
+    return project_file_create(request, build_file_id, filename, project_id,
+                               BuildFile, 'build_file_id')
+
+
+@view_config(route_name='execution_file', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validated_form(execution_file_id=TextNumber('execution_file_id', min_value=0),
+                filename=String('filename', min_length=1),
+                project_id=TextNumber('project_id', min_value=0))
+def execution_file_create(request, execution_file_id, filename, project_id):
+    return project_file_create(request, execution_file_id, filename,
+                               project_id, ExecutionFile, 'execution_file_id')
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',
@@ -84,6 +102,19 @@ def class_create(request, name):
 @site_layout('nudibranch:templates/layout.pt')
 def class_edit(request):
     return {'page_title': 'Create Class'}
+
+
+@view_config(route_name='class_join_list', request_method='GET',
+             permission='authenticated',
+             renderer='templates/class_join_list.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def class_join_list(request):
+    # get all the classes that the given user is not in, and let the
+    # user optionally join them
+    all_classes = frozenset(Session().query(Class).all())
+    user_classes = frozenset(request.user.classes)
+    return {'page_title': 'Join Class',
+            'classes': sorted(all_classes - user_classes)}
 
 
 @view_config(route_name='class', request_method='GET',
@@ -168,9 +199,11 @@ def file_item_info(request):
                 max_size=TextNumber('max_size', min_value=0, optional=True),
                 min_lines=TextNumber('min_lines', min_value=0),
                 max_lines=TextNumber('max_lines', min_value=0, optional=True),
+                optional=TextNumber('optional', min_value=0, max_value=1,
+                                    optional=True),
                 project_id=TextNumber('project_id', min_value=0))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
-                         max_lines, project_id):
+                         max_lines, optional, project_id):
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -189,7 +222,8 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
-                         max_lines=max_lines, project_id=project_id)
+                         max_lines=max_lines, optional=bool(optional),
+                         project_id=project_id)
     session = Session()
     session.add(filev)
     try:
@@ -211,9 +245,11 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                 min_size=TextNumber('min_size', min_value=0),
                 max_size=TextNumber('max_size', min_value=0, optional=True),
                 min_lines=TextNumber('min_lines', min_value=0),
-                max_lines=TextNumber('max_lines', min_value=0, optional=True))
+                max_lines=TextNumber('max_lines', min_value=0, optional=True),
+                optional=TextNumber('optional', min_value=0, max_value=1,
+                                    optional=True))
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
-                         max_lines):
+                         max_lines, optional):
     # Additional verification
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
@@ -234,7 +270,7 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
-                                max_lines=max_lines):
+                                max_lines=max_lines, optional=bool(optional)):
         return http_ok(request, 'Nothing to change')
 
     session = Session()
@@ -272,9 +308,10 @@ def project_create(request, name, class_id, makefile_id):
     if not request.user.is_admin_for_class(klass):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, makefile_id=makefile_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, makefile_id=makefile_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
     project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
     session = Session()
     session.add(project)
@@ -344,9 +381,10 @@ def project_update(request, name, makefile_id):
     class_name = request.matchdict['class_name']
     if project.klass.name != class_name:
         return http_bad_request(request, 'Inconsistent class specification')
-    id_check = verify_file_ids(request, makefile_id=makefile_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, makefile_id=makefile_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
 
     if not project.update(name=name, makefile_id=makefile_id):
         return http_ok(request, 'Nothing to change')
@@ -395,6 +433,7 @@ def project_view_detailed(request):
             'project': project,
             'name': user.name,
             'prev_next_user': prev_next_user,
+            'can_edit': project_admin,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
                                   reverse=True)}
@@ -609,10 +648,11 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
     if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, expected_id=expected_id,
-                               stdin_id=stdin_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, expected_id=expected_id,
+                             stdin_id=stdin_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
                          points=points, stdin_id=stdin_id,
                          testable=testable)
@@ -646,10 +686,11 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
     if not request.user.is_admin_for_test_case(test_case):
         return HTTPForbidden()
 
-    id_check = verify_file_ids(request, expected_id=expected_id,
-                               stdin_id=stdin_id)
-    if id_check:
-        return id_check
+    try:
+        verify_user_file_ids(request.user, expected_id=expected_id,
+                             stdin_id=stdin_id)
+    except InvalidId as exc:
+        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
 
     if not test_case.update(name=name, args=args, expected_id=expected_id,
                             points=points, stdin_id=stdin_id):
@@ -668,17 +709,20 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
 @view_config(route_name='testable', request_method='PUT',
              permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
-                make_target=String('make_target', min_length=1),
+                make_target=String('make_target', min_length=1, optional=True),
                 executable=String('executable', min_length=1),
                 build_file_ids=List('build_file_ids',
                                     TextNumber('', min_value=0),
                                     optional=True),
+                execution_file_ids=List('execution_file_ids',
+                                        TextNumber('', min_value=0),
+                                        optional=True),
                 file_verifier_ids=List('file_verifier_ids',
                                        TextNumber('', min_value=0),
                                        optional=True),
                 project_id=TextNumber('project_id', min_value=0))
 def testable_create(request, name, make_target, executable, build_file_ids,
-                    file_verifier_ids, project_id):
+                    execution_file_ids, file_verifier_ids, project_id):
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, 'Invalid project_id')
@@ -690,6 +734,8 @@ def testable_create(request, name, make_target, executable, build_file_ids,
         build_files = fetch_request_ids(build_file_ids, BuildFile,
                                         'build_file_id',
                                         project.build_files)
+        execution_files = fetch_request_ids(execution_file_ids, ExecutionFile,
+                                            'execution_file_id')
         file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
                                            'file_verifier_id',
                                            project.file_verifiers)
@@ -699,6 +745,7 @@ def testable_create(request, name, make_target, executable, build_file_ids,
     testable = Testable(name=name, make_target=make_target,
                         executable=executable, project=project)
     map(testable.build_files.append, build_files)
+    map(testable.execution_files.append, execution_files)
     map(testable.file_verifiers.append, file_verifiers)
 
     session = Session()
@@ -718,16 +765,19 @@ def testable_create(request, name, make_target, executable, build_file_ids,
 @view_config(route_name='testable_item', request_method='POST',
              permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=1),
-                make_target=String('make_target', min_length=1),
+                make_target=String('make_target', min_length=1, optional=True),
                 executable=String('executable', min_length=1),
                 build_file_ids=List('build_file_ids',
                                     TextNumber('', min_value=0),
                                     optional=True),
+                execution_file_ids=List('execution_file_ids',
+                                        TextNumber('', min_value=0),
+                                        optional=True),
                 file_verifier_ids=List('file_verifier_ids',
                                        TextNumber('', min_value=0),
                                        optional=True))
 def testable_edit(request, name, make_target, executable, build_file_ids,
-                  file_verifier_ids):
+                  execution_file_ids, file_verifier_ids):
     testable_id = request.matchdict['testable_id']
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
@@ -740,6 +790,8 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
         build_files = fetch_request_ids(build_file_ids, BuildFile,
                                         'build_file_id',
                                         testable.project.build_files)
+        execution_files = fetch_request_ids(execution_file_ids, ExecutionFile,
+                                            'execution_file_id')
         file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
                                            'file_verifier_id',
                                            testable.project.file_verifiers)
@@ -750,6 +802,7 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
                            make_target=make_target,
                            executable=executable,
                            build_files=build_files,
+                           execution_files=execution_files,
                            file_verifiers=file_verifiers):
         return http_ok(request, 'Nothing to change')
 
@@ -792,12 +845,13 @@ def user_class_join(request):
 def user_create(request, name, username, password, email, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
+    asking_classes = []
     if admin_for:
-        asking_classes = [Class.fetch_by_id(x) for x in admin_for]
-    else:
-        asking_classes = []
-    if None in asking_classes:
-        return http_bad_request(request, 'Nonexistent class')
+        for class_id in admin_for:
+            klass = Class.fetch_by_id(class_id)
+            if klass is None:
+                return http_bad_request(request, 'Nonexistent class')
+            asking_classes.append(klass)
 
     # make sure we can actually grant the permissions we
     # are requesting
@@ -830,11 +884,7 @@ def user_create(request, name, username, password, email, admin_for):
 def user_edit(request):
     can_add_admin_for = None
     if request.user:
-        if request.user.is_admin:
-            can_add_admin_for = Class.all_classes_by_name()
-        elif request.user.admin_for:
-            can_add_admin_for = sorted(request.user.admin_for,
-                                       key=lambda k: k.name)
+        can_add_admin_for = request.user.classes_can_admin()
 
     return {'page_title': 'Create User',
             'admin_classes': can_add_admin_for}
@@ -856,7 +906,10 @@ def user_view(request):
     user = User.fetch_by(username=request.matchdict['username'])
     if not user:
         return HTTPNotFound()
-    return {'page_title': 'User Page', 'user': user}
+    return {'page_title': 'User Page',
+            'name': user.name,
+            'classes_taking': user.classes,
+            'classes_admining': user.classes_can_admin()}
 
 
 @view_config(route_name='admin_utils', request_method='GET',

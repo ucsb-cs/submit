@@ -31,12 +31,12 @@ class SubmissionHandler(object):
                 os.unlink(filename)
 
     @staticmethod
-    def _file_wait(filename, submission_id):
+    def _file_wait(filename, expected_message):
         start = time.time()
         while True:
             if os.path.isfile(filename):
-                if open(filename).read() != str(submission_id):
-                    raise Exception('Found wrong submission')
+                if open(filename).read() != expected_message:
+                    raise Exception('Unexpected `done` file.')
                 print('file_wait took {0} seconds'.format(time.time() - start))
                 return
             time.sleep(1)
@@ -95,46 +95,52 @@ class SubmissionHandler(object):
             is_daemon=is_daemon, working_dir=settings['working_dir'])
         self.settings = settings
 
-    def communicate(self, queue, complete_file, submission_id):
+    def communicate(self, queue, complete_file, submission_id, testable_id):
         hostname = socket.gethostbyaddr(socket.gethostname())[0]
         username = pwd.getpwuid(os.getuid())[0]
         data = {'complete_file': complete_file, 'remote_dir': os.getcwd(),
                 'user': username, 'host': hostname,
-                'submission_id': submission_id}
+                'submission_id': submission_id, 'testable_id': testable_id}
         self.worker.channel.queue_declare(queue=queue, durable=True)
         self.worker.channel.basic_publish(
             exchange='', body=json.dumps(data), routing_key=queue,
             properties=pika.BasicProperties(delivery_mode=2))
-        self._file_wait(complete_file, submission_id)
+        self._file_wait(complete_file,
+                        '{0}.{1}'.format(submission_id, testable_id))
 
-    def do_work(self, submission_id):
+    def do_work(self, submission_id, testable_id):
         self._cleanup()
-        print('Got job: {0}'.format(submission_id))
+        print('Got job: {0}.{1}'.format(submission_id, testable_id))
         self.communicate(queue=self.settings['queue_sync_files'],
                          complete_file='sync_files',
-                         submission_id=submission_id)
-        print('Files synced: {0}'.format(submission_id))
+                         submission_id=submission_id, testable_id=testable_id)
+        print('Files synced: {0}.{1}'.format(submission_id, testable_id))
+        data = json.load(open('post_sync_data'))
         os.mkdir(RESULTS_PATH)
-        if self.make_project():
-            self.run_tests()
+        if self.make_project(data['executable'], data['make_target']):
+            self.run_tests(data['test_cases'])
         self.communicate(queue=self.settings['queue_fetch_results'],
                          complete_file='results_fetched',
-                         submission_id=submission_id)
-        print('Results fetched: {0}'.format(submission_id))
+                         submission_id=submission_id, testable_id=testable_id)
+        print('Results fetched: {0}.{1}'.format(submission_id, testable_id))
 
-    def make_project(self):
-        if not os.path.isfile('Makefile'):
-            return True
-        command = 'make -f ../Makefile -C {0}'.format(SRC_PATH)
+    def make_project(self, executable, make_target):
+        """Build the project and return True if the executable exists."""
         with open(os.path.join(RESULTS_PATH, 'make'), 'w') as fp:
-            pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
-            pipe.wait()
-        return pipe.returncode == 0
+            if make_target:
+                command = 'make -f ../Makefile -C {0} {1}'.format(
+                    SRC_PATH, make_target)
+                pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
+                pipe.wait()
+                if pipe.returncode != 0:
+                    return False
+            if not os.path.isfile(os.path.join(SRC_PATH, executable)):
+                fp.write('Expected executable `{0}` does not exist\n'
+                         .format(executable))
+                return False
+            return True
 
-    def run_tests(self):
-        if not os.path.isfile('test_cases'):
-            return
-        test_cases = json.load(open('test_cases'))
+    def run_tests(self, test_cases):
         results = {}
         for tc in test_cases:
             output_file = os.path.join(RESULTS_PATH, 'tc_{0}'.format(tc['id']))

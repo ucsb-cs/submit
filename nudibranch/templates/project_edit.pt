@@ -47,7 +47,7 @@
           <br/>
           <label for="make_target_${repeat.testable.index}">Make target</label>
           <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
-                 value="${testable.make_target}" />
+                 value="${testable.make_target}" placeholder="don't run make" />
           <br/>
           <label for="executable_${repeat.testable.index}">Executable</label>
           <input type="text" name="executable" id="executable_${repeat.testable.index}"
@@ -60,9 +60,20 @@
               <input type="checkbox" name="build_file_ids[]"
                      id="testable_bf_${repeat.testable.index}_${repeat.bf.index}"
                      value="${bf.id}" tal:attributes="checked 'checked' if bf in testable.build_files else None" />
-              <label for="testable_bf_new_${repeat.bf.index}">${bf.filename}</label>
+              <label for="testable_bf_${repeat.testable.index}_${repeat.bf.index}">${bf.filename}</label>
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
+          </fieldset>
+
+          <fieldset>
+            <legend>Select <span class="help" title="Execution files are static files that are present in the directory during execution.">Execution Files</span></legend>
+            <div tal:repeat="ef sorted(project.execution_files)">
+              <input type="checkbox" name="execution_file_ids[]"
+                     id="testable_ef_${repeat.testable.index}_${repeat.ef.index}"
+                     value="${ef.id}" tal:attributes="checked 'checked' if ef in testable.execution_files else None" />
+              <label for="testable_ef_${repeat.testable.index}_${repeat.ef.index}">${ef.filename}</label>
+            </div>
+            <span class="faulink" onclick="$('#execution_file_new').dialog('open');">new execution file</span>
           </fieldset>
 
           <fieldset>
@@ -71,7 +82,7 @@
               <input type="checkbox" name="file_verifier_ids[]"
                      id="testable_fv_${repeat.testable.index}_${repeat.fv.index}"
                      value="${fv.id}" tal:attributes="checked 'checked' if fv in testable.file_verifiers else None" />
-              <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename}</label>
+              <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename} <span tal:condition="fv.optional">[optional]</span></label>
               (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
             </div>
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
@@ -101,7 +112,7 @@
           <input type="text" name="name" id="testable_name_new" />
           <br/>
           <label for="make_target_new">Make target</label>
-          <input type="text" name="make_target" id="make_target_new" />
+          <input type="text" name="make_target" id="make_target_new" placeholder="don't run make"/>
           <br/>
           <label for="executable_new">Executable</label>
           <input type="text" name="executable" id="executable_new" />
@@ -118,12 +129,23 @@
           </fieldset>
 
           <fieldset>
+            <legend>Select <span class="help" title="Execution files are static files that are present in the directory during execution.">Execution Files</span></legend>
+            <div tal:repeat="ef sorted(project.execution_files)">
+              <input type="checkbox" name="execution_file_ids[]"
+                     id="testable_ef_new_${repeat.ef.index}"
+                     value="${ef.id}" />
+              <label for="testable_ef_new_${repeat.ef.index}">${ef.filename}</label>
+            </div>
+            <span class="faulink" onclick="$('#execution_file_new').dialog('open');">new execution file</span>
+          </fieldset>
+
+          <fieldset>
             <legend>Select <span class="help" title="Expected files are those that students submit with their projects.">Expected Files</span></legend>
             <div tal:repeat="fv sorted(project.file_verifiers)">
               <input type="checkbox" name="file_verifier_ids[]"
                      id="testable_fv_new_${repeat.fv.index}"
                      value="${fv.id}" />
-              <label for="testable_fv_new_${repeat.fv.index}">${fv.filename}</label>
+              <label for="testable_fv_new_${repeat.fv.index}">${fv.filename} <span tal:condition="fv.optional">[optional]</span></label>
               (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
             </div>
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
@@ -149,6 +171,19 @@
     </form>
   </div>
 
+  <div id="execution_file_new" class="dialog" title="Add New Execution File" style="background: #ccf">
+    <form name="execution_file" action="${_R('execution_file')}"
+          onsubmit="return form_request(this, 'PUT', true);">
+      <label for="execution_filename_new">Filename</label>
+      <input type="text" name="filename" id="execution_filename_new" value="" />
+      <label for="execution_file_new">Select a execution file: </label>
+      <input name="execution_file_id" id="execution_file_new" type="file" />
+      <br/>
+      <input type="hidden" name="project_id" value="${project.id}" />
+      <input type="submit" name="submit" value="add" />
+    </form>
+  </div>
+
   <div id="file_verifier_new" class="dialog" title="Add New Expected File" style="background: #ccf">
     <form name="file_verifier" action="${_R('file_verifier')}"
           onsubmit="return form_request(this, 'PUT', true);">
@@ -168,6 +203,9 @@
       <label for="max_lines_new">Max Lines</label>
       <input type="text" name="max_lines" id="max_lines_new"
              class="form_optional" placeholder="system max" value="" />
+      <br/>
+      <label for="optional_new">Optional</label>
+      <input type="checkbox" name="optional" id="optional_new" value="1" />
       <input type="hidden" name="project_id" value="${project.id}" />
       <br/>
       <input type="submit" name="submit" value="add" />
@@ -200,6 +238,10 @@
         <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
                class="form_optional" placeholder="system max"
                value="${fv.max_lines}" />
+        <br/>
+        <label for="optional_${repeat.fv.index}">Optional</label>
+        <input type="checkbox" name="optional" id="optional_${repeat.fv.index}"
+               value="1" tal:attributes="checked 'checked' if fv.optional else None"/>
         <br/>
         <input type="submit" name="submit" value="update" />
       </form>
