@@ -9,7 +9,7 @@
       </li>
     </ul>
   </div>
-  <div tal condition="not user.classes">
+  <div tal:condition="not user.classes">
     <p>You are not a member of any classes.</p>
     <a href="${_R('class_add_list')}">Add Classes</a>
   </div>
