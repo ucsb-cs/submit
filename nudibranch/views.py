@@ -821,12 +821,12 @@ def user_class_join(request):
 def user_create(request, name, username, password, email, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
-    if admin_for:
-        asking_classes = [Class.fetch_by_id(x) for x in admin_for]
-    else:
-        asking_classes = []
-    if None in asking_classes:
-        return http_bad_request(request, 'Nonexistent class')
+    asking_classes = []
+    for class_id in admin_for:
+        klass = Class.fetch_by_id(class_id)
+        if klass is None:
+            return http_bad_request(request, 'Nonexistent class')
+        asking_classes.append(klass)
 
     # make sure we can actually grant the permissions we
     # are requesting
@@ -881,7 +881,10 @@ def user_view(request):
     user = User.fetch_by(username=request.matchdict['username'])
     if not user:
         return HTTPNotFound()
-    return {'page_title': 'User Page', 'user': user}
+    return {'page_title': 'User Page', 
+            'name': user.name,
+            'classes_taking': user.classes,
+            'classes_admining': user.classes_can_admin()}
 
 
 @view_config(route_name='admin_utils', request_method='GET',
