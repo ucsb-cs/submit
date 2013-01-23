@@ -14,8 +14,10 @@ class ZipSubmission(object):
     -Makefile to build the project
     -User-submitted code that can be build with said makefile
     -Test cases, along with any stdin needed to run said test cases'''
-    def __init__(self, submission):
+    def __init__(self, submission, request):
+        '''Takes a submission and the HTTP request'''
         self.submission = submission
+        self.request = request
         self.dirname = ZipSubmission.get_dirname_from_submission(submission)
         self.project = ZipSubmission.get_project_from_submission(submission)
         self.backing_file = None
@@ -53,11 +55,12 @@ class ZipSubmission(object):
         self.zip.write(backing_file,
                        "{0}/{1}".format(self.dirname, archive_filename))
 
-    @staticmethod
-    def real_file_path(db_file):
+    def real_file_path(self, db_file):
         '''Given a File object, it will return a path to a real underlying
         file for it.'''
-        return File.file_path('/tmp/nudibranch_files', db_file.sha1)
+        return File.file_path(
+            self.request.registry.settings['file_directory'], 
+            db_file.sha1)
 
     @staticmethod
     def get_dirname_from_submission(submission):
@@ -82,12 +85,12 @@ class ZipSubmission(object):
 
     def __add_makefile(self):
         self.write(
-            ZipSubmission.real_file_path(self.project.makefile),
+            self.real_file_path(self.project.makefile),
             'makefile')
 
     def __add_user_code(self):
         filemapping = SubmissionToFile.fetch_file_mapping_for_submission(
             self.submission.id)
         for filename, db_file in filemapping.iteritems():
-            self.write(ZipSubmission.real_file_path(db_file),
+            self.write(self.real_file_path(db_file),
                        filename)

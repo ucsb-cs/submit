@@ -582,7 +582,7 @@ def zipfile_download(request):
         return HTTPNotFound()
     if not request.user.is_admin_for_submission(submission):
         return HTTPForbidden()
-    with ZipSubmission(submission) as zipfile:
+    with ZipSubmission(submission, request) as zipfile:
         # The str() part is needed, or else these will be converted
         # to unicode due to the text_type import in tests.py.
         # Non-string (including unicode) content headers cause
