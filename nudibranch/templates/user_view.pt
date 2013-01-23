@@ -1,10 +1,17 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <p>Info for ${user.name}</p>
-  <p>Classes</p>
-  <ul>
-    <li tal:repeat="klass user.classes">
-      <a href="${_R('class_item', class_name=klass.name)}">${klass.name}</a></li>
-  </ul>
+  <div tal:condition="user.classes">
+    <p>Classes</p>
+    <ul>
+      <li tal:repeat="klass user.classes">
+	<a href="${_R('class_item', class_name=klass.name)}">${klass.name}</a>
+      </li>
+    </ul>
+  </div>
+  <div tal condition="not user.classes">
+    <p>You are not a member of any classes.</p>
+    <a href="${_R('class_add_list')}">Add Classes</a>
+  </div>
 </div>
 </div>
