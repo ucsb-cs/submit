@@ -453,7 +453,7 @@ class User(UserMixin, BasicBase, Base):
         '''Gets all the classes that this user can administrate.
         Returned in order by name'''
         if self.is_admin:
-            return Class.all_classes_name()
+            return Class.all_classes_by_name()
         else:
             return sorted(self.admin_for)
 
