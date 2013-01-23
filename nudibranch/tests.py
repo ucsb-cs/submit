@@ -1161,7 +1161,7 @@ class UserTests(BaseAPITest):
         request = self.make_request(matchdict={'username': 'user1'})
         info = user_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('user1', info['user'].username)
+        self.assertEqual('User 1', info['name'])
 
     def test_user_view_invalid(self):
         from nudibranch.views import user_view
