@@ -11,7 +11,7 @@
   </div>
   <div tal:condition="not classes_taking">
     <p>You are not a member of any classes.</p>
-    <a href="${_R('class_add_list')}">Add Classes</a>
+    <a href="${_R('class_join_list')}">Join Classes</a>
   </div>
   <div tal:condition="classes_admining">
     <p>Administrator for These Classes</p>
