@@ -180,26 +180,55 @@ class Project(BasicBase, Base):
                 for testcase in testable.test_cases]
 
     def verify_submission(self, submission):
-        results = {'missing': [], 'passed': [], 'failed': []}
+        """Return list of testables that can be built.
+
+        Store into submission.results a dictionary with possible keys:
+          :key invalid: a mapping of filenames to reason(s) why that file is
+              invalid
+          :key extra: a list of filenames that aren't needed
+          :key map: a mapping of set of filenames that are invalid to a list of
+              testgroups that won't build because of those files
+
+        """
+
+        results = {}
+        valid_files = set()
         file_mapping = dict([(x.filename, x) for x in submission.files])
-        valid = True
-        for fv in self.file_verifiers:
+
+        # Create a list of in-use file verifiers
+        file_verifiers = [fv for testable in self.testables
+                          for fv in testable.file_verifiers]
+
+        for fv in file_verifiers:
             name = fv.filename
             if name in file_mapping:
                 passed, messages = fv.verify(file_mapping[name].file)
-                valid &= passed
                 if passed:
-                    results['passed'].append(name)
+                    valid_files.add(name)
                 else:
-                    results['failed'].append((name, messages))
+                    results['invalid'][name] = messages
                 del file_mapping[name]
+            elif not fv.optional:
+                results.setdefault('invalid', {})[name] = 'file missing'
+        if file_mapping:
+            results['extra'] = list(file_mapping.keys())
+
+        # Determine valid testables
+        tb_map = {}
+        retval = []
+        for testable in self.testables:
+            missing = tuple(set(x.filename for x in testable.file_verifiers
+                                if not x.optional) - valid_files)
+            if missing:
+                tb_map.setdefault(missing, []).append(testable.id)
             else:
-                valid = False
-                results['missing'].append(name)
-        results['extra'] = list(file_mapping.keys())
+                retval.append(testable)
+        if tb_map:
+            results['map'] = tb_map
+
         submission.verification_results = results
         submission.verified_at = func.now()
-        return valid
+        return retval
 
     def _first_with_filter(self, user, pred, reverse=False):
         lst = sorted([u for u in self.klass.users

@@ -11,9 +11,11 @@ def do_work(submission_id):
         print('Invalid submission id: {0}'.format(submission_id))
         return
     # Verify and update submission
-    if submission.verify():
+    valid_testables = submission.verify()
+    if valid_testables:
         print('Passed: {0}'.format(submission_id))
-        retval = {'submission_id': submission_id}
+        retval = [{'submission_id': submission_id, 'testable_id': x.id}
+                  for x in valid_testables]
     else:
         print('Failed: {0}'.format(submission_id))
         retval = None

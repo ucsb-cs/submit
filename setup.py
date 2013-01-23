@@ -7,9 +7,9 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 
 requires = [
     'alembic>=0.4.0',
-    'amqp_worker>=0.0.2',
+    'amqp_worker>=0.0.4',
     'mock>=1.0.0',
-    'pika>=0.9.5',
+    'pika>=0.9.6',
     'pyramid>=1.3',
     'pyramid_addons>=0.9',
     'pyramid_tm>=0.5',
@@ -22,7 +22,7 @@ if '--production' == sys.argv[-1]:
     requires.extend(['uwsgi>=1.2.4'])
     sys.argv.pop()
 else:
-    requires.extend(['flake8', 'pyramid_debugtoolbar', 
+    requires.extend(['flake8', 'pyramid_debugtoolbar',
                      'unittest2', 'waitress'])
 
 setup(name='Nudibranch',
