@@ -59,7 +59,7 @@ class ZipSubmission(object):
         '''Given a File object, it will return a path to a real underlying
         file for it.'''
         return File.file_path(
-            self.request.registry.settings['file_directory'], 
+            self.request.registry.settings['file_directory'],
             db_file.sha1)
 
     @staticmethod
