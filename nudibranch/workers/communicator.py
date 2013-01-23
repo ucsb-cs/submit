@@ -6,8 +6,8 @@ import tempfile
 import transaction
 import pickle
 from functools import wraps
-from nudibranch.models import (File, Session, Submission, TestCase,
-                               TestCaseResult, Testable, initialize_sql)
+from nudibranch.models import (File, Session, Submission, TestCaseResult,
+                               Testable, initialize_sql)
 from nudibranch.diff_unit import Diff
 from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
@@ -81,7 +81,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
                 test_case_result.update(results[test_case.id])
             else:
                 results[test_case.id]['submission_id'] = submission_id
-                results[test_case.id]['test_case_id'] = test_case_id
+                results[test_case.id]['test_case_id'] = test_case.id
                 test_case_result = TestCaseResult(**results)
             compute_diff(test_case, test_case_result)
             session.add(test_case_result)
