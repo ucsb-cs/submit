@@ -449,6 +449,14 @@ class User(UserMixin, BasicBase, Base):
             pass
         return False
 
+    def classes_can_admin(self):
+        '''Gets all the classes that this user can administrate.
+        Returned in order by name'''
+        if self.is_admin:
+            return Class.all_classes_name()
+        else:
+            return sorted(self.admin_for)
+
     def is_admin_for_any_class(self):
         return len(self.admin_for) > 0
 

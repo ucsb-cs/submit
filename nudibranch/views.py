@@ -104,7 +104,8 @@ def class_edit(request):
 
 
 @view_config(route_name='class_add_list', request_method='GET',
-             permission='authenticated', renderer='templates/class_add_list.pt')
+             permission='authenticated',
+             renderer='templates/class_add_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def class_add_list(request):
     # get all the classes that the given user is not in, and let the
@@ -113,7 +114,8 @@ def class_add_list(request):
     user_classes = frozenset(request.user.classes)
     return {'page_title': 'Add Class',
             'classes': sorted(all_classes - user_classes)}
-    
+
+
 @view_config(route_name='class', request_method='GET',
              permission='authenticated', renderer='templates/class_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
@@ -857,11 +859,7 @@ def user_create(request, name, username, password, email, admin_for):
 def user_edit(request):
     can_add_admin_for = None
     if request.user:
-        if request.user.is_admin:
-            can_add_admin_for = Class.all_classes_by_name()
-        elif request.user.admin_for:
-            can_add_admin_for = sorted(request.user.admin_for,
-                                       key=lambda k: k.name)
+        can_add_admin_for = request.user.classes_can_admin()
 
     return {'page_title': 'Create User',
             'admin_classes': can_add_admin_for}
