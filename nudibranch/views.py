@@ -822,11 +822,12 @@ def user_create(request, name, username, password, email, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
     asking_classes = []
-    for class_id in admin_for:
-        klass = Class.fetch_by_id(class_id)
-        if klass is None:
-            return http_bad_request(request, 'Nonexistent class')
-        asking_classes.append(klass)
+    if admin_for:
+        for class_id in admin_for:
+            klass = Class.fetch_by_id(class_id)
+            if klass is None:
+                return http_bad_request(request, 'Nonexistent class')
+            asking_classes.append(klass)
 
     # make sure we can actually grant the permissions we
     # are requesting
