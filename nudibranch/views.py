@@ -432,6 +432,7 @@ def project_view_detailed(request):
             'project': project,
             'name': user.name,
             'prev_next_user': prev_next_user,
+            'can_edit': project_admin,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
                                   reverse=True)}
