@@ -738,6 +738,38 @@ class ProjectTests(BaseAPITest):
         info = project_view_detailed(request)
         self.assertIsInstance(info, HTTPNotFound)
 
+    def test_view_summary_as_admin(self):
+        from nudibranch.views import project_view_summary
+        user, matchdict = self.get_view_objects(username='admin')
+        request = self.make_request(user=user, matchdict=matchdict)
+        info = project_view_summary(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
+        self.assertEqual('Project 1', info['project'].name)
+        self.assertEqual(set(), info['user_truncated'])
+
+    def test_view_summary_as_user(self):
+        from nudibranch.views import project_view_summary
+        user, matchdict = self.get_view_objects(username='user1')
+        request = self.make_request(user=user, matchdict=matchdict)
+        info = project_view_summary(request)
+        self.assertIsInstance(info, HTTPForbidden)
+
+    def test_view_summary_invalid_project(self):
+        from nudibranch.views import project_view_summary
+        user, matchdict = self.get_view_objects(username='admin')
+        matchdict['project_id'] = -1
+        request = self.make_request(user=user, matchdict=matchdict)
+        info = project_view_summary(request)
+        self.assertIsInstance(info, HTTPNotFound)
+
+    def test_view_summary_invalid_class(self):
+        from nudibranch.views import project_view_summary
+        user, matchdict = self.get_view_objects(username='admin')
+        matchdict['class_name'] = str(-1)
+        request = self.make_request(user=user, matchdict=matchdict)
+        info = project_view_summary(request)
+        self.assertIsInstance(info, HTTPNotFound)
+
 
 class SessionTests(BaseAPITest):
     """Test the API methods involved in session creation and destruction."""
