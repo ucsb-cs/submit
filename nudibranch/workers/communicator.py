@@ -164,8 +164,6 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
         source = File.file_path(BASE_FILE_PATH, project.makefile.sha1)
         os.symlink(source, 'Makefile')
 
-    # TODO: Remove "executable" setting or actually check that it exists
-
     # Symlink test inputs and copy build test case specifications
     os.mkdir('inputs')
     test_cases = []
@@ -177,9 +175,14 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
                 source = File.file_path(BASE_FILE_PATH, test_case.stdin.sha1)
                 os.symlink(source, destination)
 
-    # Save test case specification
-    with open('test_cases', 'w') as fp:
-        json.dump(test_cases, fp)
+    # Generate data dictionary
+    data = {'executable': testable.executable,
+            'make_target': testable.make_target,
+            'test_cases': test_cases}
+
+    # Save data specification
+    with open('post_sync_data', 'w') as fp:
+        json.dump(data, fp)
 
     # Rsync files
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv . {1}@{2}:{3}'.format(

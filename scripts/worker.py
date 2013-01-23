@@ -115,27 +115,33 @@ class SubmissionHandler(object):
                          complete_file='sync_files',
                          submission_id=submission_id, testable_id=testable_id)
         print('Files synced: {0}.{1}'.format(submission_id, testable_id))
+        data = json.load(open('post_sync_data'))
         os.mkdir(RESULTS_PATH)
-        if self.make_project():
-            self.run_tests()
+        if self.make_project(data['executable'], data['make_target']):
+            self.run_tests(data['test_cases'])
         self.communicate(queue=self.settings['queue_fetch_results'],
                          complete_file='results_fetched',
                          submission_id=submission_id, testable_id=testable_id)
         print('Results fetched: {0}.{1}'.format(submission_id, testable_id))
 
-    def make_project(self):
-        if not os.path.isfile('Makefile'):
-            return True
-        command = 'make -f ../Makefile -C {0}'.format(SRC_PATH)
+    def make_project(self, executable, make_target):
+        """Build the project and return True if the executable exists."""
         with open(os.path.join(RESULTS_PATH, 'make'), 'w') as fp:
-            pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
-            pipe.wait()
-        return pipe.returncode == 0
+            if os.path.isfile('Makefile'):
+                command = 'make -f ../Makefile -C {0}'.format(SRC_PATH)
+                if make_target:
+                    command = '{0} {1}'.format(command, make_target)
+                pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
+                pipe.wait()
+                if pipe.returncode != 0:
+                    return False
+            if not os.path.isfile(os.path.join(SRC_PATH, executable)):
+                fp.write('Expected executable `{0}` does not exist\n'
+                         .format(executable))
+                return False
+            return True
 
-    def run_tests(self):
-        if not os.path.isfile('test_cases'):
-            return
-        test_cases = json.load(open('test_cases'))
+    def run_tests(self, test_cases):
         results = {}
         for tc in test_cases:
             output_file = os.path.join(RESULTS_PATH, 'tc_{0}'.format(tc['id']))
