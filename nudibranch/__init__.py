@@ -20,6 +20,7 @@ def add_routes(config):
     config.add_route('home', '/')
     config.add_route('build_file', '/build_file')
     config.add_route('class', '/class')
+    config.add_route('class_add_list', '/class_add_list')
     config.add_route('class_item', '/class/{class_name}')
     config.add_route('execution_file', '/execution_file')
     config.add_route('file', '/file')

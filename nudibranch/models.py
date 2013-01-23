@@ -77,6 +77,9 @@ class Class(BasicBase, Base):
     def __str__(self):
         return 'Class Name: {0}'.format(self.name)
 
+    def __cmp__(self, other):
+        return cmp(self.name, other.name)
+
     @staticmethod
     def all_classes_by_name():
         return Session().query(Class).order_by(Class.name).all()

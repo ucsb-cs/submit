@@ -103,6 +103,17 @@ def class_edit(request):
     return {'page_title': 'Create Class'}
 
 
+@view_config(route_name='class_add_list', request_method='GET',
+             permission='authenticated', renderer='templates/class_add_list.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def class_add_list(request):
+    # get all the classes that the given user is not in, and let the
+    # user optionally join them
+    all_classes = frozenset(Session().query(Class).all())
+    user_classes = frozenset(request.user.classes)
+    return {'page_title': 'Add Class',
+            'classes': sorted(all_classes - user_classes)}
+    
 @view_config(route_name='class', request_method='GET',
              permission='authenticated', renderer='templates/class_list.pt')
 @site_layout('nudibranch:templates/layout.pt')

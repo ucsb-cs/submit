@@ -1,0 +1,25 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+  <p tal:condition="not classes">
+    There are no available classes to add
+  </p>
+  <div tal:condition="classes">
+    <table border="1">
+      <tr>
+	<th>Class Name</th>
+	<th>Join class?</th>
+      </tr>
+      <tr tal:repeat="klass classes">
+	<td>${klass.name}</td>
+	<td>
+	  <form name="input" action="${_R('user_class_join', class_name=klass.name,
+				     username=request.user.username)}"
+		onsubmit="return form_request(this, 'POST');">
+	    <input type="submit" name="submit" value="Join ${klass.name}"/>
+	  </form>
+	</td>
+      </tr>
+    </table>
+  </div>
+</div>
+</div>
