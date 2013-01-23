@@ -82,7 +82,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
             else:
                 results[test_case.id]['submission_id'] = submission_id
                 results[test_case.id]['test_case_id'] = test_case.id
-                test_case_result = TestCaseResult(**results)
+                test_case_result = TestCaseResult(**results[test_case.id])
             compute_diff(test_case, test_case_result)
             session.add(test_case_result)
     transaction.commit()
