@@ -46,70 +46,55 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
         raise Exception('Invalid submission id: {0}'.format(submission_id))
+    testable = Testable.fetch_by_id(testable_id)
+    if not testable:
+        raise Exception('Invalid testable id: {0}'.format(testable_id))
 
     # Rsync to retrieve results
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3} .'.format(
         PRIVATE_KEY_FILE, user, host, os.path.join(remote_dir, 'results/'))
     os.system(cmd)
 
-    print os.listdir('.')
+    session = Session()
 
     # Store Makefile results
     if os.path.isfile('make'):
         submission.update_makefile_results(open('make').read().decode('utf-8'))
+        session.add(submission)
 
-    # Store test case results
+    # Create dictionary of completed test_cases
     if os.path.isfile('test_cases'):
-        data = json.load(open('test_cases'))
-        for test_case_id, results in data.items():
-            test_case_id = int(test_case_id)  # json doesn't support int keys
-            try:
-                update_or_create_result(submission_id, test_case_id, results)
-            except Exception:
-                import traceback
-                traceback.print_exc()
-                raise
-    session = Session()
-    session.add(submission)
+        results = dict((int(x[0]), x[1]) for x
+                       in json.load(open('test_cases')).items())
+    else:
+        results = {}
+
+    # Set or update relevant test case results
+    for test_case in testable.test_cases:
+        test_case_result = TestCaseResult.fetch_by_ids(submission_id,
+                                                       test_case.id)
+        if test_case.id not in results:
+            if test_case_result:  # Delete existing result
+                session.delete(test_case_result)
+        else:
+            if test_case_result:
+                test_case_result.update(results[test_case.id])
+            else:
+                results[test_case.id]['submission_id'] = submission_id
+                results[test_case.id]['test_case_id'] = test_case_id
+                test_case_result = TestCaseResult(**results)
+            compute_diff(test_case, test_case_result)
+            session.add(test_case_result)
     transaction.commit()
 
 
-def update_or_create_result(submission_id, test_case_id, results):
-    test_case_result = TestCaseResult.fetch_by_ids(submission_id, test_case_id)
-    if test_case_result:
-        test_case_result.update(results)
-    else:
-        results['submission_id'] = submission_id
-        results['test_case_id'] = test_case_id
-        test_case_result = TestCaseResult(**results)
-
-    # get the expected output
-    test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
-    if not test_case:
-        raise Exception(
-            'Invalid test case id: {0}'.format(test_case_result.test_case_id))
-
-    expected_path = File.file_path(BASE_FILE_PATH,
-                                   test_case.expected.sha1)
-    expected_output = readlines(expected_path)
-
-    # get the actual output
-    # actual_path = os.path.join(worker.RESULTS_PATH,
-    #                            'tc_{0}'.format(test_case_id))
-    actual_path = 'tc_{0}'.format(test_case_id)
-    actual_output = readlines(actual_path)
-
-    # put them into a DiffUnit
+def compute_diff(test_case, test_case_result):
+    expected_output = readlines(File.file_path(BASE_FILE_PATH,
+                                               test_case.expected.sha1))
+    actual_output = readlines('tc_{0}'.format(test_case.id))
     unit = Diff(expected_output, actual_output)
-
-    # dump it to a file in the same way as originally, and do it as
-    # a string
-    diff_file = File.fetch_or_create(pickle.dumps(unit), BASE_FILE_PATH)
-    test_case_result.diff = diff_file
-
-    session = Session()
-    session.add(test_case_result)
-    return test_case_result
+    test_case_result.diff = File.fetch_or_create(pickle.dumps(unit),
+                                                 BASE_FILE_PATH)
 
 
 def start_communicator(queue_conf, work_func):
