@@ -5,8 +5,9 @@ import shutil
 import tempfile
 import transaction
 import pickle
+from functools import wraps
 from nudibranch.models import (File, Session, Submission, TestCase,
-                               TestCaseResult, initialize_sql)
+                               TestCaseResult, Testable, initialize_sql)
 from nudibranch.diff_unit import Diff
 from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
@@ -16,18 +17,21 @@ PRIVATE_KEY_FILE = None
 
 
 def complete_file(func):
-    def wrapped(submission_id, complete_file, user, host, remote_dir):
+    @wraps(func)
+    def wrapped(complete_file, host, remote_dir, submission_id, testable_id,
+                user):
         prev_cwd = os.getcwd()
         new_cwd = tempfile.mkdtemp()
         os.chdir(new_cwd)
         try:
-            retval = func(submission_id, user, host, remote_dir)
+            retval = func(submission_id, testable_id, user, host, remote_dir)
         finally:
             shutil.rmtree(new_cwd)
             os.chdir(prev_cwd)
         complete_file = os.path.join(remote_dir, complete_file)
-        command = 'echo -n {0} | ssh -i {1} {2}@{3} tee -a {4}'.format(
-            submission_id, PRIVATE_KEY_FILE, user, host, complete_file)
+        command = 'echo -n {0}.{1} | ssh -i {2} {3}@{4} tee -a {5}'.format(
+            submission_id, testable_id, PRIVATE_KEY_FILE, user, host,
+            complete_file)
         os.system(command)
         return retval
     return wrapped
@@ -38,7 +42,7 @@ def fetch_results():
 
 
 @complete_file
-def fetch_results_worker(submission_id, user, host, remote_dir):
+def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
         raise Exception('Invalid submission id: {0}'.format(submission_id))
@@ -129,28 +133,43 @@ def sync_files():
 
 
 @complete_file
-def sync_files_worker(submission_id, user, host, remote_dir):
+def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
         raise Exception('Invalid submission id: {0}'.format(submission_id))
-
+    testable = Testable.fetch_by_id(testable_id)
+    if not testable:
+        raise Exception('Invalid testable id: {0}'.format(testable_id))
     project = submission.project
+    submitted = dict((x.filename, x.file.sha1) for x in submission.files)
+    build_files = dict((x.filename, x.file.sha1) for x in testable.build_files)
 
-    # Make symlinks for all submission files to src directory
+    # Prepare build directory by symlinking the relevant submission files
     os.mkdir('src')
-    for file_assoc in submission.files:
-        source = File.file_path(BASE_FILE_PATH, file_assoc.file.sha1)
-        os.symlink(source, os.path.join('src', file_assoc.filename))
+    for filev in testable.file_verifiers:
+        if filev.filename in submitted:
+            source = File.file_path(BASE_FILE_PATH, submitted[filev.filename])
+            os.symlink(source, os.path.join('src', filev.filename))
+            if filev.filename in build_files:
+                del build_files[filev.filename]
+        elif not filev.optional:
+            raise Exception('File verifier not satisfied: {0}'
+                            .format(filev.filename))
+    for name, sha1 in build_files.items():  # Symlink remaining build files
+        source = File.file_path(BASE_FILE_PATH, sha1)
+        os.symlink(source, os.path.join('src', name))
 
     # Symlink Makefile to current directory
     if project.makefile:
         source = File.file_path(BASE_FILE_PATH, project.makefile.sha1)
         os.symlink(source, 'Makefile')
 
+    # TODO: Remove "executable" setting or actually check that it exists
+
     # Symlink test inputs and copy build test case specifications
     os.mkdir('inputs')
     test_cases = []
-    for test_case in project.test_cases():
+    for test_case in testable.test_cases:
         test_cases.append(test_case.serialize())
         if test_case.stdin:
             destination = os.path.join('inputs', test_case.stdin.sha1)
