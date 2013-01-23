@@ -22,8 +22,7 @@ if '--production' == sys.argv[-1]:
     requires.extend(['uwsgi>=1.2.4'])
     sys.argv.pop()
 else:
-    requires.extend(['flake8', 'pyramid_debugtoolbar',
-                     'unittest2', 'waitress'])
+    requires.extend(['flake8', 'pyramid_debugtoolbar', 'waitress'])
 
 setup(name='Nudibranch',
       version='0.0',
