@@ -127,10 +127,9 @@ class SubmissionHandler(object):
     def make_project(self, executable, make_target):
         """Build the project and return True if the executable exists."""
         with open(os.path.join(RESULTS_PATH, 'make'), 'w') as fp:
-            if os.path.isfile('Makefile'):
-                command = 'make -f ../Makefile -C {0}'.format(SRC_PATH)
-                if make_target:
-                    command = '{0} {1}'.format(command, make_target)
+            if make_target:
+                command = 'make -f ../Makefile -C {0} {1}'.format(
+                    SRC_PATH, make_target)
                 pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
                 pipe.wait()
                 if pipe.returncode != 0:
