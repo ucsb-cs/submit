@@ -728,6 +728,9 @@ def testable_create(request, name, make_target, executable, build_file_ids,
         return http_bad_request(request, 'Invalid project_id')
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
+    if make_target and not project.makefile:
+        return http_bad_request(request, 'make_target cannot be specified '
+                                'without a make file')
 
     try:
         # Verify the ids actually exist and are associated with the project
@@ -784,6 +787,9 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
         return http_bad_request(request, 'Invalid testable_id')
     if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
+    if make_target and not testable.project.makefile:
+        return http_bad_request(request, 'make_target cannot be specified '
+                                'without a make file')
 
     try:
         # Verify the ids actually exist and are associated with the project
