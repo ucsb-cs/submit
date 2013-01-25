@@ -391,7 +391,7 @@ class TestCaseResult(Base):
     diff_id = Column(Integer, ForeignKey('file.id'))
     status = Column(Enum('nonexistent_executable', 'signal',
                          'success', 'timed_out',
-                         nullable=False))
+                         name='status', nullable=False))
     extra = Column(Integer)
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            primary_key=True)
