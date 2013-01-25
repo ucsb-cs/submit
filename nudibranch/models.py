@@ -555,11 +555,11 @@ class User(UserMixin, BasicBase, Base):
                                                                admin_str)
 
 
-def initialize_sql(engine, populate=False):
+def initialize_sql(engine, initialize=False):
     Session.configure(bind=engine)
     Base.metadata.bind = engine
-    Base.metadata.create_all(engine)
-    if populate:
+    if initialize:
+        Base.metadata.create_all(engine)
         populate_database()
 
 
