@@ -143,6 +143,7 @@ class FileVerifier(BasicBase, Base):
     max_lines = Column(Integer)
     optional = Column(Boolean, default=False, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    warning_regex = Column(Unicode)
 
     def __cmp__(self, other):
         return cmp(self.filename, other.filename)

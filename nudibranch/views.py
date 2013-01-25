@@ -8,7 +8,7 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, String, TextNumber,
+from pyramid_addons.validation import (List, String, RegexString, TextNumber,
                                        WhiteSpaceString, validated_form)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import FileResponse, Response
@@ -201,9 +201,10 @@ def file_item_info(request):
                 max_lines=TextNumber('max_lines', min_value=0, optional=True),
                 optional=TextNumber('optional', min_value=0, max_value=1,
                                     optional=True),
-                project_id=TextNumber('project_id', min_value=0))
+                project_id=TextNumber('project_id', min_value=0),
+                warning_regex=WhiteSpaceString('warning_regex', optional=True))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
-                         max_lines, optional, project_id):
+                         max_lines, optional, project_id, warning_regex):
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
@@ -223,7 +224,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, optional=bool(optional),
-                         project_id=project_id)
+                         project_id=project_id, warning_regex=warning_regex)
     session = Session()
     session.add(filev)
     try:
@@ -247,9 +248,10 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                 min_lines=TextNumber('min_lines', min_value=0),
                 max_lines=TextNumber('max_lines', min_value=0, optional=True),
                 optional=TextNumber('optional', min_value=0, max_value=1,
-                                    optional=True))
+                                    optional=True),
+                warning_regex=RegexString('warning_regex', optional=True))
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
-                         max_lines, optional):
+                         max_lines, optional, warning_regex):
     # Additional verification
     if max_size is not None and max_size < min_size:
         return http_bad_request(request, 'min_size cannot be > max_size')
@@ -270,7 +272,8 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
-                                max_lines=max_lines, optional=bool(optional)):
+                                max_lines=max_lines, optional=bool(optional),
+                                warning_regex=warning_regex):
         return http_ok(request, 'Nothing to change')
 
     session = Session()
@@ -473,7 +476,7 @@ def project_view_summary(request):
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
 @validated_form(username=String('username'),
-                password=WhiteSpaceString('password'))
+                password=RegexString('password'))
 def session_create(request, username, password):
     user = User.login(username, password)
     if user:
