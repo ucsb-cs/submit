@@ -12,7 +12,7 @@ from argparse import ArgumentParser, FileType
 from urlparse import urljoin
 
 
-class Nudibranch(object):
+class Submit(object):
     PATHS = {'auth':           'session',
              'file_item':      'file/{sha1sum}',
              'file_item_info': 'file/{sha1sum}/info',
@@ -30,13 +30,14 @@ class Nudibranch(object):
             os_config_path = os.path.join(os.environ['HOME'], '.config')
         else:
             os_config_path = None
-        locations = ['nudibranch.ini']
+        locations = [os.path.join(os.path.dirname(__file__), 'submit.ini'),
+                     'submit.ini']
         if os_config_path is not None:
-            locations.insert(0, os.path.join(os_config_path, 'nudibranch.ini'))
+            locations.insert(1, os.path.join(os_config_path, 'submit.ini'))
         if not config.read(locations):
-            raise Exception('No nudibranch.ini found.')
+            raise Exception('No submit.ini found.')
         if not config.has_section(section) and section != 'DEFAULT':
-            raise Exception('No section `{0}` found in nudibranch.ini.'
+            raise Exception('No section `{0}` found in submit.ini.'
                             .format(section))
         return dict(config.items(section))
 
@@ -57,6 +58,9 @@ class Nudibranch(object):
                 sys.stdout.write('Username: ')
                 sys.stdout.flush()
                 username = sys.stdin.readline().strip()
+                if not username:
+                    print('Goodbye!')
+                    sys.exit(1)
                 password = getpass.getpass()
             response = self.request(auth_url, 'PUT', username=username,
                                     password=password)
@@ -158,9 +162,12 @@ def main():
     parser.add_argument('files', nargs='+', type=FileType('rb'))
     args = parser.parse_args()
 
-    client = Nudibranch(args.config)
+    client = Submit(args.config)
     return client.submit(args.project, args.files)
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        pass
