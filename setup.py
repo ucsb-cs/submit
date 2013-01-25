@@ -19,7 +19,7 @@ requires = [
     'zope.sqlalchemy>=0.7.1']
 
 if '--production' == sys.argv[-1]:
-    requires.extend(['uwsgi>=1.2.4'])
+    requires.extend(['pg8000', 'uwsgi>=1.2.4'])
     sys.argv.pop()
 else:
     requires.extend(['flake8', 'pyramid_debugtoolbar', 'waitress'])
