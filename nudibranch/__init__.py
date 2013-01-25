@@ -62,9 +62,9 @@ def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
     # Initialize the database
-    production = 'pyramid_debugtoolbar' not in settings['pyramid.includes']
+    development = 'pyramid_debugtoolbar' in settings['pyramid.includes']
     engine = engine_from_config(settings, 'sqlalchemy.')
-    initialize_sql(engine, initialize=production)
+    initialize_sql(engine, initialize=development)
 
     # Configure the webapp
     authen = AuthTktAuthenticationPolicy(secret='<PYRAMID_SECRET>',
