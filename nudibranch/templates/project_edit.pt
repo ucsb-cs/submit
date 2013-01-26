@@ -204,6 +204,10 @@
       <input type="text" name="max_lines" id="max_lines_new"
              class="form_optional" placeholder="system max" value="" />
       <br/>
+      <label for="warning_regex_new"><span class="help" title="If provided, any lines which match the regular expression provided here will be output under warning of possible invalid content header.">Warning Regex</span></label>
+      <input type="text" name="warning_regex" id="warning_regex_new"
+             class="form_optional" placeholder="accept everything" value="" />
+      <br/>
       <label for="optional_new">Optional</label>
       <input type="checkbox" name="optional" id="optional_new" value="1" />
       <input type="hidden" name="project_id" value="${project.id}" />
@@ -238,6 +242,10 @@
         <input type="text" name="max_lines" id="max_lines_${repeat.fv.index}"
                class="form_optional" placeholder="system max"
                value="${fv.max_lines}" />
+        <br/>
+        <label for="warning_regex_${repeat.fv.index}"><span class="help" title="If provided, any lines which match the regular expression provided here will be output under warning of possible invalid content header.">Warning Regex</span></label>
+        <input type="text" name="warning_regex" id="warning_regex_${repeat.fv.index}"
+               class="form_optional" placeholder="accept everything" value="${fv.warning_regex}" />
         <br/>
         <label for="optional_${repeat.fv.index}">Optional</label>
         <input type="checkbox" name="optional" id="optional_${repeat.fv.index}"

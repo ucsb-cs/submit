@@ -202,7 +202,7 @@ def file_item_info(request):
                 optional=TextNumber('optional', min_value=0, max_value=1,
                                     optional=True),
                 project_id=TextNumber('project_id', min_value=0),
-                warning_regex=WhiteSpaceString('warning_regex', optional=True))
+                warning_regex=RegexString('warning_regex', optional=True))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, optional, project_id, warning_regex):
     if max_size is not None and max_size < min_size:
