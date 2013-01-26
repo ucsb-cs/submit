@@ -3,6 +3,8 @@ import transaction
 from nudibranch.models import Session, Submission, initialize_sql
 from sqlalchemy import engine_from_config
 
+BASE_FILE_PATH = None
+
 
 def do_work(submission_id):
     session = Session()
@@ -11,7 +13,7 @@ def do_work(submission_id):
         print('Invalid submission id: {0}'.format(submission_id))
         return
     # Verify and update submission
-    valid_testables = submission.verify()
+    valid_testables = submission.verify(BASE_FILE_PATH)
     if valid_testables:
         print('Passed: {0}'.format(submission_id))
         retval = [{'submission_id': submission_id, 'testable_id': x.id}
@@ -25,8 +27,10 @@ def do_work(submission_id):
 
 
 def main():
+    global BASE_FILE_PATH
     parser = amqp_worker.base_argument_parser()
     args, settings = amqp_worker.parse_base_args(parser, 'app:main')
+    BASE_FILE_PATH = settings['file_directory']
 
     engine = engine_from_config(settings, 'sqlalchemy.')
     initialize_sql(engine)

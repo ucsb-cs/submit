@@ -148,20 +148,23 @@ class FileVerifier(BasicBase, Base):
     def __cmp__(self, other):
         return cmp(self.filename, other.filename)
 
-    def verify(self, file):
-        msgs = []
+    def verify(self, base_path, file):
+        errors = []
+        warnings = []
         if file.size < self.min_size:
-            msgs.append('must be >= {0} bytes'.format(self.min_size))
+            errors.append('must be >= {0} bytes'.format(self.min_size))
         elif self.max_size and file.size > self.max_size:
-            msgs.append('must be <= {0} bytes'.format(self.max_size))
+            errors.append('must be <= {0} bytes'.format(self.max_size))
         if file.lines < self.min_lines:
-            msgs.append('must have >= {0} lines'.format(self.min_lines))
+            errors.append('must have >= {0} lines'.format(self.min_lines))
         elif self.max_lines and file.lines > self.max_lines:
-            msgs.append('must have <= {0} lines'.format(self.max_lines))
-        if msgs:
-            return False, msgs
-        else:
-            return True, None
+            errors.append('must have <= {0} lines'.format(self.max_lines))
+
+        # TODO: Open the file and search for matches of regex. Every
+        # line that contains a match should output the line with the matching
+        # content bolded.
+
+        return errors, warnings
 
 
 class Project(BasicBase, Base):
@@ -176,12 +179,14 @@ class Project(BasicBase, Base):
     submissions = relationship('Submission', backref='project')
     testables = relationship('Testable', backref='project')
 
-    def verify_submission(self, submission):
+    def verify_submission(self, base_path, submission):
         """Return list of testables that can be built.
 
         Store into submission.results a dictionary with possible keys:
-          :key invalid: a mapping of filenames to reason(s) why that file is
-              invalid
+          :key errors: a mapping of filenames to reason(s) why that file is
+              not valid
+          :key warnings: a mapping of filesnames to lines that may contain
+              invalid content (from warning_regex)
           :key extra: a list of filenames that aren't needed
           :key map: a mapping of set of filenames that are invalid to a list of
               testgroups that won't build because of those files
@@ -199,14 +204,17 @@ class Project(BasicBase, Base):
         for fv in file_verifiers:
             name = fv.filename
             if name in file_mapping:
-                passed, messages = fv.verify(file_mapping[name].file)
-                if passed:
-                    valid_files.add(name)
+                errors, warnings = fv.verify(base_path,
+                                             file_mapping[name].file)
+                if errors:
+                    results.setdefault('errors', {})[name] = errors
                 else:
-                    results['invalid'][name] = messages
+                    valid_files.add(name)
+                if warnings:
+                    results.setdefault('warnings', {})[name] = warnings
                 del file_mapping[name]
             elif not fv.optional:
-                results.setdefault('invalid', {})[name] = 'file missing'
+                results.setdefault('errors', {})[name] = 'file missing'
         if file_mapping:
             results['extra'] = list(file_mapping.keys())
 
@@ -332,8 +340,8 @@ class Submission(BasicBase, Base):
                       key=lambda s: s.created_at,
                       reverse=reverse)
 
-    def verify(self):
-        return self.project.verify_submission(self)
+    def verify(self, base_path):
+        return self.project.verify_submission(self, base_path)
 
     def update_makefile_results(self, data):
         self.made_at = func.now()
