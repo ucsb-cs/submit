@@ -14,7 +14,7 @@
     Info for ${project.name}
   </p>
      
-    <p>Make a submission via <code>~bboe/bin/submit.py -p ${project.klass.name}:${project.id} file [file...]</code></p>
+    <p>Make a submission via <code>~bboe/bin/submit -p ${project.klass.name}:${project.id} file [file...]</code></p>
   <p tal:condition="request.user.is_admin_for_project(project) and not submissions">
     ${name} has no submissions</p>
   <p tal:condition="not request.user.is_admin_for_project(project) and not submissions">You have no submissions</p>
