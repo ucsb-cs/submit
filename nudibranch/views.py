@@ -841,7 +841,9 @@ def user_class_join(request):
     session = Session()
     session.add(request.user)
     transaction.commit()
-    return http_ok(request, 'Class joined')
+    redir_location = request.route_path('class_join_list',
+                                        _query={'last_class': class_name})
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='user', renderer='json', request_method='PUT')

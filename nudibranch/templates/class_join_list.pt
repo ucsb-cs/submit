@@ -1,5 +1,8 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
+  <p tal:condition="'last_class' in request.params">
+    Successfully joined ${request.params['last_class']}
+  </p>
   <p tal:condition="not classes">
     There are no available classes to add
   </p>
