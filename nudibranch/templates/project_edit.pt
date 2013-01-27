@@ -41,19 +41,6 @@
             onsubmit="return form_request(this, 'POST', true);">
         <fieldset>
           <legend>Testable Settings</legend>
-          <label for="testable_name_${repeat.testable.index}">Name</label>
-          <input type="text" name="name" id="testable_name_${repeat.testable.index}"
-                 value="${testable.name}" />
-          <br/>
-          <label for="make_target_${repeat.testable.index}">Make target</label>
-          <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
-                 value="${testable.make_target}" placeholder="don't run make" />
-          <br/>
-          <label for="executable_${repeat.testable.index}">Executable</label>
-          <input type="text" name="executable" id="executable_${repeat.testable.index}"
-                 value="${testable.executable}" />
-          <br/>
-
           <fieldset>
             <legend>Select <span class="help" title="Build files are static files that are required to make the executable. Build files can be shadowed by students' files by creating optional expected files.">Build Files</span></legend>
             <div tal:repeat="bf sorted(project.build_files)">
@@ -88,6 +75,19 @@
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
           </fieldset>
           <input type="hidden" name="project_id" value="${project.id}" />
+	  
+	            <label for="testable_name_${repeat.testable.index}">Name</label>
+          <input type="text" name="name" id="testable_name_${repeat.testable.index}"
+                 value="${testable.name}" />
+          <br/>
+          <label for="make_target_${repeat.testable.index}">Make target</label>
+          <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
+                 value="${testable.make_target}" placeholder="don't run make" />
+          <br/>
+          <label for="executable_${repeat.testable.index}">Executable</label>
+          <input type="text" name="executable" id="executable_${repeat.testable.index}"
+                 value="${testable.executable}" />
+          <br/>
           <input type="submit" name="submit" value="update" />
         </fieldset>
       </form>
