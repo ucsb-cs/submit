@@ -26,7 +26,7 @@ FILE_DIR = '/tmp/nudibranch_test'
 def _init_testing_db():
     """Create an in-memory database for testing."""
     engine = create_engine('sqlite://')
-    initialize_sql(engine)
+    initialize_sql(engine, initialize=True)
 
     # Add an admin user, two users, and two classes
     admin = User(email='', name='admin', username='admin', password='password',
