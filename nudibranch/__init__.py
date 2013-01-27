@@ -64,7 +64,7 @@ def main(global_config, **settings):
     # Initialize the database
     development = 'pyramid_debugtoolbar' in settings['pyramid.includes']
     engine = engine_from_config(settings, 'sqlalchemy.')
-    initialize_sql(engine, initialize=development, 
+    initialize_sql(engine, initialize=development,
                    populate=development)
 
     # Configure the webapp
