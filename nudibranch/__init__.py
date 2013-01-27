@@ -69,7 +69,8 @@ def main(global_config, **settings):
 
     # Configure the webapp
     authen = AuthTktAuthenticationPolicy(secret='<PYRAMID_SECRET>',
-                                         callback=group_finder)
+                                         callback=group_finder,
+                                         hashalg='sha512')
     author = ACLAuthorizationPolicy()
     config = Configurator(settings=settings, authentication_policy=authen,
                           authorization_policy=author, root_factory=Root)
