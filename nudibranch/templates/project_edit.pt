@@ -41,19 +41,6 @@
             onsubmit="return form_request(this, 'POST', true);">
         <fieldset>
           <legend>Testable Settings</legend>
-          <label for="testable_name_${repeat.testable.index}">Name</label>
-          <input type="text" name="name" id="testable_name_${repeat.testable.index}"
-                 value="${testable.name}" />
-          <br/>
-          <label for="make_target_${repeat.testable.index}">Make target</label>
-          <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
-                 value="${testable.make_target}" placeholder="don't run make" />
-          <br/>
-          <label for="executable_${repeat.testable.index}">Executable</label>
-          <input type="text" name="executable" id="executable_${repeat.testable.index}"
-                 value="${testable.executable}" />
-          <br/>
-
           <fieldset>
             <legend>Select <span class="help" title="Build files are static files that are required to make the executable. Build files can be shadowed by students' files by creating optional expected files.">Build Files</span></legend>
             <div tal:repeat="bf sorted(project.build_files)">
@@ -88,6 +75,19 @@
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
           </fieldset>
           <input type="hidden" name="project_id" value="${project.id}" />
+	  
+	            <label for="testable_name_${repeat.testable.index}">Name</label>
+          <input type="text" name="name" id="testable_name_${repeat.testable.index}"
+                 value="${testable.name}" />
+          <br/>
+          <label for="make_target_${repeat.testable.index}">Make target</label>
+          <input type="text" name="make_target" id="make_target_${repeat.testable.index}"
+                 value="${testable.make_target}" placeholder="don't run make" />
+          <br/>
+          <label for="executable_${repeat.testable.index}">Executable</label>
+          <input type="text" name="executable" id="executable_${repeat.testable.index}"
+                 value="${testable.executable}" />
+          <br/>
           <input type="submit" name="submit" value="update" />
         </fieldset>
       </form>
@@ -108,15 +108,6 @@
             onsubmit="return form_request(this, 'PUT', true);">
         <fieldset>
           <legend>Testable Settings</legend>
-          <label for="testable_name_new">Name</label>
-          <input type="text" name="name" id="testable_name_new" />
-          <br/>
-          <label for="make_target_new">Make target</label>
-          <input type="text" name="make_target" id="make_target_new" placeholder="don't run make"/>
-          <br/>
-          <label for="executable_new">Executable</label>
-          <input type="text" name="executable" id="executable_new" />
-
           <fieldset>
             <legend>Select <span class="help" title="Build files are static files that are required to make the executable. Build files can be shadowed by students' files by creating optional expected files.">Build Files</span></legend>
             <div tal:repeat="bf sorted(project.build_files)">
@@ -127,7 +118,6 @@
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
           </fieldset>
-
           <fieldset>
             <legend>Select <span class="help" title="Execution files are static files that are present in the directory during execution.">Execution Files</span></legend>
             <div tal:repeat="ef sorted(project.execution_files)">
@@ -151,6 +141,15 @@
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
           </fieldset>
           <input type="hidden" name="project_id" value="${project.id}" />
+	  <label for="testable_name_new">Name</label>
+          <input type="text" name="name" id="testable_name_new" />
+          <br/>
+          <label for="make_target_new">Make target</label>
+          <input type="text" name="make_target" id="make_target_new" placeholder="don't run make"/>
+          <br/>
+          <label for="executable_new">Executable</label>
+          <input type="text" name="executable" id="executable_new" />
+	  <br/>
           <input type="submit" name="submit" value="add" />
         </fieldset>
       </form>
