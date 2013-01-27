@@ -564,11 +564,15 @@ class User(UserMixin, BasicBase, Base):
                                                                admin_str)
 
 
-def initialize_sql(engine, initialize=False):
+def initialize_sql(engine, initialize=False, populate=False):
+    '''initialize is for metadata preparation, and populate will
+    add entries into the database.  If we want to populate,
+    metadata will be unconditionally added.'''
     Session.configure(bind=engine)
     Base.metadata.bind = engine
-    if initialize:
+    if initialize or populate:
         Base.metadata.create_all(engine)
+    if populate:
         populate_database()
 
 
