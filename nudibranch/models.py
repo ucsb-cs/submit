@@ -341,7 +341,7 @@ class Submission(BasicBase, Base):
                       reverse=reverse)
 
     def verify(self, base_path):
-        return self.project.verify_submission(self, base_path)
+        return self.project.verify_submission(base_path, self)
 
     def update_makefile_results(self, data):
         self.made_at = func.now()
