@@ -1,6 +1,6 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <h1> ADMIN VIEW </h1>
+  <h1>User Submissions Overview</h1>
   <p>Info for ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
   <p>Users</p>
