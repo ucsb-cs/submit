@@ -3,7 +3,6 @@
   <h1>User Submissions Overview</h1>
   <p>Info for ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
-  <p>Users</p>
   <div tal:condition="submissions">
     <table border="1">
       <tr>
