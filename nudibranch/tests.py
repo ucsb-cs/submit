@@ -234,12 +234,15 @@ class ClassJoinTests(BaseAPITest):
     def test_valid(self):
         from nudibranch.views import user_class_join
         user, json_data = self.get_objects()
+        class_name = 'Class 1'
         request = self.make_request(json_body=json_data, user=user,
-                                    matchdict={'class_name': 'Class 1',
+                                    matchdict={'class_name': class_name,
                                                'username': 'user1'})
         info = user_class_join(request)
-        self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Class joined', info['message'])
+        self.assertEqual(HTTPCreated.code, request.response.status_code)
+        expected = route_path('class_join_list', request,
+                              _query={'last_class': class_name})
+        self.assertEqual(expected, info['redir_location'])
 
 
 class FileTests(BaseAPITest):
