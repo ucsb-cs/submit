@@ -21,7 +21,7 @@ from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Project, Session, Submission, SubmissionToFile, TestCase,
-                     Testable, User)
+                     Testable, User, VerificationResults)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 from .zipper import ZipSubmission
@@ -616,8 +616,9 @@ def submission_view(request):
             score,
             "points" if score != 1 else "point")
 
-    # show tests that fail due to missing files
-    by_missing_file = submission.failed_tests_by_missing_files()
+    # show tests that fail due to missing/broken files
+    # make a mapping of broken files to test cases that break on them
+    by_missing_file = submission.defective_files_to_test_cases()
     points_missed = sum([sum_score_tests(tests)
                          for tests in by_missing_file.itervalues()])
 

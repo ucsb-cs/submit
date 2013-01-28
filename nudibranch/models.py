@@ -172,7 +172,7 @@ class FileVerifier(BasicBase, Base):
         return errors, warnings
 
 
-class VerificationResult(object):
+class VerificationResults(object):
     def __init__(self):
         self._errors_by_filename = {}
         self._warnings_by_filename = {}
@@ -185,7 +185,7 @@ class VerificationResult(object):
     def set_warnings_for_filename(self, warnings, filename):
         self._warnings_by_filename[filename] = warning
 
-    def set_filenames(self, filenames):
+    def set_extra_filenames(self, filenames):
         self._filenames = filenames
 
     def add_testable_id_for_missing_files(self, testable_id, missing_files):
@@ -219,7 +219,7 @@ class Project(BasicBase, Base):
 
         """
 
-        results = VerificationResult()
+        results = VerificationResults()
         valid_files = set()
         file_mapping = dict([(x.filename, x) for x in submission.files])
 
@@ -242,7 +242,7 @@ class Project(BasicBase, Base):
             elif not fv.optional:
                 results.set_errors_for_filename('file missing', name)
         if file_mapping:
-            results.set_filenames(list(file_mapping.keys()))
+            results.set_extra_filenames(list(file_mapping.keys()))
 
         # Determine valid testables
         retval = []
@@ -289,6 +289,27 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime, index=True)
 
+    def defective_files_to_test_cases(self):
+        '''Returns a mapping of sets of defective files to test cases
+        that failed because of these files.  Returns None if
+        verification hasn't occurred yet. "Defective" means that
+        the file was either missing or failed verification'''
+
+        def testable_id_to_test_cases(testable_id):
+            testable = Testable.fetch_by_id(testable_id)
+            return testable.test_cases if testable else []
+
+        def testable_ids_to_test_cases(testable_ids):
+            return frozenset([testable_id_to_test_cases(id)
+                              for id in testable_ids])
+
+        if self.verification_results:
+            files_to_ids = self.verification_results._missing_to_testable_ids
+            return dict([(files, testable_ids_to_test_cases(ids))
+                         for files, ids in files_to_ids.iteritems()])
+        else:
+            return None
+        
     def missing_files_by_testable(self):
         '''Returns a mapping of testables to files that they were missing'''
         retval = {}
