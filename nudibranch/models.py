@@ -286,6 +286,16 @@ class Submission(BasicBase, Base):
                 retval.setdefault(f, set()).update(testable.test_cases)
         return retval
 
+    def failed_tests_by_missing_files(self):
+        '''Maps sets of missing files to sets of test cases that fail because
+        of them.  Unlike with failed_test_by_missing_file, it guarentees that
+        a given test case will exist in the value of only one key'''
+        retval = {}
+        for testable, files in self.missing_files_by_testable().iteritems():
+            retval.setdefault(
+                frozenset(files), set()).update(testable.test_cases)
+        return retval
+
     @staticmethod
     def most_recent_submission(project_id, user_id):
         '''Given the project id and a user id, gets the most recent

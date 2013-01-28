@@ -103,13 +103,15 @@ class ScoreMaker(object):
 
 
 class ScoreWithExtraMissing(ScoreMaker):
-    '''Special ScoreMaker that records extra non-diff points that were missed'''
+    '''Special ScoreMaker that records extra non-diff
+    points that were missed'''
     def __init__(self, points_missing):
         super(ScoreWithExtraMissing, self).__init__()
         self.points_missing = points_missing
 
     def total_score_available(self, diffs):
-        from_diffs = super(ScoreWithExtraMissing, self).total_score_available(diffs)
+        from_diffs = super(
+            ScoreWithExtraMissing, self).total_score_available(diffs)
         return from_diffs + self.points_missing
 
 

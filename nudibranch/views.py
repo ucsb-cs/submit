@@ -617,9 +617,9 @@ def submission_view(request):
             "points" if score != 1 else "point")
 
     # show tests that fail due to missing files
-    by_missing_file = submission.failed_tests_by_missing_file()
-    points_missed = sum([sum_score_tests(tests) 
-                     for tests in by_missing_file.itervalues()])
+    by_missing_file = submission.failed_tests_by_missing_files()
+    points_missed = sum([sum_score_tests(tests)
+                         for tests in by_missing_file.itervalues()])
 
     # for each test case get the results, putting the diff into the diff
     # renderer.
