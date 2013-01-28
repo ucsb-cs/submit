@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title><p tal:condition="page_title" tal:replace="page_title + ' - '">Nudibranch</title>
+  <title><p tal:condition="page_title" tal:replace="page_title + ' - '">Submit</title>
   <link rel="shortcut icon" href="${_S('nudibranch:static/favicon.ico')}" />
   <link rel="stylesheet" href="${_S('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}"
         type="text/css" media="screen" />
