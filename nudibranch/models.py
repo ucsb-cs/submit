@@ -176,7 +176,7 @@ class VerificationResults(object):
     def __init__(self):
         self._errors_by_filename = {}
         self._warnings_by_filename = {}
-        self._filenames = []
+        self._extra_filenames = []
         self._missing_to_testable_ids = {}
 
     def set_errors_for_filename(self, errors, filename):
@@ -186,7 +186,7 @@ class VerificationResults(object):
         self._warnings_by_filename[filename] = warnings
 
     def set_extra_filenames(self, filenames):
-        self._filenames = filenames
+        self._extra_filenames = filenames
 
     def add_testable_id_for_missing_files(self, testable_id, missing_files):
         self._missing_to_testable_ids.setdefault(
