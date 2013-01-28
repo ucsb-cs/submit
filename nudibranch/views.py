@@ -599,6 +599,26 @@ def zipfile_download(request):
         return response
 
 
+def format_points(points):
+    return "({0} {1})".format(
+        points,
+        "point" if points == 1 else "points")
+
+
+def problem_files_header(files, test_cases):
+    from .helpers import escape
+    formatted = ", ".join(
+        ["'<code>{0}</code>'".format(escape(file))
+         for file in files])
+    score = sum([test.points for test in test_cases])
+    template = "<h3 style=\"color:red\">{0} {1}: {2} {3}</h3>"
+    return template.format(
+        "Failed tests due to problems with",
+        "this file" if len(files) == 1 else "these files",
+        formatted,
+        format_points(score))
+
+
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -608,18 +628,12 @@ def submission_view(request):
     if not submission:
         return HTTPNotFound()
 
-    def sum_score_tests(tests):
-        return sum([test.points for test in tests])
-
-    def as_points(score):
-        return "({0} {1})".format(
-            score,
-            "points" if score != 1 else "point")
-
-    # show tests that fail due to missing files
-    by_missing_file = submission.failed_tests_by_missing_files()
-    points_missed = sum([sum_score_tests(tests)
-                         for tests in by_missing_file.itervalues()])
+    # show tests that fail due to missing/broken files
+    # make a mapping of broken files to test cases that break on them
+    failed_from_bad_files = submission.defective_files_to_test_cases()
+    points_missed = sum([test.points
+                         for tests in failed_from_bad_files.itervalues()
+                         for test in tests])
 
     # for each test case get the results, putting the diff into the diff
     # renderer.
@@ -639,14 +653,18 @@ def submission_view(request):
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
 
+    vr = submission.verification_results
+
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
-            '_ss': sum_score_tests,
-            '_ap': as_points,
-            'missing': by_missing_file,
+            '_fp': format_points,
+            'make_header': problem_files_header,
+            'failed_from_bad_files': failed_from_bad_files,
+            'file_warnings': vr._warnings_by_filename,
+            'file_errors': vr._errors_by_filename,
             'diff_table': diff_renderer.make_whole_file(),
             'prev_next': prev_next_html}
 

@@ -9,7 +9,6 @@
   <p>Submitted ${_pd(submission.created_at)}</p>
   <div tal:condition="submission.verified_at">
     <p>Submission verified ${_pd(submission.verified_at)}</p>
-    <pre>${submission.verification_results}</pre>
   </div>
 
   <div tal:condition="submission.made_at">
@@ -17,12 +16,54 @@
     <pre>${submission.make_results}</pre>
   </div>
 
-  <div tal:condition="missing">
-    <div tal:repeat="missing_files sorted(missing.keys(), key=lambda s: sorted(list(s)))">
-      <h3 style="color:red">Failed tests due to missing '<code>${", ".join(sorted(list(missing_files)))}</code>' ${_ap(_ss(missing[missing_files]))}</h3>
+  <div tal:condition="file_warnings">
+    <h3 style="color:yellow">Files with warnings:</h3>
+    <ul>
+      <div tal:repeat="file sorted(file_warnings.keys())">
+	<li tal:condition="len(file_warnings[file]) == 1">
+	  <b>${file}</b>: ${file_warnings[file][0]}
+	</li>
+	<div tal:condition="len(file_warnings[file]) > 1">
+	  <li>
+	    <b>${file}</b>
+	    <ul>
+	      <li tal:repeat="warning file_warnings[file]">
+		${warning}
+	      </li>
+	    </ul>
+	  </li>
+	</div>
+      </div>
+    </ul>
+  </div>
+      
+  <div tal:condition="file_errors">
+    <h3 style="color:red">Files with errors:</h3>
+    <ul>
+      <div tal:repeat="file sorted(file_errors.keys())">
+	<li tal:condition="len(file_errors[file]) == 1">
+	  <b>${file}</b>: ${file_errors[file][0]}
+	</li>
+	<div tal:condition="len(file_errors[file]) > 1">
+	  <li>
+	    <b>${file}</b>
+	    <ul>
+	      <li tal:repeat="error file_errors[file]">
+		${error}
+	      </li>
+	    </ul>
+	  </li>
+	</div>
+      </div>
+    </ul>
+  </div>
+
+  <div tal:condition="failed_from_bad_files">
+    <div tal:repeat="bad_files sorted(failed_from_bad_files.keys(), key=lambda s: sorted(list(s)))">
+      <div tal:replace="structure make_header(bad_files, failed_from_bad_files[bad_files])"></div>
       <ul>
-	<li tal:repeat="test sorted(missing[missing_files])">
-	  ${test.name} ${_ap(test.points)}
+	<li tal:repeat="test sorted(failed_from_bad_files[bad_files])">
+	  <b>${test.name}</b>: ${_fp(test.points)}
 	</li>
       </ul>
     </div>

@@ -172,6 +172,27 @@ class FileVerifier(BasicBase, Base):
         return errors, warnings
 
 
+class VerificationResults(object):
+    def __init__(self):
+        self._errors_by_filename = {}
+        self._warnings_by_filename = {}
+        self._extra_filenames = []
+        self._missing_to_testable_ids = {}
+
+    def set_errors_for_filename(self, errors, filename):
+        self._errors_by_filename[filename] = errors
+
+    def set_warnings_for_filename(self, warnings, filename):
+        self._warnings_by_filename[filename] = warnings
+
+    def set_extra_filenames(self, filenames):
+        self._extra_filenames = filenames
+
+    def add_testable_id_for_missing_files(self, testable_id, missing_files):
+        self._missing_to_testable_ids.setdefault(
+            missing_files, set()).add(testable_id)
+
+
 class Project(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
     build_files = relationship(BuildFile, backref='project',
@@ -203,7 +224,7 @@ class Project(BasicBase, Base):
 
         """
 
-        results = {}
+        results = VerificationResults()
         valid_files = set()
         file_mapping = dict([(x.filename, x) for x in submission.files])
 
@@ -217,29 +238,27 @@ class Project(BasicBase, Base):
                 errors, warnings = fv.verify(base_path,
                                              file_mapping[name].file)
                 if errors:
-                    results.setdefault('errors', {})[name] = errors
+                    results.set_errors_for_filename(errors, name)
                 else:
                     valid_files.add(name)
                 if warnings:
-                    results.setdefault('warnings', {})[name] = warnings
+                    results.set_warnings_for_filename(warnings, name)
                 del file_mapping[name]
             elif not fv.optional:
-                results.setdefault('errors', {})[name] = 'file missing'
+                results.set_errors_for_filename(['file missing'], name)
         if file_mapping:
-            results['extra'] = list(file_mapping.keys())
+            results.set_extra_filenames(list(file_mapping.keys()))
 
         # Determine valid testables
-        tb_map = {}
         retval = []
         for testable in self.testables:
-            missing = tuple(set(x.filename for x in testable.file_verifiers
-                                if not x.optional) - valid_files)
+            missing = frozenset(set(x.filename for x in testable.file_verifiers
+                                    if not x.optional) - valid_files)
             if missing:
-                tb_map.setdefault(missing, []).append(testable.id)
+                results.add_testable_id_for_missing_files(
+                    testable.id, missing)
             elif testable.file_verifiers:
                 retval.append(testable)
-        if tb_map:
-            results['map'] = tb_map
 
         submission.verification_results = results
         submission.verified_at = func.now()
@@ -275,36 +294,27 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime, index=True)
 
-    def missing_files_by_testable(self):
-        '''Returns a mapping of testables to files that they were missing'''
-        retval = {}
-        have_files = frozenset([stf.filename for stf in self.files])
-        # TODO: project could be None
-        project = Project.fetch_by_id(self.project_id)
-        for testable in project.testables:
-            missing_files = frozenset(testable.needed_files()) - have_files
-            if missing_files:
-                retval[testable] = missing_files
-        return retval
+    def defective_files_to_test_cases(self):
+        '''Returns a mapping of sets of defective files to test cases
+        that failed because of these files.  Returns None if
+        verification hasn't occurred yet. "Defective" means that
+        the file was either missing or failed verification'''
 
-    def failed_tests_by_missing_file(self):
-        '''Returns a mapping of missing files to test cases that fail because
-        files were missing'''
-        retval = {}
-        for testable, files in self.missing_files_by_testable().iteritems():
-            for f in files:
-                retval.setdefault(f, set()).update(testable.test_cases)
-        return retval
+        def testable_id_to_test_cases(testable_id):
+            testable = Testable.fetch_by_id(testable_id)
+            return testable.test_cases if testable else []
 
-    def failed_tests_by_missing_files(self):
-        '''Maps sets of missing files to sets of test cases that fail because
-        of them.  Unlike with failed_test_by_missing_file, it guarentees that
-        a given test case will exist in the value of only one key'''
-        retval = {}
-        for testable, files in self.missing_files_by_testable().iteritems():
-            retval.setdefault(
-                frozenset(files), set()).update(testable.test_cases)
-        return retval
+        def testable_ids_to_test_cases(testable_ids):
+            return frozenset([test_case
+                              for tid in testable_ids
+                              for test_case in testable_id_to_test_cases(tid)])
+
+        if self.verification_results:
+            files_to_ids = self.verification_results._missing_to_testable_ids
+            return dict([(files, testable_ids_to_test_cases(ids))
+                         for files, ids in files_to_ids.iteritems()])
+        else:
+            return None
 
     @staticmethod
     def most_recent_submission(project_id, user_id):
