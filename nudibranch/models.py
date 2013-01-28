@@ -311,37 +311,6 @@ class Submission(BasicBase, Base):
         else:
             return None
 
-    def missing_files_by_testable(self):
-        '''Returns a mapping of testables to files that they were missing'''
-        retval = {}
-        have_files = frozenset([stf.filename for stf in self.files])
-        # TODO: project could be None
-        project = Project.fetch_by_id(self.project_id)
-        for testable in project.testables:
-            missing_files = frozenset(testable.needed_files()) - have_files
-            if missing_files:
-                retval[testable] = missing_files
-        return retval
-
-    def failed_tests_by_missing_file(self):
-        '''Returns a mapping of missing files to test cases that fail because
-        files were missing'''
-        retval = {}
-        for testable, files in self.missing_files_by_testable().iteritems():
-            for f in files:
-                retval.setdefault(f, set()).update(testable.test_cases)
-        return retval
-
-    def failed_tests_by_missing_files(self):
-        '''Maps sets of missing files to sets of test cases that fail because
-        of them.  Unlike with failed_test_by_missing_file, it guarentees that
-        a given test case will exist in the value of only one key'''
-        retval = {}
-        for testable, files in self.missing_files_by_testable().iteritems():
-            retval.setdefault(
-                frozenset(files), set()).update(testable.test_cases)
-        return retval
-
     @staticmethod
     def most_recent_submission(project_id, user_id):
         '''Given the project id and a user id, gets the most recent
