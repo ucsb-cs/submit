@@ -265,6 +265,27 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime, index=True)
 
+    def missing_files_by_testable(self):
+        '''Returns a mapping of testables to files that they were missing'''
+        retval = {}
+        have_files = frozenset([stf.filename for stf in self.files])
+        # TODO: project could be None
+        project = Project.fetch_by_id(self.project_id)
+        for testable in project.testables:
+            missing_files = frozenset(testable.needed_files()) - have_files
+            if missing_files:
+                retval[testable] = missing_files
+        return retval
+
+    def failed_tests_by_missing_file(self):
+        '''Returns a mapping of missing files to test cases that fail because
+        files were missing'''
+        retval = {}
+        for testable, files in self.missing_files_by_testable().iteritems():
+            for f in files:
+                retval.setdefault(f, set()).update(testable.test_cases)
+        return retval
+
     @staticmethod
     def most_recent_submission(project_id, user_id):
         '''Given the project id and a user id, gets the most recent
@@ -433,6 +454,9 @@ class Testable(BasicBase, Base):
     name = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_cases = relationship('TestCase', backref='testable')
+
+    def needed_files(self):
+        return sorted([fv.filename for fv in self.file_verifiers])
 
 
 class User(UserMixin, BasicBase, Base):

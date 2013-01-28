@@ -29,7 +29,8 @@ class DiffExtraInfo(object):
 
 
 class DiffRenderable(object):
-    '''Something that can be rendered with HTMLDiff.  This is intended to be abstract'''
+    '''Something that can be rendered with HTMLDiff.
+    This is intended to be abstract'''
 
     INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
     CORRECT_HTML_TEST_NAME = \
@@ -51,7 +52,6 @@ class DiffRenderable(object):
     def wrong_things(self):
         '''Returns a list of strings describing everything that's wrong'''
         pass
-
 
     def wrong_things_html_list(self):
         '''Returns all the things that were wrong in an html list, or None if
@@ -87,12 +87,31 @@ class DiffRenderable(object):
                                     self.test_points)
 
 
+class NonDiffErrors(DiffRenderable):
+    '''Used to encode errors that exist external to a diff, as when
+    files are missing so there isn't even a diff to show'''
+
+    def __init__(self, test_num, test_name, test_points, error_list):
+        super(NonDiffErrors, self).__init__(test_num, test_name, test_points)
+        self.error_list = error_list
+
+    def is_correct(self):
+        return False
+
+    def should_show_table(self):
+        return False
+
+    def wrong_things(self):
+        return self.error_list
+
+
 class DiffWithMetadata(DiffRenderable):
     '''Wraps around a Diff to impart additional functionality.
     Not intended to be stored.'''
 
     def __init__(self, diff, test_num, test_name, test_points, extra_info):
-        super(DiffWithMetadata, self).__init__(test_num, test_name, test_points)
+        super(DiffWithMetadata, self).__init__(
+            test_num, test_name, test_points)
         self._diff = diff
         self.extra_info = extra_info
 

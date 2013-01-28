@@ -16,7 +16,7 @@ from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
-from .diff_unit import DiffWithMetadata, DiffExtraInfo
+from .diff_unit import DiffWithMetadata, DiffExtraInfo, NonDiffErrors
 from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
@@ -609,15 +609,28 @@ def submission_view(request):
         return HTTPNotFound()
 
     # for each test case get the results, putting the diff into the diff
-    # renderer.  Right now we just hardcode some things
+    # renderer.
     diff_renderer = HTMLDiff()
 
+    # things for which we actually have diffs
     for test_case_result in submission.test_case_results:
         full_diff = to_full_diff(request, test_case_result)
         if not full_diff:
             return HTTPNotFound()
         diff_renderer.add_diff(full_diff)
 
+    # things for which couldn't be run because files were missing
+    for testable, files in submission.missing_files_by_testable().iteritems():
+        error_list = ["Missing file: '{0}'".format(file)
+                      for file in files]
+        for test_case in testable.test_cases:
+            diff_renderer.add_diff(
+                NonDiffErrors(test_case.id,
+                              test_case.name,
+                              test_case.points,
+                              error_list))
+
+    submission.failed_tests_by_missing_file()
     prev_next_html = None
     if request.user.is_admin_for_submission(submission):
         try:
