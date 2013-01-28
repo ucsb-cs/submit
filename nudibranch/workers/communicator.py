@@ -38,7 +38,7 @@ def complete_file(func):
 
 
 def fetch_results():
-    start_communicator('queue_fetch_results', fetch_results_worker)
+    start_communicator('fetch_results', fetch_results_worker)
 
 
 @complete_file
@@ -97,7 +97,7 @@ def compute_diff(test_case, test_case_result):
                                                  BASE_FILE_PATH)
 
 
-def start_communicator(queue_conf, work_func):
+def start_communicator(conf_prefix, work_func):
     global BASE_FILE_PATH, PRIVATE_KEY_FILE
     parser = amqp_worker.base_argument_parser()
     args, settings = amqp_worker.parse_base_args(parser, 'app:main')
@@ -107,14 +107,16 @@ def start_communicator(queue_conf, work_func):
     engine = engine_from_config(settings, 'sqlalchemy.')
     initialize_sql(engine)
 
-    worker = amqp_worker.AMQPWorker(settings['queue_server'],
-                                    settings[queue_conf], work_func,
-                                    is_daemon=args.daemon)
+    worker = amqp_worker.AMQPWorker(
+        settings['queue_server'], settings['queue_{0}'.format(conf_prefix)],
+        work_func, is_daemon=args.daemon,
+        log_file=settings['{0}_log_file'.format(conf_prefix)],
+        pid_file=settings['{0}_pid_file'.format(conf_prefix)])
     worker.start()
 
 
 def sync_files():
-    start_communicator('queue_sync_files', sync_files_worker)
+    start_communicator('sync_files', sync_files_worker)
 
 
 @complete_file

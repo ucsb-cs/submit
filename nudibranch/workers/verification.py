@@ -37,5 +37,7 @@ def main():
 
     worker = amqp_worker.AMQPWorker(
         settings['queue_server'], settings['queue_verification'], do_work,
-        is_daemon=args.daemon, complete_queue=settings['queue_tell_worker'])
+        is_daemon=args.daemon, complete_queue=settings['queue_tell_worker'],
+        log_file=settings['verification_log_file'],
+        pid_file=settings['verification_pid_file'])
     worker.start()

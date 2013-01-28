@@ -92,7 +92,8 @@ class SubmissionHandler(object):
         settings['working_dir'] = os.path.expanduser(settings['working_dir'])
         self.worker = amqp_worker.AMQPWorker(
             settings['server'], settings['queue_tell_worker'], self.do_work,
-            is_daemon=is_daemon, working_dir=settings['working_dir'])
+            is_daemon=is_daemon, working_dir=settings['working_dir'],
+            log_file=settings['log_file'], pid_file=settings['pid_file'])
         self.settings = settings
 
     def communicate(self, queue, complete_file, submission_id, testable_id):
