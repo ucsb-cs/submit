@@ -240,7 +240,7 @@ class Project(BasicBase, Base):
                     results.set_warnings_for_filename(warnings, name)
                 del file_mapping[name]
             elif not fv.optional:
-                results.set_errors_for_filename('file missing', name)
+                results.set_errors_for_filename(['file missing'], name)
         if file_mapping:
             results.set_extra_filenames(list(file_mapping.keys()))
 
