@@ -60,10 +60,10 @@
 
   <div tal:condition="failed_from_bad_files">
     <div tal:repeat="bad_files sorted(failed_from_bad_files.keys(), key=lambda s: sorted(list(s)))">
-      <h3 style="color:red">Failed tests due to problems with these files: '<code>${", ".join(sorted(list(bad_files)))}</code>' ${_ap(_ss(failed_from_bad_files[bad_files]))}</h3>
+      <div tal:replace="structure make_header(bad_files, failed_from_bad_files[bad_files])"></div>
       <ul>
 	<li tal:repeat="test sorted(failed_from_bad_files[bad_files])">
-	  ${test.name} ${_ap(test.points)}
+	  <b>${test.name}</b>: ${_fp(test.points)}
 	</li>
       </ul>
     </div>
