@@ -172,6 +172,27 @@ class FileVerifier(BasicBase, Base):
         return errors, warnings
 
 
+class VerificationResult(object):
+    def __init__(self):
+        self._errors_by_filename = {}
+        self._warnings_by_filename = {}
+        self._filenames = []
+        self._missing_to_testable_ids = {}
+
+    def set_errors_for_filename(self, errors, filename):
+        self._errors_by_file[filename] = error
+
+    def set_warnings_for_filename(self, warnings, filename):
+        self._warnings_by_filename[filename] = warning
+
+    def set_filenames(self, filenames):
+        self._filenames = filenames
+
+    def add_testable_id_for_missing_files(self, testable_id, missing_files):
+        self._missing_to_testable_ids.setdefault(
+            missing_files, set()).add(testable_id)
+
+
 class Project(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
     build_files = relationship(BuildFile, backref='project')
@@ -198,7 +219,7 @@ class Project(BasicBase, Base):
 
         """
 
-        results = {}
+        results = VerificationResult()
         valid_files = set()
         file_mapping = dict([(x.filename, x) for x in submission.files])
 
@@ -212,29 +233,27 @@ class Project(BasicBase, Base):
                 errors, warnings = fv.verify(base_path,
                                              file_mapping[name].file)
                 if errors:
-                    results.setdefault('errors', {})[name] = errors
+                    results.set_errors_for_filename(errors, name)
                 else:
                     valid_files.add(name)
                 if warnings:
-                    results.setdefault('warnings', {})[name] = warnings
+                    results.set_warnings_for_filename(warnings, name)
                 del file_mapping[name]
             elif not fv.optional:
-                results.setdefault('errors', {})[name] = 'file missing'
+                results.set_errors_for_filename('file missing', name)
         if file_mapping:
-            results['extra'] = list(file_mapping.keys())
+            results.set_filenames(list(file_mapping.keys()))
 
         # Determine valid testables
-        tb_map = {}
         retval = []
         for testable in self.testables:
-            missing = tuple(set(x.filename for x in testable.file_verifiers
-                                if not x.optional) - valid_files)
+            missing = frozenset(set(x.filename for x in testable.file_verifiers
+                                    if not x.optional) - valid_files)
             if missing:
-                tb_map.setdefault(missing, []).append(testable.id)
+                results.add_testable_id_for_missing_files(
+                    testable.id, missing)
             elif testable.file_verifiers:
                 retval.append(testable)
-        if tb_map:
-            results['map'] = tb_map
 
         submission.verification_results = results
         submission.verified_at = func.now()
