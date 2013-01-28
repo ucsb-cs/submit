@@ -71,7 +71,7 @@ class BuildFile(BasicBase, Base):
 class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
     projects = relationship('Project', backref='klass',
-                            casecade='all, delete-orphan')
+                            cascade='all, delete-orphan')
 
     def __repr__(self):
         return 'Class(name={0})'.format(self.name)
