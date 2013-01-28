@@ -63,9 +63,9 @@ user_to_class_admin = Table('user_to_class_admin', Base.metadata,
 class BuildFile(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
     file = relationship('File', backref='build_files')
-    file_id = Column(Integer, ForeignKey('file.id'))
+    file_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     filename = Column(Unicode, nullable=False)
-    project_id = Column(Integer, ForeignKey('project.id'))
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
 
 class Class(BasicBase, Base):
@@ -90,9 +90,9 @@ class Class(BasicBase, Base):
 class ExecutionFile(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
     file = relationship('File', backref='execution_files')
-    file_id = Column(Integer, ForeignKey('file.id'))
+    file_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     filename = Column(Unicode, nullable=False)
-    project_id = Column(Integer, ForeignKey('project.id'))
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
 
 class File(BasicBase, Base):
@@ -174,15 +174,20 @@ class FileVerifier(BasicBase, Base):
 
 class Project(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'class_id'),)
-    build_files = relationship(BuildFile, backref='project')
+    build_files = relationship(BuildFile, backref='project',
+                               cascade='all, delete-orphan')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
-    execution_files = relationship(ExecutionFile, backref='project')
-    file_verifiers = relationship('FileVerifier', backref='project')
+    execution_files = relationship(ExecutionFile, backref='project',
+                                   cascade='all, delete-orphan')
+    file_verifiers = relationship('FileVerifier', backref='project',
+                                  cascade='all, delete-orphan')
     makefile = relationship(File)
-    makefile_id = Column(Integer, ForeignKey('file.id'))
+    makefile_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     name = Column(Unicode, nullable=False)
-    submissions = relationship('Submission', backref='project')
-    testables = relationship('Testable', backref='project')
+    submissions = relationship('Submission', backref='project',
+                               cascade='all, delete-orphan')
+    testables = relationship('Testable', backref='project',
+                             cascade='all, delete-orphan')
 
     def verify_submission(self, base_path, submission):
         """Return list of testables that can be built.
@@ -387,10 +392,10 @@ class Submission(BasicBase, Base):
 class SubmissionToFile(Base):
     __tablename__ = 'submissiontofile'
     file = relationship(File, backref='submission_assocs')
-    file_id = Column(Integer, ForeignKey('file.id'))
+    file_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     filename = Column(Unicode, nullable=False, primary_key=True)
     submission_id = Column(Integer, ForeignKey('submission.id'),
-                           primary_key=True)
+                           primary_key=True, nullable=False)
 
     @staticmethod
     def fetch_file_mapping_for_submission(submission_id):
@@ -410,7 +415,7 @@ class TestCase(BasicBase, Base):
     points = Column(Integer, nullable=False)
     testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id')
-    stdin_id = Column(Integer, ForeignKey('file.id'))
+    stdin_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     test_case_for = relationship('TestCaseResult', backref='test_case')
 
     def __cmp__(self, other):
@@ -433,15 +438,15 @@ class TestCaseResult(Base):
     """
     __tablename__ = 'testcaseresult'
     diff = relationship(File)
-    diff_id = Column(Integer, ForeignKey('file.id'))
+    diff_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     status = Column(Enum('nonexistent_executable', 'signal',
                          'success', 'timed_out',
                          name='status', nullable=False))
     extra = Column(Integer)
     submission_id = Column(Integer, ForeignKey('submission.id'),
-                           primary_key=True)
+                           primary_key=True, nullable=False)
     test_case_id = Column(Integer, ForeignKey('testcase.id'),
-                          primary_key=True)
+                          primary_key=True, nullable=False)
 
     @classmethod
     def fetch_by_ids(cls, submission_id, test_case_id):
@@ -468,7 +473,8 @@ class Testable(BasicBase, Base):
     make_target = Column(Unicode)  # When None, no make is required
     name = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
-    test_cases = relationship('TestCase', backref='testable')
+    test_cases = relationship('TestCase', backref='testable',
+                              cascade='all, delete-orphan')
 
     def needed_files(self):
         return sorted([fv.filename for fv in self.file_verifiers])
