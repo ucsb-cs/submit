@@ -97,7 +97,7 @@ class ScoreMaker(object):
     def percentage_score_achieved(self, diffs):
         available = self.total_score_available(diffs)
         if available == 0:
-            return 100
+            return 0
         else:
             return float(self.total_score_achieved(diffs)) / available * 100
 
