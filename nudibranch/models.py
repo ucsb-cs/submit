@@ -180,7 +180,7 @@ class VerificationResult(object):
         self._missing_to_testable_ids = {}
 
     def set_errors_for_filename(self, errors, filename):
-        self._errors_by_file[filename] = error
+        self._errors_by_filename[filename] = error
 
     def set_warnings_for_filename(self, warnings, filename):
         self._warnings_by_filename[filename] = warning
