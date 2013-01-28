@@ -28,35 +28,30 @@ class DiffExtraInfo(object):
             return []
 
 
-class DiffWithMetadata(object):
-    '''Wraps around a Diff to impart additional functionality.
-    Not intended to be stored.'''
+class DiffRenderable(object):
+    '''Something that can be rendered with HTMLDiff.
+    This is intended to be abstract'''
 
     INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
     CORRECT_HTML_TEST_NAME = \
         '<p style="color:green;margin:0;padding:0;">{0}</p>'
     HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
 
-    def __init__(self, diff, test_num, test_name, test_points, extra_info):
-        self._diff = diff
+    def __init__(self, test_num, test_name, test_points):
         self.test_num = test_num
         self.test_name = test_name
         self.test_points = test_points
-        self.extra_info = extra_info
 
     def is_correct(self):
-        return len(self.wrong_things()) == 0
-
-    def outputs_match(self):
-        return self._diff.outputs_match()
+        pass
 
     def should_show_table(self):
-        return self._diff.should_show_table() and \
-            self.extra_info.should_show_table()
+        '''Whether or not we should show the diff table with diff results'''
+        pass
 
     def wrong_things(self):
         '''Returns a list of strings describing everything that's wrong'''
-        return self._diff.wrong_things() + self.extra_info.wrong_things()
+        pass
 
     def wrong_things_html_list(self):
         '''Returns all the things that were wrong in an html list, or None if
@@ -66,12 +61,14 @@ class DiffWithMetadata(object):
             list_items = ["<li>{0}</li>".format(escape(thing))
                           for thing in things]
             return "<ul>{0}</ul>".format("\n".join(list_items))
-
-    def __cmp__(self, other):
-        return self.test_num - other.test_num
+        else:
+            return None
 
     def escaped_name(self):
         return escape(self.test_name)
+
+    def __cmp__(self, other):
+        return self.test_num - other.test_num
 
     def name_id(self):
         return "{0}_{1}".format(int(self.test_num),
@@ -88,6 +85,49 @@ class DiffWithMetadata(object):
         return self.HTML_ROW.format(self.test_num,
                                     self.html_test_name(),
                                     self.test_points)
+
+
+class NonDiffErrors(DiffRenderable):
+    '''Used to encode errors that exist external to a diff, as when
+    files are missing so there isn't even a diff to show'''
+
+    def __init__(self, test_num, test_name, test_points, error_list):
+        super(NonDiffErrors, self).__init__(test_num, test_name, test_points)
+        self.error_list = error_list
+
+    def is_correct(self):
+        return False
+
+    def should_show_table(self):
+        return False
+
+    def wrong_things(self):
+        return self.error_list
+
+
+class DiffWithMetadata(DiffRenderable):
+    '''Wraps around a Diff to impart additional functionality.
+    Not intended to be stored.'''
+
+    def __init__(self, diff, test_num, test_name, test_points, extra_info):
+        super(DiffWithMetadata, self).__init__(
+            test_num, test_name, test_points)
+        self._diff = diff
+        self.extra_info = extra_info
+
+    def is_correct(self):
+        return len(self.wrong_things()) == 0
+
+    def outputs_match(self):
+        return self._diff.outputs_match()
+
+    def should_show_table(self):
+        return self._diff.should_show_table() and \
+            self.extra_info.should_show_table()
+
+    def wrong_things(self):
+        '''Returns a list of strings describing everything that's wrong'''
+        return self._diff.wrong_things() + self.extra_info.wrong_things()
 
 
 class Diff(object):

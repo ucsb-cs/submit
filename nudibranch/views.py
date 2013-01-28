@@ -15,7 +15,7 @@ from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
-from .diff_render import HTMLDiff
+from .diff_render import HTMLDiff, ScoreWithExtraMissing
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
@@ -608,10 +608,24 @@ def submission_view(request):
     if not submission:
         return HTTPNotFound()
 
-    # for each test case get the results, putting the diff into the diff
-    # renderer.  Right now we just hardcode some things
-    diff_renderer = HTMLDiff()
+    def sum_score_tests(tests):
+        return sum([test.points for test in tests])
 
+    def as_points(score):
+        return "({0} {1})".format(
+            score,
+            "points" if score != 1 else "point")
+
+    # show tests that fail due to missing files
+    by_missing_file = submission.failed_tests_by_missing_files()
+    points_missed = sum([sum_score_tests(tests)
+                         for tests in by_missing_file.itervalues()])
+
+    # for each test case get the results, putting the diff into the diff
+    # renderer.
+    diff_renderer = HTMLDiff(calc_score=ScoreWithExtraMissing(points_missed))
+
+    # things for which we actually have diffs
     for test_case_result in submission.test_case_results:
         full_diff = to_full_diff(request, test_case_result)
         if not full_diff:
@@ -630,6 +644,9 @@ def submission_view(request):
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
+            '_ss': sum_score_tests,
+            '_ap': as_points,
+            'missing': by_missing_file,
             'diff_table': diff_renderer.make_whole_file(),
             'prev_next': prev_next_html}
 
