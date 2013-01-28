@@ -294,6 +294,25 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime, index=True)
 
+    def test_cases(self):
+        project = Project.fetch_by_id(self.project_id)
+        if project:
+            return frozenset([test_case
+                              for testable in project.testables
+                              for test_case in testable.test_cases])
+        else:
+            # shouldn't be possible
+            return frozenset()
+
+    def had_build_errors(self):
+        '''Returns None if the build isn't done yet, True if it did,
+        and False if it didn't'''
+        if self.made_at and self.make_results:
+            # build completed
+            return len(self.test_case_results) != len(self.test_cases())
+        else:
+            return None
+
     def defective_files_to_test_cases(self):
         '''Returns a mapping of sets of defective files to test cases
         that failed because of these files.  Returns None if

@@ -14,6 +14,11 @@
   <div tal:condition="submission.made_at">
     <p>Submission made ${_pd(submission.made_at)}</p>
     <pre>${submission.make_results}</pre>
+    <p tal:condition="submission.had_build_errors()"
+       style="color:red">
+      Your submission had build errors that prevented tests from being run.
+      You may want to consult <a href="http://discover.cs.ucsb.edu/commonerrors/errors.html" target="_blank">this page</a> for help.
+    </p>
   </div>
 
   <div tal:condition="file_warnings">
