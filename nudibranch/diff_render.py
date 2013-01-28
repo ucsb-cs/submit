@@ -102,6 +102,17 @@ class ScoreMaker(object):
             return float(self.total_score_achieved(diffs)) / available * 100
 
 
+class ScoreWithExtraMissing(ScoreMaker):
+    '''Special ScoreMaker that records extra non-diff points that were missed'''
+    def __init__(self, points_missing):
+        super(ScoreWithExtraMissing, self).__init__()
+        self.points_missing = points_missing
+
+    def total_score_available(self, diffs):
+        from_diffs = super(ScoreWithExtraMissing, self).total_score_available(diffs)
+        return from_diffs + self.points_missing
+
+
 class HTMLDiff(difflib.HtmlDiff):
     FROM_DESC = 'Correct Output'
     TO_DESC = 'Your Output'

@@ -17,6 +17,17 @@
     <pre>${submission.make_results}</pre>
   </div>
 
+  <div tal:condition="missing">
+    <div tal:repeat="missing_file sorted(missing.keys())">
+      <h3 style="color:red">Failed tests due to missing '<code>${missing_file}</code>' ${_ap(_ss(missing[missing_file]))}</h3>
+      <ul>
+	<li tal:repeat="test sorted(missing[missing_file])">
+	  ${test.name} ${_ap(test.points)}
+	</li>
+      </ul>
+    </div>
+  </div>
+
   <div tal:replace="structure diff_table"></div>
 
   <a tal:condition="request.user.is_admin_for_submission(submission)"
