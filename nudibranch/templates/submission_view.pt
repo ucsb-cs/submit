@@ -9,7 +9,6 @@
   <p>Submitted ${_pd(submission.created_at)}</p>
   <div tal:condition="submission.verified_at">
     <p>Submission verified ${_pd(submission.verified_at)}</p>
-    <pre>${submission.verification_results}</pre>
   </div>
 
   <div tal:condition="submission.made_at">
