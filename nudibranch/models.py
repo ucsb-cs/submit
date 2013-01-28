@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 import errno
 import os
+import re
 import sys
 from hashlib import sha1
 from sqla_mixins import BasicBase, UserMixin
@@ -150,7 +151,6 @@ class FileVerifier(BasicBase, Base):
 
     def verify(self, base_path, file):
         errors = []
-        warnings = []
         if file.size < self.min_size:
             errors.append('must be >= {0} bytes'.format(self.min_size))
         elif self.max_size and file.size > self.max_size:
@@ -160,10 +160,14 @@ class FileVerifier(BasicBase, Base):
         elif self.max_lines and file.lines > self.max_lines:
             errors.append('must have <= {0} lines'.format(self.max_lines))
 
-        # TODO: Open the file and search for matches of regex. Every
-        # line that contains a match should output the line with the matching
-        # content bolded.
+        if not self.warning_regex:
+            return errors, None
 
+        regex = re.compile(self.warning_regex)
+        warnings = []
+        for i, line in enumerate(open(File.file_path(base_path, file.sha1))):
+            for match in regex.findall(line):
+                warnings.append({'lineno': i + 1, 'token': match})
         return errors, warnings
 
 
