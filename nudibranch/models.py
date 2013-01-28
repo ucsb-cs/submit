@@ -180,10 +180,10 @@ class VerificationResults(object):
         self._missing_to_testable_ids = {}
 
     def set_errors_for_filename(self, errors, filename):
-        self._errors_by_filename[filename] = error
+        self._errors_by_filename[filename] = errors
 
     def set_warnings_for_filename(self, warnings, filename):
-        self._warnings_by_filename[filename] = warning
+        self._warnings_by_filename[filename] = warnings
 
     def set_extra_filenames(self, filenames):
         self._filenames = filenames
@@ -300,8 +300,9 @@ class Submission(BasicBase, Base):
             return testable.test_cases if testable else []
 
         def testable_ids_to_test_cases(testable_ids):
-            return frozenset([testable_id_to_test_cases(id)
-                              for id in testable_ids])
+            return frozenset([test_case
+                              for tid in testable_ids
+                              for test_case in testable_id_to_test_cases(tid)])
 
         if self.verification_results:
             files_to_ids = self.verification_results._missing_to_testable_ids
@@ -309,7 +310,7 @@ class Submission(BasicBase, Base):
                          for files, ids in files_to_ids.iteritems()])
         else:
             return None
-        
+
     def missing_files_by_testable(self):
         '''Returns a mapping of testables to files that they were missing'''
         retval = {}

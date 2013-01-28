@@ -21,7 +21,7 @@ from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Project, Session, Submission, SubmissionToFile, TestCase,
-                     Testable, User, VerificationResults)
+                     Testable, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 from .zipper import ZipSubmission
