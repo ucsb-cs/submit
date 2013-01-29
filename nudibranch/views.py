@@ -651,7 +651,7 @@ def to_full_diff(request, test_case_result):
                                           test_case_result.extra))
 
 
-def make_diff_renderer_bad_files(submission):
+def make_diff_renderer_bad_files(request, submission):
     # show tests that fail due to missing/broken files
     # make a mapping of broken files to test cases that break on them
     failed_from_bad_files = submission.defective_files_to_test_cases()
@@ -693,7 +693,7 @@ def submission_view(request):
             return HTTPNotFound()
 
     diff_renderer, failed_from_bad_files = make_diff_renderer_bad_files(
-        submission)
+        request, submission)
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
