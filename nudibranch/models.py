@@ -341,8 +341,7 @@ class Submission(BasicBase, Base):
         return self.test_cases() - self.tests_that_ran()
 
     def build_failed_files_to_test_cases(self):
-        '''Maps filenames to tests that couldn't run because
-        of build errors'''
+        """Return mapping of files to test cases for build issues."""
         retval = {}
         failed_cases = self.tests_that_did_not_run()
         for test_case in failed_cases:
@@ -376,31 +375,39 @@ class Submission(BasicBase, Base):
         return retval
 
     def defective_files_to_test_cases(self):
-        '''Returns a mapping of sets of defective files to test cases
-        that failed because of these files.  Returns None if
-        verification hasn't occurred yet. "Defective" means that
-        the file was missing, failed verification, or failed the build.'''
+        """Return mapping of sets of defective files to failed test cases.
 
+        Return None if the verification hasn't occured yet.
+
+        Defective" means that the file was missing, failed verification, or
+        failed the build.
+
+        """
         from_verify = self.missing_or_verification_files_to_test_cases()
+        if not from_verify:
+            return None
         from_build = self.build_failed_files_to_test_cases()
-        return self.merge_dict(from_verify,
-                               from_build,
+        return self.merge_dict(from_verify, from_build,
                                lambda v1, v2: v1.union(v2))
 
     def missing_or_verification_files_to_test_cases(self):
+        """Return mapping of file(s) to test cases for issues.
+
+        Returns None if verification hasn't taken place.
+
+        """
         def testable_id_to_test_cases(testable_id):
             testable = Testable.fetch_by_id(testable_id)
             return testable.test_cases if testable else []
 
         def testable_ids_to_test_cases(testable_ids):
-            return frozenset([test_case
-                              for tid in testable_ids
-                              for test_case in testable_id_to_test_cases(tid)])
+            return frozenset(test_case for tid in testable_ids
+                             for test_case in testable_id_to_test_cases(tid))
 
         if self.verification_results:
             files_to_ids = self.verification_results._missing_to_testable_ids
-            return dict([(files, testable_ids_to_test_cases(ids))
-                         for files, ids in files_to_ids.iteritems()])
+            return dict((files, testable_ids_to_test_cases(ids))
+                         for files, ids in files_to_ids.iteritems())
         else:
             return None
 

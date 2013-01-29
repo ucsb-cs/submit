@@ -663,6 +663,10 @@ def submission_view(request):
     # show tests that fail due to missing/broken files
     # make a mapping of broken files to test cases that break on them
     failed_from_bad_files = submission.defective_files_to_test_cases()
+
+    # TODO: if verification hasn't happened failed_from_bad_files returns None
+    # that needs to be handled
+
     points_missed = sum([test.points
                          for tests in failed_from_bad_files.itervalues()
                          for test in tests])
