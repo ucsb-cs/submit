@@ -452,6 +452,16 @@ def project_view_detailed(request):
     if project_admin:
         prev_next_user = PrevNextUser(request, project, user).to_html()
 
+    # Build submission file string
+    required = []
+    optional = []
+    for file_verifier in project.file_verifiers:
+        if file_verifier.optional:
+            optional.append('[{0}]'.format(file_verifier.filename))
+        else:
+            required.append(file_verifier.filename)
+    submit_string = ' '.join(sorted(required) + sorted(optional))
+
     return {'page_title': 'Project Page',
             'css_files': ['prev_next.css'],
             'project': project,
@@ -460,7 +470,8 @@ def project_view_detailed(request):
             'can_edit': project_admin,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
-                                  reverse=True)}
+                                  reverse=True),
+            'submit_string': submit_string}
 
 
 @view_config(route_name='project_item_summary',
