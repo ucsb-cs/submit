@@ -15,7 +15,7 @@ from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
-from .diff_render import HTMLDiff, ScoreWithExtraMissing
+from .diff_render import HTMLDiff, ScoreMaker, ScoreWithExtraMissing
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
@@ -591,24 +591,6 @@ def submission_create(request, project_id, file_ids, filenames):
     return http_created(request, redir_location=redir_location)
 
 
-def to_full_diff(request, test_case_result):
-    '''Given a test case result, it will return a complete DiffWithMetadata
-    object, or None if we couldn't get the test case'''
-
-    diff_file = File.file_path(request.registry.settings['file_directory'],
-                               test_case_result.diff.sha1)
-    diff = pickle.load(open(diff_file))
-    test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
-    if not test_case:
-        return None
-    return DiffWithMetadata(diff,
-                            test_case.id,
-                            test_case.name,
-                            test_case.points,
-                            DiffExtraInfo(test_case_result.status,
-                                          test_case_result.extra))
-
-
 @view_config(route_name='zipfile_download', request_method='GET',
              permission='authenticated')
 def zipfile_download(request):
@@ -651,6 +633,49 @@ def problem_files_header(files, test_cases):
         format_points(score))
 
 
+def to_full_diff(request, test_case_result):
+    '''Given a test case result, it will return a complete DiffWithMetadata
+    object, or None if we couldn't get the test case'''
+
+    diff_file = File.file_path(request.registry.settings['file_directory'],
+                               test_case_result.diff.sha1)
+    diff = pickle.load(open(diff_file))
+    test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
+    if not test_case:
+        return None
+    return DiffWithMetadata(diff,
+                            test_case.id,
+                            test_case.name,
+                            test_case.points,
+                            DiffExtraInfo(test_case_result.status,
+                                          test_case_result.extra))
+
+
+def make_diff_renderer_bad_files(submission):
+    # show tests that fail due to missing/broken files
+    # make a mapping of broken files to test cases that break on them
+    failed_from_bad_files = submission.defective_files_to_test_cases()
+    calc_score = ScoreMaker()
+    if failed_from_bad_files:
+        points_missed = sum([test.points
+                             for tests in failed_from_bad_files.itervalues()
+                             for test in tests])
+        # for each test case get the results, putting the diff into the diff
+        # renderer.
+        calc_score = ScoreWithExtraMissing(points_missed)
+
+    diff_renderer = HTMLDiff(calc_score=calc_score)
+
+    # things for which we actually have diffs
+    for test_case_result in submission.test_case_results:
+        full_diff = to_full_diff(request, test_case_result)
+        if not full_diff:
+            return HTTPNotFound()
+        diff_renderer.add_diff(full_diff)
+
+    return (diff_renderer, failed_from_bad_files)
+
+
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -660,28 +685,6 @@ def submission_view(request):
     if not submission:
         return HTTPNotFound()
 
-    # show tests that fail due to missing/broken files
-    # make a mapping of broken files to test cases that break on them
-    failed_from_bad_files = submission.defective_files_to_test_cases()
-
-    # TODO: if verification hasn't happened failed_from_bad_files returns None
-    # that needs to be handled
-
-    points_missed = sum([test.points
-                         for tests in failed_from_bad_files.itervalues()
-                         for test in tests])
-
-    # for each test case get the results, putting the diff into the diff
-    # renderer.
-    diff_renderer = HTMLDiff(calc_score=ScoreWithExtraMissing(points_missed))
-
-    # things for which we actually have diffs
-    for test_case_result in submission.test_case_results:
-        full_diff = to_full_diff(request, test_case_result)
-        if not full_diff:
-            return HTTPNotFound()
-        diff_renderer.add_diff(full_diff)
-
     prev_next_html = None
     if request.user.is_admin_for_submission(submission):
         try:
@@ -689,6 +692,8 @@ def submission_view(request):
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
 
+    diff_renderer, failed_from_bad_files = make_diff_renderer_bad_files(
+        submission)
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
