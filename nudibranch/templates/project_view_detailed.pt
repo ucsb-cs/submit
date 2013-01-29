@@ -13,7 +13,10 @@
   <p tal:condition="not can_edit">
     Info for ${project.name}
   </p>
-    <p>Make a submission via <code>~bboe/bin/submit -p ${project.klass.name}:${project.id} ${submit_string}</code></p>
+  <p>Make a submission via <code>~bboe/bin/submit -p ${project.klass.name}:${project.id} ${submit_string}</code></p>
+  <blockquote>Files in brackets indicate partial submissions can be made without those
+    files. Note that this does necessarily mean you will receive partial credit
+    for such submissions.</blockquote>
   <p tal:condition="request.user.is_admin_for_project(project) and not submissions">
     ${name} has no submissions</p>
   <p tal:condition="not request.user.is_admin_for_project(project) and not submissions">You have no submissions</p>
