@@ -653,8 +653,6 @@ def submission_view(request):
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
 
-    vr = submission.verification_results
-
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
@@ -663,8 +661,8 @@ def submission_view(request):
             '_fp': format_points,
             'make_header': problem_files_header,
             'failed_from_bad_files': failed_from_bad_files,
-            'file_warnings': vr._warnings_by_filename,
-            'file_errors': vr._errors_by_filename,
+            'file_warnings': submission.file_warnings(),
+            'file_errors': submission.file_errors(),
             'diff_table': diff_renderer.make_whole_file(),
             'prev_next': prev_next_html}
 

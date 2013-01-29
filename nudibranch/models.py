@@ -294,6 +294,33 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime, index=True)
 
+    @staticmethod
+    def get_or_empty(item, if_not_null):
+        return if_not_null(item) if item else {}
+
+    def file_warnings(self):
+        '''Returns a mapping of filenames to warnings about said files'''
+        return self.get_or_empty(self.verification_results,
+                                 lambda vr: vr._warnings_by_filename)
+
+    def file_errors_from_verification(self):
+        return self.get_or_empty(self.verification_results,
+                                 lambda vr: vr._errors_by_filename)
+
+    def file_errors_from_build(self):
+        '''Returns a mapping of filenames to errors about said files'''
+        pairs = [(file, ['Build failed (see make output)'])
+                 for files in self.build_failed_files_to_test_cases().keys()
+                 for file in files]
+        return dict(pairs)
+
+    def file_errors(self):
+        from_verify = self.file_errors_from_verification()
+        from_build = self.file_errors_from_build()
+        return self.merge_dict(from_verify,
+                               from_build,
+                               lambda v1, v2: v1 + v2)
+
     def test_cases(self):
         project = Project.fetch_by_id(self.project_id)
         if project:
@@ -304,21 +331,63 @@ class Submission(BasicBase, Base):
             # shouldn't be possible
             return frozenset()
 
+    def tests_that_ran(self):
+        test_cases = [TestCase.fetch_by_id(test_case_result.test_case_id)
+                      for test_case_result in self.test_case_results]
+        return frozenset([test_case for test_case in test_cases
+                          if test_case is not None])
+
+    def tests_that_did_not_run(self):
+        return self.test_cases() - self.tests_that_ran()
+
+    def build_failed_files_to_test_cases(self):
+        '''Maps filenames to tests that couldn't run because
+        of build errors'''
+        retval = {}
+        failed_cases = self.tests_that_did_not_run()
+        for test_case in failed_cases:
+            testable = Testable.fetch_by_id(test_case.testable_id)
+            if testable:
+                retval.setdefault(
+                    frozenset(testable.needed_files()),
+                    set()).add(test_case)
+        return retval
+
     def had_build_errors(self):
         '''Returns None if the build isn't done yet, True if it did,
         and False if it didn't'''
         if self.made_at and self.make_results:
             # build completed
-            return len(self.test_case_results) != len(self.test_cases())
+            return len(self.tests_that_did_not_run()) > 0
         else:
             return None
+
+    @staticmethod
+    def merge_dict(d1, d2, on_collision):
+        retval = {}
+        for key in d1.keys():
+            if key in d2:
+                retval[key] = on_collision(d1[key], d2[key])
+            else:
+                retval[key] = d1[key]
+        for key in d2.keys():
+            if key not in retval:
+                retval[key] = d2[key]
+        return retval
 
     def defective_files_to_test_cases(self):
         '''Returns a mapping of sets of defective files to test cases
         that failed because of these files.  Returns None if
         verification hasn't occurred yet. "Defective" means that
-        the file was either missing or failed verification'''
+        the file was missing, failed verification, or failed the build.'''
 
+        from_verify = self.missing_or_verification_files_to_test_cases()
+        from_build = self.build_failed_files_to_test_cases()
+        return self.merge_dict(from_verify,
+                               from_build,
+                               lambda v1, v2: v1.union(v2))
+
+    def missing_or_verification_files_to_test_cases(self):
         def testable_id_to_test_cases(testable_id):
             testable = Testable.fetch_by_id(testable_id)
             return testable.test_cases if testable else []
