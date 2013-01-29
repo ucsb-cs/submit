@@ -707,19 +707,29 @@ class User(UserMixin, BasicBase, Base):
                                                                admin_str)
 
 
-def initialize_sql(engine, initialize=False, populate=False):
-    '''initialize is for metadata preparation, and populate will
-    add entries into the database.  If we want to populate,
-    metadata will be unconditionally added.'''
+def configure_sql(engine):
+    """Configure session and metadata with the database engine."""
     Session.configure(bind=engine)
     Base.metadata.bind = engine
-    if initialize or populate:
-        Base.metadata.create_all(engine)
-    if populate:
-        populate_database()
+
+
+def create_schema(alembic_config_ini=None):
+    """Create the database schema.
+
+    :param alembic_config_ini: When provided, stamp with the current revision
+    version.
+
+    """
+    Base.metadata.create_all()
+    if alembic_config_ini:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config(alembic_config_ini)
+        command.stamp(alembic_cfg, 'head')
 
 
 def populate_database():
+    """Populate the database with some data useful for development."""
     import transaction
 
     if User.fetch_by(username='admin'):

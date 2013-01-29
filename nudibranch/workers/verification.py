@@ -1,6 +1,6 @@
 import amqp_worker
 import transaction
-from nudibranch.models import Session, Submission, initialize_sql
+from nudibranch.models import Session, Submission, configure_sql
 from sqlalchemy import engine_from_config
 
 BASE_FILE_PATH = None
@@ -33,7 +33,7 @@ def main():
     BASE_FILE_PATH = settings['file_directory']
 
     engine = engine_from_config(settings, 'sqlalchemy.')
-    initialize_sql(engine)
+    configure_sql(engine)
 
     worker = amqp_worker.AMQPWorker(
         settings['queue_server'], settings['queue_verification'], do_work,

@@ -3,7 +3,7 @@ from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
 from pyramid.security import ALL_PERMISSIONS, Allow, Authenticated
 from sqlalchemy import engine_from_config
-from .models import initialize_sql
+from .models import configure_sql, create_schema, populate_database
 from .security import get_user, group_finder
 
 
@@ -62,10 +62,11 @@ def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
     # Initialize the database
-    development = 'pyramid_debugtoolbar' in settings['pyramid.includes']
     engine = engine_from_config(settings, 'sqlalchemy.')
-    initialize_sql(engine, initialize=development,
-                   populate=development)
+    configure_sql(engine)
+    if 'pyramid_debugtoolbar' in settings['pyramid.includes']:
+        create_schema(global_config['__file__'])
+        populate_database()
 
     # Configure the webapp
     authen = AuthTktAuthenticationPolicy(secret='<PYRAMID_SECRET>',

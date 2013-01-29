@@ -7,7 +7,7 @@ import transaction
 import pickle
 from functools import wraps
 from nudibranch.models import (File, Session, Submission, TestCaseResult,
-                               Testable, initialize_sql)
+                               Testable, configure_sql)
 from nudibranch.diff_unit import Diff
 from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
@@ -105,7 +105,7 @@ def start_communicator(conf_prefix, work_func):
     PRIVATE_KEY_FILE = settings['ssh_priv_key']
 
     engine = engine_from_config(settings, 'sqlalchemy.')
-    initialize_sql(engine)
+    configure_sql(engine)
 
     worker = amqp_worker.AMQPWorker(
         settings['queue_server'], settings['queue_{0}'.format(conf_prefix)],

@@ -7,7 +7,7 @@ from mock import MagicMock
 from nudibranch import add_routes
 from nudibranch.models import (BuildFile, Class, File, FileVerifier, Project,
                                Session, Submission, SubmissionToFile, TestCase,
-                               Testable, User, initialize_sql)
+                               Testable, User, configure_sql, create_schema)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPForbidden, HTTPNotFound, HTTPOk)
@@ -26,7 +26,8 @@ FILE_DIR = '/tmp/nudibranch_test'
 def _init_testing_db():
     """Create an in-memory database for testing."""
     engine = create_engine('sqlite://')
-    initialize_sql(engine, initialize=True)
+    configure_sql(engine)
+    create_schema()
 
     # Add an admin user, two users, and two classes
     admin = User(email='', name='admin', username='admin', password='password',
