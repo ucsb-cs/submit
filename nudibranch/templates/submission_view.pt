@@ -8,7 +8,7 @@
 
   <p>Submitted ${_pd(submission.created_at)}</p>
 
-  <p tal:condition="not submission.verified_at or not submission.created_at or submission.made_at">
+  <p tal:condition="not submission.verified_at or not submission.created_at or not submission.made_at">
     The submission is still undergoing processing.  Please wait.
   </p>
 
