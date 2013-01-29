@@ -41,6 +41,13 @@ def project_file_create(request, file_id, filename, project_id, cls,
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
 
+    # Check for BuildFile and FileVerifier conflict
+    if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
+                                                  filename=filename,
+                                                  optional=False):
+        return http_bad_request(request, 'A required expected file already '
+                                'exists with that name.')
+
     try:
         kwargs = {attr_name: file_id}
         verify_user_file_ids(request.user, **kwargs)
@@ -221,6 +228,13 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
 
+    # Check for build-file conflict
+    if not optional and BuildFile.fetch_by(project_id=project.id,
+                                           filename=filename):
+        return http_bad_request(request, 'A build file already exists with '
+                                'that name. Provide a different name, or mark '
+                                'as optional.')
+
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, optional=bool(optional),
@@ -269,6 +283,13 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
 
     if not request.user.is_admin_for_file_verifier(file_verifier):
         return HTTPForbidden()
+
+    # Check for build-file conflict
+    if not optional and BuildFile.fetch_by(project_id=file_verifier.project_id,
+                                           filename=filename):
+        return http_bad_request(request, 'A build file already exists with '
+                                'that name. Provide a different name, or mark '
+                                'as optional.')
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
