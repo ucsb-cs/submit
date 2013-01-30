@@ -14,6 +14,8 @@ from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
+from pyramid_mailer import get_mailer
+from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff, ScoreMaker, ScoreWithExtraMissing
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
@@ -327,8 +329,31 @@ def password_reset_create(request, username):
     user = User.fetch_by(username=username)
     if not user:
         return http_conflict(request, 'Invalid email')
-    PasswordReset.generate(user)
-    return http_ok(request, 'A password reset link will be emailed to you.')
+    password_reset = PasswordReset.generate(user)
+
+    failure_message = 'You were already sent a password reset email.'
+
+    if password_reset:
+        session = Session()
+        session.add(password_reset)
+        try:
+            session.flush()
+        except IntegrityError:
+            transaction.abort()
+            return http_conflict(request, failure_message)
+        site_name = request.registry.settings['site_name']
+        reset_url = request.route_url('password_reset_item',
+                                      token=password_reset.get_token())
+        body = ('Visit the following link to reset your password:\n\n{0}'
+                .format(reset_url))
+        message = Message(subject='{0} password reset email'.format(site_name),
+                          recipients=[user.username], body=body)
+        get_mailer(request).send(message)
+        transaction.commit()
+        return http_ok(request,
+                       'A password reset link will be emailed to you.')
+    else:
+        return http_conflict(request, failure_message)
 
 
 @view_config(route_name='password_reset',
@@ -347,7 +372,7 @@ def password_reset_item(request, username, password):
     pr = PasswordReset.fetch_by(reset_token=request.matchdict['token'])
     if not pr or pr.user.username != username:
         return http_conflict(request, 'The reset token and username '
-                             'combinationt is not valid.')
+                             'combination is not valid.')
     session = Session()
     pr.user.password = password
     session.add(pr.user)
@@ -361,6 +386,9 @@ def password_reset_item(request, username, password):
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
 def password_reset_edit_item(request):
+    pr = PasswordReset.fetch_by(reset_token=request.matchdict['token'])
+    if not pr:
+        return HTTPNotFound()
     return {'page_title': 'Password Reset',
             'token': request.matchdict['token']}
 

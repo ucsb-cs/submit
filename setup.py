@@ -12,6 +12,7 @@ requires = [
     'pika>=0.9.6',
     'pyramid>=1.4',
     'pyramid_addons>=0.11',
+    'pyramid_mailer>=0.10',
     'pyramid_tm>=0.5',
     'python-daemon>=1.5.5',
     'sqla_mixins>=0.6',

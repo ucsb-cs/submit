@@ -214,17 +214,15 @@ class PasswordReset(Base):
 
     @classmethod
     def generate(cls, user):
-        # Check for existing token
         pr = cls.fetch_by(user=user)
         if pr:
-            token = uuid.UUID(pr.token)
+            retval = None
         else:
-            token = uuid.uuid4()
-            pr = cls(reset_token=token.bytes, user=user)
-            session = Session()
-            session.add(pr)
-            transaction.commit()
-        print str(token)
+            retval = cls(reset_token=uuid.uuid4().bytes, user=user)
+        return retval
+
+    def get_token(self):
+        return str(uuid.UUID(bytes=self.reset_token))
 
 
 class Project(BasicBase, Base):
