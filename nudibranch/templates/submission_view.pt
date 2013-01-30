@@ -18,21 +18,17 @@
   <div tal:condition="submission.verified_at and submission.had_verification_problems()">
     <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:yellow">yellow</span> indicates warnings.</p>
     <ul>
-      <div tal:repeat="(file, is_error, lst) submission.sorted_verification_warnings_errors()">
-	<li tal:condition="len(lst) == 1">
-	  <b style="color:${'red' if is_error else 'yellow'}">${file}</b>: ${lst[0]}
-	</li>
-	<div tal:condition="len(lst) > 1">
-	  <li>
-	    <b style="color:${'red' if is_error else 'yellow'}">${file}</b>
-	    <ul>
-	      <li tal:repeat="item lst">
-		${item}
-	      </li>
-	    </ul>
+      <li tal:repeat="file sorted(verification.keys())">
+	<b>${file}</b>
+	<ul>
+	  <li tal:repeat="warning verification[file][0]">
+	    <span style="color:yellow">${warning}</span>
 	  </li>
-	</div>
-      </div>
+	  <li tal:repeat="error verification[file][1]">
+	    <span style="color:red">${error}</span>
+	  </li>
+	</ul>
+      </li>
     </ul>
   </div>
 
@@ -40,6 +36,9 @@
   <div tal:replace="structure diff_table"></div>
 
   <!-- For each test group, reasons for failure (if applicable) -->
+      
+  <!-- Tests that are still pending -->
+
   <!-- Download a submission -->
   <a tal:condition="request.user.is_admin_for_submission(submission)"
      href="${_R('zipfile_download', submission_id=submission.id)}">
