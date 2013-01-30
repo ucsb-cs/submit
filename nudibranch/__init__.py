@@ -28,6 +28,8 @@ def add_routes(config):
     config.add_route('file_item_info', '/file/{sha1sum}/info')
     config.add_route('file_verifier', '/file_verifier')
     config.add_route('file_verifier_item', '/file_verifier/{file_verifier_id}')
+    config.add_route('password_reset', '/password_reset')
+    config.add_route('password_reset_item', '/password_reset/{token}')
     config.add_route('project', '/project')
     config.add_route('project_item_summary',
                      '/class/{class_name}/{project_id}')

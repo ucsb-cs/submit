@@ -20,8 +20,8 @@ from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
-                     Project, Session, Submission, SubmissionToFile, TestCase,
-                     Testable, User)
+                     PasswordReset, Project, Session, Submission,
+                     SubmissionToFile, TestCase, Testable, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 from .zipper import ZipSubmission
@@ -316,6 +316,53 @@ def home(request):
         url = request.route_path('user_item', username=request.user.username)
         return HTTPFound(location=url)
     return {'page_title': 'Home'}
+
+
+@view_config(route_name='password_reset', renderer='json',
+             request_method='PUT')
+@validated_form(username=String('email'))
+def password_reset_create(request, username):
+    if username == 'admin':
+        return http_conflict(request, 'Hahaha, nice try!')
+    user = User.fetch_by(username=username)
+    if not user:
+        return http_conflict(request, 'Invalid email')
+    PasswordReset.generate(user)
+    return http_ok(request, 'A password reset link will be emailed to you.')
+
+
+@view_config(route_name='password_reset',
+             renderer='templates/password_reset.pt',
+             request_method='GET')
+@site_layout('nudibranch:templates/layout.pt')
+def password_reset_edit(request):
+    return {'page_title': 'Password Reset'}
+
+
+@view_config(route_name='password_reset_item', renderer='json',
+             request_method='PUT')
+@validated_form(username=String('email'),
+                password=WhiteSpaceString('password', min_length=6))
+def password_reset_item(request, username, password):
+    pr = PasswordReset.fetch_by(reset_token=request.matchdict['token'])
+    if not pr or pr.user.username != username:
+        return http_conflict(request, 'The reset token and username '
+                             'combinationt is not valid.')
+    session = Session()
+    pr.user.password = password
+    session.add(pr.user)
+    session.delete(pr)
+    transaction.commit()
+    return http_ok(request, 'Your password was changed successfully.')
+
+
+@view_config(route_name='password_reset_item',
+             renderer='templates/password_reset_item.pt',
+             request_method='GET')
+@site_layout('nudibranch:templates/layout.pt')
+def password_reset_edit_item(request):
+    return {'page_title': 'Password Reset',
+            'token': request.matchdict['token']}
 
 
 @view_config(route_name='project', request_method='PUT',

@@ -3,10 +3,13 @@ import errno
 import os
 import re
 import sys
+import transaction
+import uuid
 from hashlib import sha1
 from sqla_mixins import BasicBase, UserMixin
-from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
-                        PickleType, String, Table, Unicode, UnicodeText, func)
+from sqlalchemy import (Binary, Boolean, Column, DateTime, Enum, ForeignKey,
+                        Integer, PickleType, String, Table, Unicode,
+                        UnicodeText, func)
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
@@ -191,6 +194,37 @@ class VerificationResults(object):
     def add_testable_id_for_missing_files(self, testable_id, missing_files):
         self._missing_to_testable_ids.setdefault(
             missing_files, set()).add(testable_id)
+
+
+class PasswordReset(Base):
+    __tablename__ = 'passwordreset'
+    created_at = Column(DateTime(timezone=True), default=func.now(),
+                        nullable=False)
+    reset_token = Column(Binary(length=16), primary_key=True)
+    user = relationship('User', backref='password_reset')
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False,
+                     unique=True)
+
+    @classmethod
+    def fetch_by(cls, **kwargs):
+        session = Session()
+        if 'reset_token' in kwargs:
+            kwargs['reset_token'] = uuid.UUID(kwargs['reset_token']).bytes
+        return session.query(cls).filter_by(**kwargs).first()
+
+    @classmethod
+    def generate(cls, user):
+        # Check for existing token
+        pr = cls.fetch_by(user=user)
+        if pr:
+            token = uuid.UUID(pr.token)
+        else:
+            token = uuid.uuid4()
+            pr = cls(reset_token=token.bytes, user=user)
+            session = Session()
+            session.add(pr)
+            transaction.commit()
+        print str(token)
 
 
 class Project(BasicBase, Base):
@@ -738,8 +772,6 @@ def create_schema(alembic_config_ini=None):
 
 def populate_database():
     """Populate the database with some data useful for development."""
-    import transaction
-
     if User.fetch_by(username='admin'):
         return
 

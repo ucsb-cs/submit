@@ -775,6 +775,16 @@ class ProjectTests(BaseAPITest):
         self.assertIsInstance(info, HTTPNotFound)
 
 
+class PasswordResetTests(BaseAPITest):
+    """The the API methods involved with password reset."""
+
+    def test_password_reset_valid(self):
+        from nudibranch.views import password_reset_create
+        request = self.make_request(json_body={'email': 'user1@email'})
+        info = password_reset_create(request)
+        print info
+
+
 class SessionTests(BaseAPITest):
     """Test the API methods involved in session creation and destruction."""
 

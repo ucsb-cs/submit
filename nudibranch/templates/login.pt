@@ -15,6 +15,7 @@
         </form>
     </div>
     <br/><br/>
+    <a href="${_R('password_reset')}">Forgot password?</a><br/>
     <a href="${_R('home')}">Home</a><br/>
 </div>
 </div>
