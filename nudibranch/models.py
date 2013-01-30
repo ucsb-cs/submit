@@ -338,6 +338,16 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
+    def testable_statuses(self):
+        with_build_errors = self.testables_with_build_errors()
+        def testable_status(testable):
+            return TestableStatus(testable,
+                                  self.verification_warnings_errors(),
+                                  testable in with_build_errors)
+
+        return [testable_status(testable)
+                for testable in self.all_testables()]
+
     @staticmethod
     def get_or_empty(item, if_not_none, empty={}):
         return if_not_none(item) if item is not None else empty
@@ -388,23 +398,18 @@ class Submission(BasicBase, Base):
         return retval
          
     def all_testables(self):
-        return frozenset(self.project.testables)
+        project = Project.fetch_by_id(self.project_id)
+        return frozenset(project.testables) if project else frozenset()
 
     def testables_ran(self):
         """Note that this includes testables for which the build failed"""
-        return frozenset(self.testable_results)
-
-    def testables_without_build_errors(self):
-        """Returns a set of testables which have test cases ready"""
         retval = set()
-        for test_case_result in self.test_case_results:
-            test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
-            if test_case:
-                testable = Testable.fetch_by_id(test_case.testable_id)
-                if testable:
-                    retval.add(testable)
+        for testable_result in self.testable_results:
+            testable = Testable.fetch_by_id(testable_result.testable_id)
+            if testable:
+                retval.add(testable)
         return retval
-        
+
     def testables_with_build_errors(self):
         """This is a subset of testables_ran"""
         # waiting to run
@@ -619,6 +624,36 @@ class TestCaseResult(Base):
         for attr, val in data.items():
             setattr(self, attr, val)
         self.created_at = func.now()
+
+
+class TestableStatus(object):
+    def __init__(self, testable, verification_warnings_errors, had_build_errors):
+        self.testable = testable
+        self.warn_err = verification_warnings_errors
+        if had_build_errors:
+            for _, errors in verification_warnings_errors.values():
+                errors.append('Build failed (see make output)')
+        self.is_err = had_build_errors or self.has_verification_errors()
+
+    def has_verification_errors(self):
+        for warnerr in self.warn_err.values():
+            if warnerr[1]:
+                return True
+        return False
+
+    def is_error(self):
+        return self.is_err
+
+    def has_files(self):
+        return len(self.files_to_warnings_errors()) > 0
+
+    def files_to_warnings_errors(self):
+        return self.warn_err
+
+    def sorted_files_to_warnings_errors(self):
+        unsorted = self.files_to_warnings_errors()
+        return [(file, unsorted[file])
+                for file in sorted(unsorted.keys())]
 
 
 class Testable(BasicBase, Base):

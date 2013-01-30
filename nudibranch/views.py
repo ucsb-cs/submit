@@ -729,6 +729,7 @@ def submission_view(request):
     # the build
     # failed_testables: Set[Testable]
     verification_info = submission.verification_warnings_errors()
+        
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],

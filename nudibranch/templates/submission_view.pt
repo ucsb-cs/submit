@@ -36,7 +36,27 @@
   <div tal:replace="structure diff_table"></div>
 
   <!-- For each test group, reasons for failure (if applicable) -->
-      
+  <div tal:repeat="status submission.testable_statuses()">
+    <div tal:condition="status.is_error()">
+      <h3 style="color:red">Test group ${status.testable.name} failed to run ${_fp(status.testable.points())}</h3>
+      <p tal:condition="not status.has_files()">
+	There are no files in this test group
+      </p>
+      <ul tal:condition="status.has_files()">
+	<li tal:repeat="(file, warnerr) status.sorted_files_to_warnings_errors()">
+	  <b>${file}</b>
+	  <ul>
+	    <li style="color:yellow" tal:repeat="warning warnerr[0]">
+	      ${warning}
+	    </li>
+	    <li style="color:red" tal:repeat="error warnerr[1]">
+	      ${error}
+	    </li>
+	  </ul>
+	</li>
+      </ul>
+    </div>
+  </div>
   <!-- Tests that are still pending -->
 
   <!-- Download a submission -->
