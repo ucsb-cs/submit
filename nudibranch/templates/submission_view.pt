@@ -38,7 +38,7 @@
   <!-- For each test group, reasons for failure (if applicable) -->
   <div tal:repeat="status submission.testable_statuses()">
     <div tal:condition="status.is_error()">
-      <h3 style="color:red">Test group ${status.testable.name} failed to run ${_fp(status.testable.points())}</h3>
+      <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
       <p tal:condition="not status.has_files()">
 	There are no files in this test group
       </p>
