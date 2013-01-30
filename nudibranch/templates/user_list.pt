@@ -3,13 +3,11 @@
   <table border="1">
     <tr>
       <th>User's Name</th>
-      <th>Username</th>
       <th>Email Address</th>
     </tr>
     <tr tal:repeat="user users">
       <td>${user.name}</td>
       <td><a href="${_R('user_item', username=user.username)}">${user.username}</a></td>
-      <td><a href="mailto:${user.email}">${user.email}</a></td>
     </tr>
   </table>
 </div>

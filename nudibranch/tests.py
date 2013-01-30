@@ -30,11 +30,11 @@ def _init_testing_db():
     create_schema()
 
     # Add an admin user, two users, and two classes
-    admin = User(email='', name='admin', username='admin', password='password',
+    admin = User(name='admin', username='admin', password='password',
                  is_admin=True)
-    user1 = User(email='', name='User 1', username='user1', password='pswd1')
-    user2 = User(email='', name='User 2', username='user2', password='pswd2')
-    user3 = User(email='', name='User 3', username='user3', password='pswd3')
+    user1 = User(name='User 1', username='user1@email', password='pswd1')
+    user2 = User(name='User 2', username='user2@email', password='pswd2')
+    user3 = User(name='User 3', username='user3@email', password='pswd3')
     klass1 = Class(name='Class 1')
     klass2 = Class(name='Class 2')
     Session.add_all([admin, user1, user2, user3, klass1, klass2])
@@ -210,14 +210,14 @@ class ClassJoinTests(BaseAPITest):
     """Test the API methods involved in joining a class."""
     @staticmethod
     def get_objects():
-        return User.fetch_by(username='user1'), {}
+        return User.fetch_by(username='user1@email'), {}
 
     def test_invalid_class(self):
         from nudibranch.views import user_class_join
         user, json_data = self.get_objects()
         request = self.make_request(json_body=json_data, user=user,
                                     matchdict={'class_name': 'Test Invalid',
-                                               'username': 'user1'})
+                                               'username': 'user1@email'})
         info = user_class_join(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid class', info['messages'])
@@ -238,7 +238,7 @@ class ClassJoinTests(BaseAPITest):
         class_name = 'Class 1'
         request = self.make_request(json_body=json_data, user=user,
                                     matchdict={'class_name': class_name,
-                                               'username': 'user1'})
+                                               'username': 'user1@email'})
         info = user_class_join(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         expected = route_path('class_join_list', request,
@@ -248,7 +248,7 @@ class ClassJoinTests(BaseAPITest):
 
 class FileTests(BaseAPITest):
     @staticmethod
-    def get_objects(data='', username='user1'):
+    def get_objects(data='', username='user1@email'):
         user = User.fetch_by(username=username)
         json_data = {'b64data': data}
         return user, json_data
@@ -313,7 +313,7 @@ class FileTests(BaseAPITest):
 
     def test_view_user_did_not_upload_file(self):
         from nudibranch.views import file_item_info
-        user, _ = self.get_objects(username='user2')
+        user, _ = self.get_objects(username='user2@email')
         sha1sum = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': sha1sum})
@@ -503,7 +503,7 @@ class ProjectTests(BaseAPITest):
         return user, matchdict, json_data
 
     @staticmethod
-    def get_view_objects(username='user1', **kwargs):
+    def get_view_objects(username='user1@email', **kwargs):
         user = User.fetch_by(username=username)
         proj = Session.query(Project).first()
         matchdict = {'class_name': proj.klass.name, 'project_id': proj.id,
@@ -705,7 +705,7 @@ class ProjectTests(BaseAPITest):
     def test_view_detailed_as_admin(self):
         from nudibranch.views import project_view_detailed
         user, matchdict = self.get_view_objects(username='admin')
-        matchdict['username'] = 'user1'
+        matchdict['username'] = 'user1@email'
         request = self.make_request(user=user, matchdict=matchdict)
         info = project_view_detailed(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
@@ -722,21 +722,21 @@ class ProjectTests(BaseAPITest):
     def test_view_detailed_user_cannot_access_other_user_info(self):
         from nudibranch.views import project_view_detailed
         user, matchdict = self.get_view_objects()
-        matchdict['username'] = 'user3'
+        matchdict['username'] = 'user3@email'
         request = self.make_request(user=user, matchdict=matchdict)
         info = project_view_detailed(request)
         self.assertIsInstance(info, HTTPForbidden)
 
     def test_view_detailed_user_not_part_of_class(self):
         from nudibranch.views import project_view_detailed
-        user, matchdict = self.get_view_objects(username='user2')
+        user, matchdict = self.get_view_objects(username='user2@email')
         request = self.make_request(user=user, matchdict=matchdict)
         info = project_view_detailed(request)
         self.assertIsInstance(info, HTTPNotFound)
 
     def test_view_detailed_invalid_id(self):
         from nudibranch.views import project_view_detailed
-        user = User.fetch_by(username='user1')
+        user = User.fetch_by(username='user1@email')
         user, matchdict = self.get_view_objects(project_id='100')
         request = self.make_request(user=user, matchdict=matchdict)
         info = project_view_detailed(request)
@@ -753,7 +753,7 @@ class ProjectTests(BaseAPITest):
 
     def test_view_summary_as_user(self):
         from nudibranch.views import project_view_summary
-        user, matchdict = self.get_view_objects(username='user1')
+        user, matchdict = self.get_view_objects(username='user1@email')
         request = self.make_request(user=user, matchdict=matchdict)
         info = project_view_summary(request)
         self.assertIsInstance(info, HTTPForbidden)
@@ -780,7 +780,7 @@ class SessionTests(BaseAPITest):
 
     def test_session_create_invalid(self):
         from nudibranch.views import session_create
-        request = self.make_request(json_body={'username': 'user1',
+        request = self.make_request(json_body={'email': 'user1@email',
                                                'password': 'badpw'})
         info = session_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
@@ -796,7 +796,7 @@ class SessionTests(BaseAPITest):
 
     def test_session_create_no_password(self):
         from nudibranch.views import session_create
-        request = self.make_request(json_body={'username': 'foo'})
+        request = self.make_request(json_body={'email': 'foo'})
         info = session_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid request', info['error'])
@@ -812,11 +812,12 @@ class SessionTests(BaseAPITest):
 
     def test_session_create_valid(self):
         from nudibranch.views import session_create
-        request = self.make_request(json_body={'username': 'user1',
+        request = self.make_request(json_body={'email': 'user1@email',
                                                'password': 'pswd1'})
         info = session_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        self.assertEqual(route_path('user_item', request, username='user1'),
+        self.assertEqual(route_path('user_item', request,
+                                    username='user1@email'),
                          info['redir_location'])
 
     def test_session_edit(self):
@@ -831,7 +832,7 @@ class SubmissionTests(BaseAPITest):
     """Test the API methods involved with Submissions."""
     @staticmethod
     def get_objects(**kwargs):
-        user = User.fetch_by(username='user1')
+        user = User.fetch_by(username='user1@email')
         project = Session.query(Project).first()
         the_file = Session.query(File).first()
         json_data = {'file_ids': [text_type(the_file.id)],
@@ -1098,29 +1099,19 @@ class UserTests(BaseAPITest):
     """Test the API methods involved with modifying user information."""
     @staticmethod
     def get_objects(**kwargs):
-        json_data = {'email': 'foo@bar.com', 'name': 'Foobar',
-                     'password': 'Foobar', 'username': 'user0'}
+        json_data = {'name': 'Foobar', 'password': 'Foobar',
+                     'email': 'user0@email'}
         json_data.update(kwargs)
         return json_data
 
     def test_user_create_duplicate_name(self):
         from nudibranch.views import user_create
-        json_data = self.get_objects(username='user1')
+        json_data = self.get_objects(email='user1@email')
         request = self.make_request(json_body=json_data)
         info = user_create(request)
         self.assertEqual(HTTPConflict.code, request.response.status_code)
-        self.assertEqual('User \'user1\' already exists', info['message'])
-
-    def test_user_create_invalid_email(self):
-        from nudibranch.views import user_create
-        json_data = self.get_objects()
-        for item in ['', 'a' * 5]:
-            json_data['email'] = item
-            request = self.make_request(json_body=json_data)
-            info = user_create(request)
-            self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-            self.assertEqual('Invalid request', info['error'])
-            self.assertEqual(1, len(info['messages']))
+        self.assertEqual('User \'user1@email\' already exists',
+                         info['message'])
 
     def test_user_create_invalid_name(self):
         from nudibranch.views import user_create
@@ -1147,8 +1138,8 @@ class UserTests(BaseAPITest):
     def test_user_create_invalid_username(self):
         from nudibranch.views import user_create
         json_data = self.get_objects()
-        for item in ['', 'a' * 2, 'a' * 17]:
-            json_data['username'] = item
+        for item in ['', 'a' * 2, 'a' * 65]:
+            json_data['email'] = item
             request = self.make_request(json_body=json_data)
             info = user_create(request)
             self.assertEqual(HTTPBadRequest.code, request.response.status_code)
@@ -1161,7 +1152,7 @@ class UserTests(BaseAPITest):
         info = user_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('Invalid request', info['error'])
-        self.assertEqual(4, len(info['messages']))
+        self.assertEqual(3, len(info['messages']))
 
     def test_user_create_valid(self):
         from nudibranch.views import user_create
@@ -1169,11 +1160,11 @@ class UserTests(BaseAPITest):
         request = self.make_request(json_body=json_data)
         info = user_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
-        expected = route_path('session', request, _query={'username': 'user0'})
+        expected = route_path('session', request,
+                              _query={'username': 'user0@email'})
         self.assertEqual(expected, info['redir_location'])
-        username = json_data['username']
+        username = json_data['email']
         user = User.fetch_by(username=username)
-        self.assertEqual(json_data['email'], user.email)
         self.assertEqual(json_data['name'], user.name)
         self.assertNotEqual(json_data['password'], user._password)
 
@@ -1190,11 +1181,11 @@ class UserTests(BaseAPITest):
         info = user_list(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual(4, len(info['users']))
-        self.assertEqual('user1', info['users'][1].username)
+        self.assertEqual('user1@email', info['users'][1].username)
 
     def test_user_view(self):
         from nudibranch.views import user_view
-        request = self.make_request(matchdict={'username': 'user1'})
+        request = self.make_request(matchdict={'username': 'user1@email'})
         info = user_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('User 1', info['name'])

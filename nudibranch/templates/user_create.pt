@@ -7,14 +7,11 @@
       <label for="name">Name</label><br/>
       <input type="text" name="name" id="name"/><br/>
 
-      <label for="username">Username</label><br/>
-      <input type="text" name="username" id="username" /><br/>
+      <label for="email">Email</label><br/>
+      <input type="text" name="email" id="email" /><br/>
 
       <label for="password">Password</label><br/>
       <input type="password" name="password" id="password" /><br/>
-
-      <label for="email">E-mail</label><br/>
-      <input type="text" name="email" id="email" /><br/>
 
       <div tal:condition="admin_classes">
 	<label for="admin_for">Extra Permissions</label><br/>

@@ -594,7 +594,6 @@ class User(UserMixin, BasicBase, Base):
     `password` is a write-only attribute and can be verified using the
     `verify_password` function."""
     name = Column(Unicode, nullable=False)
-    email = Column(Unicode, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     classes = relationship(Class, secondary=user_to_class, backref='users')
     files = relationship(File, secondary=user_to_file, backref='users')
@@ -707,15 +706,13 @@ class User(UserMixin, BasicBase, Base):
         return cmp(self.name, other.name)
 
     def __repr__(self):
-        return 'User(email="{0}", name="{1}", username="{2}")'.format(
-            self.email, self.name, self.username)
+        return 'User(username="{0}", name="{1}")'.format(self.username,
+                                                         self.name)
 
     def __str__(self):
         admin_str = '(admin)' if self.is_admin else ''
-        return 'Name: {0} Username: {1} Email: {2} {3}'.format(self.name,
-                                                               self.username,
-                                                               self.email,
-                                                               admin_str)
+        return 'Name: {0} Email: {1} {2}'.format(self.name, self.username,
+                                                 admin_str)
 
 
 def configure_sql(engine):
@@ -747,8 +744,8 @@ def populate_database():
         return
 
     # Admin user
-    admin = User(email='root@localhost', name='Administrator',
-                 username='admin', password='password', is_admin=True)
+    admin = User(name='Administrator', password='password',
+                 username='admin', is_admin=True)
     # Class
     klass = Class(name='CS32')
     Session.add(klass)

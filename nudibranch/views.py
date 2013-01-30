@@ -507,7 +507,7 @@ def project_view_summary(request):
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
-@validated_form(username=String('username'),
+@validated_form(username=String('email'),
                 password=RegexString('password'))
 def session_create(request, username, password):
     user = User.login(username, password)
@@ -922,12 +922,11 @@ def user_class_join(request):
 
 @view_config(route_name='user', renderer='json', request_method='PUT')
 @validated_form(name=String('name', min_length=3),
-                username=String('username', min_length=3, max_length=16),
+                username=String('email', min_length=6, max_length=64),
                 password=WhiteSpaceString('password', min_length=6),
-                email=String('email', min_length=6),
                 admin_for=List('admin_for', TextNumber('', min_value=0),
                                optional=True))
-def user_create(request, name, username, password, email, admin_for):
+def user_create(request, name, username, password, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
     asking_classes = []
@@ -949,7 +948,7 @@ def user_create(request, name, username, password, email, admin_for):
 
     session = Session()
     user = User(name=name, username=username, password=password,
-                email=email, is_admin=False)
+                is_admin=False)
     user.admin_for.extend(asking_classes)
     session.add(user)
     try:
