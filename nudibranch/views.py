@@ -739,20 +739,28 @@ def submission_view(request):
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
 
-    diff_renderer, failed_from_bad_files = make_diff_renderer_bad_files(
-        request, submission)
+    # verification_results: Map[Filename, Set[Error]]
+
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
-            '_fp': format_points,
-            'make_header': problem_files_header,
-            'failed_from_bad_files': failed_from_bad_files,
-            'file_warnings': submission.file_warnings(),
-            'file_errors': submission.file_errors(),
-            'diff_table': diff_renderer.make_whole_file(),
+            #'diff_table': diff_renderer.make_whole_file(),
             'prev_next': prev_next_html}
+
+    # return {'page_title': 'Submission Page',
+    #         'css_files': ['diff.css', 'prev_next.css'],
+    #         'javascripts': ['diff.js'],
+    #         'submission': submission,
+    #         '_pd': pretty_date,
+    #         '_fp': format_points,
+    #         'make_header': problem_files_header,
+    #         'failed_from_bad_files': failed_from_bad_files,
+    #         'file_warnings': submission.file_warnings(),
+    #         'file_errors': submission.file_errors(),
+    #         'diff_table': diff_renderer.make_whole_file(),
+    #         'prev_next': prev_next_html}
 
 
 @view_config(route_name='test_case', request_method='PUT',

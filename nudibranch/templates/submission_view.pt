@@ -12,77 +12,26 @@
     The submission is still being verified.
   </p>
 
-  <p tal:condition="not submission.verified_at or (not submission.had_verification_errors())">
-    The submission is still undergoing processing.  Please wait.
-  </p>
 
-  <div tal:condition="submission.verified_at and (submission.had_verification_errors())">
-    <pre tal:condition="False">MAKE_RESULTS no longer exists on submissions</pre>
-    <p tal:condition="False"
-       style="color:red">
-      Your submission had build errors that prevented tests from being run.
-      You may want to consult <a href="http://discover.cs.ucsb.edu/commonerrors/errors.html" target="_blank">this page</a> for help.
-    </p>
-
-    <div tal:condition="file_warnings">
-      <h3 style="color:yellow">Files with warnings:</h3>
-      <ul>
-	<div tal:repeat="file sorted(file_warnings.keys())">
-	  <li tal:condition="len(file_warnings[file]) == 1">
-	    <b>${file}</b>: ${file_warnings[file][0]}
+  <div tal:condition="submission.verified_at and submission.had_verification_problems()">
+    <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:yellow">yellow</span> indicates warnings.</p>
+    <ul>
+      <div tal:repeat="(file, is_error, lst) submission.sorted_verification_warnings_errors()">
+	<li tal:condition="len(lst) == 1">
+	  <b style="color:${'red' if is_error else 'yellow'}">${file}</b>: ${lst[0]}
+	</li>
+	<div tal:condition="len(lst) > 1">
+	  <li>
+	    <b style="color:${'red' if is_error else 'yellow'}">${file}</b>
+	    <ul>
+	      <li tal:repeat="item lst">
+		${item}
+	      </li>
+	    </ul>
 	  </li>
-	  <div tal:condition="len(file_warnings[file]) > 1">
-	    <li>
-	      <b>${file}</b>
-	      <ul>
-		<li tal:repeat="warning file_warnings[file]">
-		  ${warning}
-		</li>
-	      </ul>
-	    </li>
-	  </div>
 	</div>
-      </ul>
-    </div>
-    
-    <div tal:condition="file_errors">
-      <h3 style="color:red">Files with errors:</h3>
-      <ul>
-	<div tal:repeat="file sorted(file_errors.keys())">
-	  <li tal:condition="len(file_errors[file]) == 1">
-	    <b>${file}</b>: ${file_errors[file][0]}
-	  </li>
-	  <div tal:condition="len(file_errors[file]) > 1">
-	    <li>
-	      <b>${file}</b>
-	      <ul>
-		<li tal:repeat="error file_errors[file]">
-		  ${error}
-		</li>
-	      </ul>
-	    </li>
-	  </div>
-	</div>
-      </ul>
-    </div>
-
-    <div tal:condition="failed_from_bad_files">
-      <div tal:repeat="bad_files sorted(failed_from_bad_files.keys(), key=lambda s: sorted(list(s)))">
-	<div tal:replace="structure make_header(bad_files, failed_from_bad_files[bad_files])"></div>
-	<ul>
-	  <li tal:repeat="test sorted(failed_from_bad_files[bad_files])">
-	    <b>${test.name}</b>: ${_fp(test.points)}
-	  </li>
-	</ul>
       </div>
-    </div>
-
-    <div tal:replace="structure diff_table"></div>
-
-    <a tal:condition="request.user.is_admin_for_submission(submission)"
-       href="${_R('zipfile_download', submission_id=submission.id)}">
-      Download submission zipfile
-    </a>
+    </ul>
   </div>
 </div>
 </div>

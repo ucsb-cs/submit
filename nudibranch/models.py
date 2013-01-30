@@ -332,7 +332,13 @@ class Submission(BasicBase, Base):
         return if_not_none(item) if item is not None else {}
 
     def had_verification_errors(self):
-        return len(self.file_errors_from_verification())
+        return len(self.file_errors_from_verification()) > 0
+
+    def had_verification_warnings(self):
+        return len(self.file_warnings()) > 0
+
+    def had_verification_problems(self):
+        return self.had_verification_errors() or self.had_verification_warnings()
 
     def file_warnings(self):
         '''Returns a mapping of filenames to warnings about said files'''
@@ -342,6 +348,24 @@ class Submission(BasicBase, Base):
     def file_errors_from_verification(self):
         return self.get_or_empty(self.verification_results,
                                  lambda vr: vr._errors_by_filename)
+
+    def sorted_verification_warnings_errors(self):
+        """Returns a list of (filename, is_error, list(error/warning))"""
+        errors = self.file_errors_from_verification()
+        warnings = self.file_warnings()
+        keys = frozenset(errors.keys() + warnings.keys())
+        retval = []
+        for key in sorted(keys):
+            is_error = None
+            lst = None
+            if key in errors:
+                is_error = True
+                lst = errors[key]
+            else:
+                is_err
+                lst = warnings[key]
+            retval.append((key, is_error, lst))
+        return retval
 
     def file_errors_from_build(self):
         '''Returns a mapping of filenames to errors about said files'''
