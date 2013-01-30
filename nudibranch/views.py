@@ -508,7 +508,7 @@ def project_view_summary(request):
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
 @validated_form(username=String('email'),
-                password=RegexString('password'))
+                password=WhiteSpaceString('password'))
 def session_create(request, username, password):
     user = User.login(username, password)
     if user:
