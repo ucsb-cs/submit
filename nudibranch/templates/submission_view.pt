@@ -12,13 +12,13 @@
     The submission is still being verified.
   </p>
 
-  <p tal:condition="not submission.verified_at or (not submission.made_at and not submission.had_verification_errors())">
+  <p tal:condition="not submission.verified_at or (not submission.had_verification_errors())">
     The submission is still undergoing processing.  Please wait.
   </p>
 
-  <div tal:condition="submission.verified_at and (submission.made_at or submission.had_verification_errors())">
-    <pre tal:condition="submission.make_results">${submission.make_results}</pre>
-    <p tal:condition="submission.had_build_errors()"
+  <div tal:condition="submission.verified_at and (submission.had_verification_errors())">
+    <pre tal:condition="False">MAKE_RESULTS no longer exists on submissions</pre>
+    <p tal:condition="False"
        style="color:red">
       Your submission had build errors that prevented tests from being run.
       You may want to consult <a href="http://discover.cs.ucsb.edu/commonerrors/errors.html" target="_blank">this page</a> for help.

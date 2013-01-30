@@ -782,7 +782,7 @@ class PasswordResetTests(BaseAPITest):
         from nudibranch.views import password_reset_create
         request = self.make_request(json_body={'email': 'user1@email'})
         info = password_reset_create(request)
-        print info
+        # TODO: actually verify something here
 
 
 class SessionTests(BaseAPITest):

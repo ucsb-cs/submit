@@ -320,11 +320,10 @@ class Project(BasicBase, Base):
 
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submissions')
-    made_at = Column(DateTime(timezone=True), index=True)
-    make_results = Column(UnicodeText)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_case_results = relationship('TestCaseResult', backref='submission')
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    testable_results = relationship('TestableResult', backref='submission')
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
@@ -388,15 +387,6 @@ class Submission(BasicBase, Base):
                     frozenset(testable.needed_files()),
                     set()).add(test_case)
         return retval
-
-    def had_build_errors(self):
-        '''Returns None if the build isn't done yet, True if it did,
-        and False if it didn't'''
-        if self.made_at and self.make_results:
-            # build completed
-            return len(self.tests_that_did_not_run()) > 0
-        else:
-            return None
 
     @staticmethod
     def merge_dict(d1, d2, on_collision):
@@ -527,10 +517,6 @@ class Submission(BasicBase, Base):
     def verify(self, base_path):
         return self.project.verify_submission(base_path, self)
 
-    def update_makefile_results(self, data):
-        self.made_at = func.now()
-        self.make_results = data
-
 
 class SubmissionToFile(Base):
     __tablename__ = 'submissiontofile'
@@ -618,9 +604,19 @@ class Testable(BasicBase, Base):
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_cases = relationship('TestCase', backref='testable',
                               cascade='all, delete-orphan')
+    testable_results = relationship('TestableResult', backref='testable',
+                                    cascade='all, delete-orphan')
 
     def needed_files(self):
         return sorted([fv.filename for fv in self.file_verifiers])
+
+
+class TestableResult(BasicBase, Base):
+    __table_args__ = (UniqueConstraint('submission_id', 'testable_id'),)
+    make_results = Column(UnicodeText)
+    submission_id = Column(Integer, ForeignKey('submission.id'),
+                           nullable=False)
+    testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
 
 
 class User(UserMixin, BasicBase, Base):

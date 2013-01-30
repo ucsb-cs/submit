@@ -7,7 +7,7 @@ import transaction
 import pickle
 from functools import wraps
 from nudibranch.models import (File, Session, Submission, TestCaseResult,
-                               Testable, configure_sql)
+                               Testable, TestableResult, configure_sql)
 from nudibranch.diff_unit import Diff
 from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
@@ -59,8 +59,10 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
 
     # Store Makefile results
     if os.path.isfile('make'):
-        submission.update_makefile_results(open('make').read().decode('utf-8'))
-        session.add(submission)
+        testable_result = TestableResult(
+            testable=testable, submission=submission,
+            make_results=open('make').read().decode('utf-8'))
+        session.add(testable_result)
 
     # Create dictionary of completed test_cases
     if os.path.isfile('test_cases'):
