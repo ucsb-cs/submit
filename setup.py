@@ -11,10 +11,10 @@ requires = [
     'mock>=1.0.0',
     'pika>=0.9.6',
     'pyramid>=1.4',
-    'pyramid_addons>=0.10',
+    'pyramid_addons>=0.11',
     'pyramid_tm>=0.5',
     'python-daemon>=1.5.5',
-    'sqla_mixins>=0.5',
+    'sqla_mixins>=0.6',
     'sqlalchemy>=0.7.8',
     'zope.sqlalchemy>=0.7.1']
 

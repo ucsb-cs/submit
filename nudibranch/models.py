@@ -286,13 +286,13 @@ class Project(BasicBase, Base):
 
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submissions')
-    made_at = Column(DateTime, index=True)
+    made_at = Column(DateTime(timezone=True), index=True)
     make_results = Column(UnicodeText)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_case_results = relationship('TestCaseResult', backref='submission')
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     verification_results = Column(PickleType)
-    verified_at = Column(DateTime, index=True)
+    verified_at = Column(DateTime(timezone=True), index=True)
 
     @staticmethod
     def get_or_empty(item, if_not_null):
