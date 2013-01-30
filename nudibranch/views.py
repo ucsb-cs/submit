@@ -725,19 +725,16 @@ def submission_view(request):
             return HTTPNotFound()
         diff_renderer.add_diff(full_diff)
 
-    # failed_testables are those that either failed verification or
-    # the build
-    # failed_testables: Set[Testable]
-    verification_info = submission.verification_warnings_errors()
-        
+    testable_statuses = submission.testable_statuses()
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
             '_fp': format_points,
+            'testable_statuses': testable_statuses,
+            'verification': submission.verification_warnings_errors(),
             'diff_table': diff_renderer.make_whole_file(),
-            'verification': verification_info,
             'prev_next': prev_next_html}
 
     # return {'page_title': 'Submission Page',

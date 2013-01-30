@@ -339,10 +339,11 @@ class Submission(BasicBase, Base):
     verified_at = Column(DateTime(timezone=True), index=True)
 
     def testable_statuses(self):
+        warn_err = self.verification_warnings_errors()
         with_build_errors = self.testables_with_build_errors()
         def testable_status(testable):
             return TestableStatus(testable,
-                                  self.verification_warnings_errors(),
+                                  warn_err,
                                   testable in with_build_errors)
 
         return [testable_status(testable)
@@ -388,38 +389,43 @@ class Submission(BasicBase, Base):
         return [(file, unsorted[file])
                 for file in sorted(unsorted.keys())]
 
-    def testables_with_verification_problems(self):
+    @staticmethod
+    def testable_ids_to_testables(testable_ids):
+        retval = set()
+        for testable_id in testable_ids:
+            testable = Testable.fetch_by_id(testable_id)
+            if testable:
+                retval.add(testable)
+        return retval
+
+    def testables_with_verification_errors(self):
         retval = set()
         for testable_ids in self.missing_to_testable_ids().values():
-            for testable_id in testable_ids:
-                testable = Testable.fetch_by_id(testable_id)
-                if testable:
-                    retval.add(testable)
+            retval.update(self.testable_ids_to_testables(testable_ids))
         return retval
-         
+
     def all_testables(self):
         project = Project.fetch_by_id(self.project_id)
         return frozenset(project.testables) if project else frozenset()
 
     def testables_ran(self):
         """Note that this includes testables for which the build failed"""
-        retval = set()
-        for testable_result in self.testable_results:
-            testable = Testable.fetch_by_id(testable_result.testable_id)
-            if testable:
-                retval.add(testable)
-        return retval
+        return self.testable_ids_to_testables(
+            [testable_result.testable_id 
+             for testable_result in self.testable_results])
 
-    def testables_with_build_errors(self):
-        """This is a subset of testables_ran"""
-        # waiting to run
-        wtr = self.all_testables() - self.testables_waiting_to_run()
-        return wtr - self.testables_without_build_errors()
+    def testables_with_test_cases(self):
+        return self.testable_ids_to_testables(
+            [test_case.testable_id
+             for test_case in self.tests_that_ran()])
 
     def testables_waiting_to_run(self):
-        # minus verification
-        mv = self.all_testables() - self.testables_with_verification_problems()
-        return mv - self.testables_ran()
+        # with verification errors
+        wve = self.all_testables() - self.testables_with_verification_errors()
+        return wve - self.testables_ran()
+
+    def testables_with_build_errors(self):
+        return self.testables_ran() - self.testables_with_test_cases()
 
     def had_verification_errors(self):
         return len(self.file_errors_from_verification()) > 0
@@ -631,8 +637,10 @@ class TestableStatus(object):
         self.testable = testable
         self.warn_err = verification_warnings_errors
         if had_build_errors:
-            for _, errors in verification_warnings_errors.values():
-                errors.append('Build failed (see make output)')
+            self.warn_err = dict(self.warn_err) # copy
+            for file, (warnings, errors) in self.warn_err:
+                self.warn_err[file] = (warnings,
+                                       ['Build failed (see make output)'] + errors)
         self.is_err = had_build_errors or self.has_verification_errors()
 
     def has_verification_errors(self):
