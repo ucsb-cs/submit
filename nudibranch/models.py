@@ -244,6 +244,12 @@ class Project(BasicBase, Base):
     testables = relationship('Testable', backref='project',
                              cascade='all, delete-orphan')
 
+    def total_available_points(self):
+        """Returns the total points available in this project"""
+        return sum([test_case.points
+                    for testable in self.testables
+                    for test_case in testable.test_cases])
+
     def verify_submission(self, base_path, submission):
         """Return list of testables that can be built.
 
@@ -330,7 +336,7 @@ class Submission(BasicBase, Base):
     @staticmethod
     def get_or_empty(item, if_not_none):
         return if_not_none(item) if item is not None else {}
-
+        
     def had_verification_errors(self):
         return len(self.file_errors_from_verification()) > 0
 
@@ -348,6 +354,10 @@ class Submission(BasicBase, Base):
     def file_errors_from_verification(self):
         return self.get_or_empty(self.verification_results,
                                  lambda vr: vr._errors_by_filename)
+
+    def missing_to_testable_ids(self):
+        return self.get_or_empty(self.verification_results,
+                                 lambda vr: vr._missing_to_testable_ids)
 
     def sorted_verification_warnings_errors(self):
         """Returns a list of (filename, is_error, list(error/warning))"""

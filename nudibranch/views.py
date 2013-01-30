@@ -15,7 +15,7 @@ from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
-from .diff_render import HTMLDiff, ScoreMaker, ScoreWithExtraMissing
+from .diff_render import HTMLDiff, ScoreMaker, ScoreWithSetTotal, ScoreWithExtraMissing
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
@@ -732,6 +732,10 @@ def submission_view(request):
     if not submission:
         return HTTPNotFound()
 
+    project = Project.fetch_by_id(submission.project_id)
+    if not project:
+        return HTTPNotFound()
+
     prev_next_html = None
     if request.user.is_admin_for_submission(submission):
         try:
@@ -739,14 +743,19 @@ def submission_view(request):
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
 
-    # verification_results: Map[Filename, Set[Error]]
+    diff_renderer = HTMLDiff(calc_score=ScoreWithSetTotal(project.total_available_points()))
+    for test_case_result in submission.test_case_results:
+        full_diff = to_full_diff(request, test_case_result)
+        if not full_diff:
+            return HTTPNotFound()
+        diff_renderer.add_diff(full_diff)
 
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
-            #'diff_table': diff_renderer.make_whole_file(),
+            'diff_table': diff_renderer.make_whole_file(),
             'prev_next': prev_next_html}
 
     # return {'page_title': 'Submission Page',

@@ -115,6 +115,16 @@ class ScoreWithExtraMissing(ScoreMaker):
         return from_diffs + self.points_missing
 
 
+class ScoreWithSetTotal(ScoreMaker):
+    """Has a set total that it will use"""
+    def __init__(self, total_score):
+        super(ScoreWithSetTotal, self).__init__()
+        self.total_score = total_score
+
+    def total_score_available(self, diffs):
+        return self.total_score
+
+
 class HTMLDiff(difflib.HtmlDiff):
     FROM_DESC = 'Correct Output'
     TO_DESC = 'Your Output'

@@ -1,9 +1,11 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
+
+  <!-- Determining the next user/submission -->
   <div tal:condition="prev_next">
-    <hr>
+    <hr />
     <div tal:replace="structure prev_next"></div>
-    <hr>
+    <hr />
   </div>
 
   <p>Submitted ${_pd(submission.created_at)}</p>
@@ -12,7 +14,7 @@
     The submission is still being verified.
   </p>
 
-
+  <!-- Verification results block -->
   <div tal:condition="submission.verified_at and submission.had_verification_problems()">
     <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:yellow">yellow</span> indicates warnings.</p>
     <ul>
@@ -33,5 +35,15 @@
       </div>
     </ul>
   </div>
+
+  <!-- Test case summary block -->
+  <div tal:replace="structure diff_table"></div>
+
+  <!-- For each test group, reasons for failure (if applicable) -->
+  <!-- Download a submission -->
+  <a tal:condition="request.user.is_admin_for_submission(submission)"
+     href="${_R('zipfile_download', submission_id=submission.id)}">
+    Download submission zipfile
+  </a>
 </div>
 </div>
