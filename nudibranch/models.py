@@ -298,6 +298,9 @@ class Submission(BasicBase, Base):
     def get_or_empty(item, if_not_none):
         return if_not_none(item) if item is not None else {}
 
+    def had_verification_errors(self):
+        return len(self.file_errors_from_verification())
+
     def file_warnings(self):
         '''Returns a mapping of filenames to warnings about said files'''
         return self.get_or_empty(self.verification_results,
