@@ -295,8 +295,8 @@ class Submission(BasicBase, Base):
     verified_at = Column(DateTime(timezone=True), index=True)
 
     @staticmethod
-    def get_or_empty(item, if_not_null):
-        return if_not_null(item) if item else {}
+    def get_or_empty(item, if_not_none):
+        return if_not_none(item) if item is not None else {}
 
     def file_warnings(self):
         '''Returns a mapping of filenames to warnings about said files'''
