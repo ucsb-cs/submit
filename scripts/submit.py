@@ -16,7 +16,7 @@ class Submit(object):
     PATHS = {'auth':           'session',
              'file_item':      'file/{sha1sum}',
              'file_item_info': 'file/{sha1sum}/info',
-             'project_item':   'class/{class_name}/{project_id}/{username}',
+             'project_item':   'class/{class_name}/{project_id}/{email}',
              'submission':     'submission'}
 
     @staticmethod
@@ -48,29 +48,29 @@ class Submit(object):
         self.request_timeout = int(config['request_timeout'])
         self._url = config['url']
         self.session = requests.session()
-        self.username = None
+        self.email = None
 
-    def login(self, username=None, password=None):
+    def login(self, email=None, password=None):
         """Login to establish a valid session."""
         auth_url = self.url('auth')
         while True:
-            if not username and not password:
-                sys.stdout.write('Username: ')
+            if not email and not password:
+                sys.stdout.write('Email: ')
                 sys.stdout.flush()
-                username = sys.stdin.readline().strip()
-                if not username:
+                email = sys.stdin.readline().strip()
+                if not email:
                     print('Goodbye!')
                     sys.exit(1)
                 password = getpass.getpass()
-            response = self.request(auth_url, 'PUT', username=username,
+            response = self.request(auth_url, 'PUT', email=email,
                                     password=password)
             if response.status_code == 201:
                 self.msg('logged in')
-                self.username = username
+                self.email = email
                 break
             else:
                 print(response.json()['message'])
-                username = password = None
+                email = password = None
 
     def msg(self, message):
         """Output a debugging message."""
@@ -149,7 +149,7 @@ class Submit(object):
         url = self.url('project_item',
                        class_name=class_name,
                        project_id=project_id,
-                       username=self.username)
+                       email=self.email)
         response = self.request(url, 'HEAD')
         self.msg('Access test: {0}'.format(response.status_code))
         return response.status_code == 200
