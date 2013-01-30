@@ -406,8 +406,9 @@ class Submission(BasicBase, Base):
 
         if self.verification_results:
             files_to_ids = self.verification_results._missing_to_testable_ids
-            return dict((files, testable_ids_to_test_cases(ids))
-                         for files, ids in files_to_ids.iteritems())
+            return dict(
+                (files, testable_ids_to_test_cases(ids))
+                for files, ids in files_to_ids.iteritems())
         else:
             return None
 
