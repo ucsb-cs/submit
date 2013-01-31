@@ -616,7 +616,8 @@ class TestableStatus(object):
     def __init__(self, testable, testable_results,
                  verification_warnings_errors,
                  build_err):
-        """Use None for testable_results if it didn't run"""
+        """Use None for testable_results if it didn't run
+        or hasn't run yet."""
         self.testable = testable
         self.testable_results = testable_results
         self.warn_err = verification_warnings_errors
@@ -636,7 +637,10 @@ class TestableStatus(object):
                 self.testable_results.make_results)
 
     def had_verification_errors(self):
-        return self.testable_results is None
+        for _, errors in self.warn_err.values():
+            if errors:
+                return True
+        return False
 
     def is_error(self):
         return self.had_verification_errors() or self.had_build_errors()
