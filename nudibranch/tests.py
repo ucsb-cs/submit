@@ -108,9 +108,13 @@ class BaseAPITest(unittest.TestCase):
 
     def setUp(self):
         """Initialize the database and add routes."""
-        self.config = testing.setUp(settings={'file_directory': FILE_DIR,
-                                              'queue_server': 'badhost',
-                                              'queue_verification': 'NA'})
+        self.config = testing.setUp(
+            settings={'file_directory': FILE_DIR,
+                      'queue_server': 'badhost',
+                      'queue_verification': 'NA',
+                      'site_name': 'Test Site',
+                      'mail.default_sender': 'test@localhost'})
+        self.config.include('pyramid_mailer')
         _init_testing_db()
         add_routes(self.config)
 
