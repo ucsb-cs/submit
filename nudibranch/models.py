@@ -338,15 +338,22 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
+    def testable_to_testable_results(self):
+        retval = {}
+        for testable_result in self.testable_results:
+            testable = Testable.fetch_by_id(testable_result.testable_id)
+            if testable:
+                retval[testable] = testable_result
+        return retval
+
     def testable_statuses(self):
         warn_err = self.verification_warnings_errors()
         with_build_errors = self.testables_with_build_errors()
-        def testable_status(testable):
-            return TestableStatus(testable,
-                                  warn_err,
-                                  testable in with_build_errors)
-
-        return [testable_status(testable)
+        to_testable_result = self.testable_to_testable_results()
+        return [TestableStatus(testable,
+                               to_testable_result.get(testable),
+                               warn_err,
+                               testable in with_build_errors)
                 for testable in self.all_testables()]
 
     @staticmethod
@@ -410,9 +417,10 @@ class Submission(BasicBase, Base):
 
     def testables_ran(self):
         """Note that this includes testables for which the build failed"""
-        return self.testable_ids_to_testables(
-            [testable_result.testable_id 
+        retval = self.testable_ids_to_testables(
+            [testable_result.testable_id
              for testable_result in self.testable_results])
+        return retval
 
     def testables_with_test_cases(self):
         return self.testable_ids_to_testables(
@@ -434,7 +442,8 @@ class Submission(BasicBase, Base):
         return len(self.file_warnings()) > 0
 
     def had_verification_problems(self):
-        return self.had_verification_errors() or self.had_verification_warnings()
+        return (self.had_verification_errors() or
+                self.had_verification_warnings())
 
     def file_warnings(self):
         '''Returns a mapping of filenames to warnings about said files'''
@@ -633,24 +642,33 @@ class TestCaseResult(Base):
 
 
 class TestableStatus(object):
-    def __init__(self, testable, verification_warnings_errors, had_build_errors):
+    def __init__(self, testable, testable_results,
+                 verification_warnings_errors,
+                 build_err):
+        """Use None for testable_results if it didn't run"""
         self.testable = testable
+        self.testable_results = testable_results
         self.warn_err = verification_warnings_errors
-        if had_build_errors:
-            self.warn_err = dict(self.warn_err) # copy
+        self.build_err = build_err
+        if self.had_build_errors():
+            import copy
+            self.warn_err = copy.copy(self.warn_err)
             for file, (warnings, errors) in self.warn_err:
-                self.warn_err[file] = (warnings,
-                                       ['Build failed (see make output)'] + errors)
-        self.is_err = had_build_errors or self.has_verification_errors()
+                new_err = ['Build failed (see make output)'] + errors
+                self.warn_err[file] = (warnings, new_err)
 
-    def has_verification_errors(self):
-        for warnerr in self.warn_err.values():
-            if warnerr[1]:
-                return True
-        return False
+    def had_build_errors(self):
+        return self.build_err
+
+    def has_make_output(self):
+        return (self.testable_results and
+                self.testable_results.make_results)
+
+    def had_verification_errors(self):
+        return self.testable_results is None
 
     def is_error(self):
-        return self.is_err
+        return self.had_verification_errors() or self.had_build_errors()
 
     def has_files(self):
         return len(self.files_to_warnings_errors()) > 0

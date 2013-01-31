@@ -15,7 +15,7 @@ from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
 from sqlalchemy.exc import IntegrityError
-from .diff_render import HTMLDiff, ScoreMaker, ScoreWithSetTotal, ScoreWithExtraMissing
+from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
@@ -718,14 +718,19 @@ def submission_view(request):
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
 
-    diff_renderer = HTMLDiff(calc_score=ScoreWithSetTotal(project.total_available_points()))
+    diff_renderer = HTMLDiff(
+        calc_score=ScoreWithSetTotal(
+            project.total_available_points()))
     for test_case_result in submission.test_case_results:
         full_diff = to_full_diff(request, test_case_result)
         if not full_diff:
             return HTTPNotFound()
         diff_renderer.add_diff(full_diff)
 
+    verification_info = submission.verification_warnings_errors()
+    waiting_to_run = submission.testables_waiting_to_run()
     testable_statuses = submission.testable_statuses()
+    extra_files = submission.extra_filenames()
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
@@ -733,22 +738,11 @@ def submission_view(request):
             '_pd': pretty_date,
             '_fp': format_points,
             'testable_statuses': testable_statuses,
-            'verification': submission.verification_warnings_errors(),
+            'waiting_to_run': waiting_to_run,
+            'verification': verification_info,
+            'extra_files': extra_files,
             'diff_table': diff_renderer.make_whole_file(),
             'prev_next': prev_next_html}
-
-    # return {'page_title': 'Submission Page',
-    #         'css_files': ['diff.css', 'prev_next.css'],
-    #         'javascripts': ['diff.js'],
-    #         'submission': submission,
-    #         '_pd': pretty_date,
-    #         '_fp': format_points,
-    #         'make_header': problem_files_header,
-    #         'failed_from_bad_files': failed_from_bad_files,
-    #         'file_warnings': submission.file_warnings(),
-    #         'file_errors': submission.file_errors(),
-    #         'diff_table': diff_renderer.make_whole_file(),
-    #         'prev_next': prev_next_html}
 
 
 @view_config(route_name='test_case', request_method='PUT',
