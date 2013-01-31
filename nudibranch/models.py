@@ -396,6 +396,9 @@ class Submission(BasicBase, Base):
              for testable_result in self.testable_results])
         return retval
 
+    def testables_succeeded(self):
+        return self.testables_ran() - self.testables_with_build_errors()
+
     def testables_with_test_cases(self):
         return self.testable_ids_to_testables(
             [test_case.testable_id

@@ -43,7 +43,8 @@
   </div>
 
   <!-- Test case summary block -->
-  <div tal:replace="structure diff_table"></div>
+  <div tal:condition="submission.testables_succeeded()"
+       tal:replace="structure diff_table"></div>
 
   <!-- For each test group, reasons for failure (if applicable) -->
   <div tal:repeat="status submission.testable_statuses()">
