@@ -360,9 +360,6 @@ class Submission(BasicBase, Base):
     def get_or_empty(item, if_not_none, empty={}):
         return if_not_none(item) if item is not None else empty
 
-    def submitted_files(self):
-        return frozenset(self.files)
-
     def vr_get_or_empty(self, if_not_none, empty={}):
         """Verification results get or empty"""
         return self.get_or_empty(self.verification_results,
@@ -372,29 +369,6 @@ class Submission(BasicBase, Base):
     def extra_filenames(self):
         return self.vr_get_or_empty(lambda vr: vr._extra_filenames,
                                     empty=frozenset())
-
-    def testable_to_missing(self):
-        retval = {}
-        for files, testable_id in self.missing_to_testable_ids():
-            testable = Testable.fetch_by_id(testable_id)
-            if testable:
-                retval.setdefault(testable, set()).update(files)
-        return retval
-
-    def verification_problems_with_testable(self, testable):
-        """Returns a mapping of files to lists of verification issues
-        associated with those files"""
-        warn_by_file = self.file_warnings()
-        err_by_file = self.file_errors_from_verification()
-        return dict(
-            [(file, warn_by_file.get(file, []) + err_by_file.get(file, []))
-             for file in self.testable_to_missing().get(testable, frozenset())
-             if file in warn_by_file or file in err_by_file])
-
-    def sorted_verification_problems_with_testable(self, testable):
-        unsorted = self.verification_problems_with_testable(testable)
-        return [(file, unsorted[file])
-                for file in sorted(unsorted.keys())]
 
     @staticmethod
     def testable_ids_to_testables(testable_ids):
@@ -474,9 +448,6 @@ class Submission(BasicBase, Base):
                       for test_case_result in self.test_case_results]
         return frozenset([test_case for test_case in test_cases
                           if test_case is not None])
-
-    def tests_that_did_not_run(self):
-        return self.test_cases() - self.tests_that_ran()
 
     @staticmethod
     def merge_dict(d1, d2, on_collision):
