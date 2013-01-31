@@ -1,9 +1,11 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
+
+  <!-- Determining the next user/submission -->
   <div tal:condition="prev_next">
-    <hr>
+    <hr />
     <div tal:replace="structure prev_next"></div>
-    <hr>
+    <hr />
   </div>
 
   <p>Submitted ${_pd(submission.created_at)}</p>
@@ -12,77 +14,79 @@
     The submission is still being verified.
   </p>
 
-  <p tal:condition="not submission.verified_at or (not submission.had_verification_errors())">
-    The submission is still undergoing processing.  Please wait.
-  </p>
-
-  <div tal:condition="submission.verified_at and (submission.had_verification_errors())">
-    <pre tal:condition="False">MAKE_RESULTS no longer exists on submissions</pre>
-    <p tal:condition="False"
-       style="color:red">
-      Your submission had build errors that prevented tests from being run.
-      You may want to consult <a href="http://discover.cs.ucsb.edu/commonerrors/errors.html" target="_blank">this page</a> for help.
-    </p>
-
-    <div tal:condition="file_warnings">
-      <h3 style="color:yellow">Files with warnings:</h3>
-      <ul>
-	<div tal:repeat="file sorted(file_warnings.keys())">
-	  <li tal:condition="len(file_warnings[file]) == 1">
-	    <b>${file}</b>: ${file_warnings[file][0]}
-	  </li>
-	  <div tal:condition="len(file_warnings[file]) > 1">
-	    <li>
-	      <b>${file}</b>
-	      <ul>
-		<li tal:repeat="warning file_warnings[file]">
-		  ${warning}
-		</li>
-	      </ul>
-	    </li>
-	  </div>
-	</div>
-      </ul>
-    </div>
-    
-    <div tal:condition="file_errors">
-      <h3 style="color:red">Files with errors:</h3>
-      <ul>
-	<div tal:repeat="file sorted(file_errors.keys())">
-	  <li tal:condition="len(file_errors[file]) == 1">
-	    <b>${file}</b>: ${file_errors[file][0]}
-	  </li>
-	  <div tal:condition="len(file_errors[file]) > 1">
-	    <li>
-	      <b>${file}</b>
-	      <ul>
-		<li tal:repeat="error file_errors[file]">
-		  ${error}
-		</li>
-	      </ul>
-	    </li>
-	  </div>
-	</div>
-      </ul>
-    </div>
-
-    <div tal:condition="failed_from_bad_files">
-      <div tal:repeat="bad_files sorted(failed_from_bad_files.keys(), key=lambda s: sorted(list(s)))">
-	<div tal:replace="structure make_header(bad_files, failed_from_bad_files[bad_files])"></div>
+  <!-- Verification results block -->
+  <div tal:condition="submission.verified_at and submission.had_verification_problems()">
+    <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:yellow">yellow</span> indicates warnings.</p>
+    <ul>
+      <li tal:repeat="file sorted(verification.keys())">
+	<b>${file}</b>
 	<ul>
-	  <li tal:repeat="test sorted(failed_from_bad_files[bad_files])">
-	    <b>${test.name}</b>: ${_fp(test.points)}
+	  <li tal:repeat="warning verification[file][0]">
+	    <span style="color:yellow">${warning}</span>
+	  </li>
+	  <li tal:repeat="error verification[file][1]">
+	    <span style="color:red">${error}</span>
 	  </li>
 	</ul>
-      </div>
-    </div>
-
-    <div tal:replace="structure diff_table"></div>
-
-    <a tal:condition="request.user.is_admin_for_submission(submission)"
-       href="${_R('zipfile_download', submission_id=submission.id)}">
-      Download submission zipfile
-    </a>
+      </li>
+    </ul>
   </div>
+
+  <!-- Tests that are still pending -->
+  <div tal:condition="waiting_to_run">
+    <h3><span style="color:red">Note:</span>The following test groups are still pending:</h3>
+    <ul>
+      <li tal:repeat="testable sorted(waiting_to_run)">
+	${testable.name} ${_fp(testable.points())}
+      </li>
+    </ul>
+  </div>
+
+  <!-- Test case summary block -->
+  <div tal:condition="submission.testables_succeeded()"
+       tal:replace="structure diff_table"></div>
+
+  <!-- For each test group, reasons for failure (if applicable) -->
+  <div tal:repeat="status submission.testable_statuses()">
+    <div tal:condition="status.is_error()">
+      <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
+      <pre tal:condition="status.has_make_output()">
+	${status.testable_results.make_results}
+      </pre>
+      <p tal:condition="not status.has_files()">
+	There are no files in this test group
+      </p>
+      <ul tal:condition="status.has_files()">
+	<li tal:repeat="(file, warnerr) status.sorted_files_to_warnings_errors()">
+	  <b>${file}</b>
+	  <ul>
+	    <li style="color:yellow" tal:repeat="warning warnerr[0]">
+	      ${warning}
+	    </li>
+	    <li style="color:red" tal:repeat="error warnerr[1]">
+	      ${error}
+	    </li>
+	  </ul>
+	</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Show the user any extra filenames that were submitted -->
+  <div tal:condition="extra_files">
+    <hr />
+    <h3>Extra files that were submitted</h3>
+    <ul>
+      <li tal:repeat="file extra_files">
+	${file}
+      </li>
+    </ul>
+  </div>
+
+  <!-- Download a submission -->
+  <a tal:condition="request.user.is_admin_for_submission(submission)"
+     href="${_R('zipfile_download', submission_id=submission.id)}">
+    Download submission zipfile
+  </a>
 </div>
 </div>

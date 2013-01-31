@@ -115,6 +115,16 @@ class ScoreWithExtraMissing(ScoreMaker):
         return from_diffs + self.points_missing
 
 
+class ScoreWithSetTotal(ScoreMaker):
+    """Has a set total that it will use"""
+    def __init__(self, total_score):
+        super(ScoreWithSetTotal, self).__init__()
+        self.total_score = total_score
+
+    def total_score_available(self, diffs):
+        return self.total_score
+
+
 class HTMLDiff(difflib.HtmlDiff):
     FROM_DESC = 'Correct Output'
     TO_DESC = 'Your Output'
@@ -124,8 +134,8 @@ class HTMLDiff(difflib.HtmlDiff):
 <p><a href="#" onclick="showAll('difflib_chg_{0}_top');">Show All</a>
     <a href="#" onclick="hideAll('difflib_chg_{0}_top');">Hide All</a></p>"""
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
-    TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative total score: {0}</li>\
-<li>Tentative percentage score: {1:.2f}</li></ul>\n'
+    TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative total score: {0} / {1}</li>\
+<li>Tentative percentage score: {2:.2f}</li></ul>\n'
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
     NEXT_HREF_TOP = '<a href="#difflib_chg_{0}_top">t</a>'
@@ -291,16 +301,21 @@ class HTMLDiff(difflib.HtmlDiff):
         return self._diff_html.keys()
 
     def tentative_score(self):
-        """Returns total score and score as a percentage"""
+        """Returns:
+        - total score achieved
+        - total score available
+        - total percentage score awarded"""
         calc = self._calc_score
         all_diffs = self._all_diffs()
         return (calc.total_score_achieved(all_diffs),
+                calc.total_score_available(all_diffs),
                 calc.percentage_score_achieved(all_diffs))
 
     def make_summary(self):
-        total, percentage = self.tentative_score()
+        total, available, percentage = self.tentative_score()
         retval = self._make_failed_summary() + self._make_success_summary()
-        retval += self.TENTATIVE_SCORE_BLOCK.format(total, percentage)
+        retval += self.TENTATIVE_SCORE_BLOCK.format(
+            total, available, percentage)
         return retval
 
     def is_legend_needed(self):

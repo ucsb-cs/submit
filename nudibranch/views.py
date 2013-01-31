@@ -17,7 +17,7 @@ from pyramid.view import notfound_view_config, view_config
 from pyramid_mailer import get_mailer
 from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
-from .diff_render import HTMLDiff, ScoreMaker, ScoreWithExtraMissing
+from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
@@ -726,31 +726,6 @@ def to_full_diff(request, test_case_result):
                                           test_case_result.extra))
 
 
-def make_diff_renderer_bad_files(request, submission):
-    # show tests that fail due to missing/broken files
-    # make a mapping of broken files to test cases that break on them
-    failed_from_bad_files = submission.defective_files_to_test_cases()
-    calc_score = ScoreMaker()
-    if failed_from_bad_files:
-        points_missed = sum([test.points
-                             for tests in failed_from_bad_files.itervalues()
-                             for test in tests])
-        # for each test case get the results, putting the diff into the diff
-        # renderer.
-        calc_score = ScoreWithExtraMissing(points_missed)
-
-    diff_renderer = HTMLDiff(calc_score=calc_score)
-
-    # things for which we actually have diffs
-    for test_case_result in submission.test_case_results:
-        full_diff = to_full_diff(request, test_case_result)
-        if not full_diff:
-            return HTTPNotFound()
-        diff_renderer.add_diff(full_diff)
-
-    return (diff_renderer, failed_from_bad_files)
-
-
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -760,6 +735,10 @@ def submission_view(request):
     if not submission:
         return HTTPNotFound()
 
+    project = Project.fetch_by_id(submission.project_id)
+    if not project:
+        return HTTPNotFound()
+
     prev_next_html = None
     if request.user.is_admin_for_submission(submission):
         try:
@@ -767,18 +746,29 @@ def submission_view(request):
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
 
-    diff_renderer, failed_from_bad_files = make_diff_renderer_bad_files(
-        request, submission)
+    diff_renderer = HTMLDiff(
+        calc_score=ScoreWithSetTotal(
+            project.total_available_points()))
+    for test_case_result in submission.test_case_results:
+        full_diff = to_full_diff(request, test_case_result)
+        if not full_diff:
+            return HTTPNotFound()
+        diff_renderer.add_diff(full_diff)
+
+    verification_info = submission.verification_warnings_errors()
+    waiting_to_run = submission.testables_waiting_to_run()
+    testable_statuses = submission.testable_statuses()
+    extra_files = submission.extra_filenames()
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
             'submission': submission,
             '_pd': pretty_date,
             '_fp': format_points,
-            'make_header': problem_files_header,
-            'failed_from_bad_files': failed_from_bad_files,
-            'file_warnings': submission.file_warnings(),
-            'file_errors': submission.file_errors(),
+            'testable_statuses': testable_statuses,
+            'waiting_to_run': waiting_to_run,
+            'verification': verification_info,
+            'extra_files': extra_files,
             'diff_table': diff_renderer.make_whole_file(),
             'prev_next': prev_next_html}
 
