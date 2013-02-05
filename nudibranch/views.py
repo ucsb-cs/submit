@@ -555,7 +555,10 @@ def project_update(request, name, makefile_id):
         transaction.abort()
         return http_conflict(request, message=('Project name already exists '
                                                'for the class'))
-    return http_ok(request, message='Project updated')
+    request.session.flash('Project updated')
+    redir_location = request.route_path('project_edit',
+                                        project_id=project_id)
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='project_item_detailed',
