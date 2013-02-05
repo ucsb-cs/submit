@@ -59,9 +59,9 @@ def project_file_create(request, file_id, filename, project_id, cls,
         return http_bad_request(request, messages=('Invalid {0}'
                                                    .format(exc.message)))
 
-    file = cls(file_id=file_id, filename=filename, project=project)
+    file_ = cls(file_id=file_id, filename=filename, project=project)
     session = Session()
-    session.add(file)
+    session.add(file_)
     try:
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
@@ -72,6 +72,24 @@ def project_file_create(request, file_id, filename, project_id, cls,
     transaction.commit()
     request.session.flash('Added {0} {1}.'.format(cls.__name__, filename))
     return http_created(request, redir_location=redir_location)
+
+
+def project_file_delete(request, attr_name, cls):
+    file_ = cls.fetch_by_id(request.matchdict[attr_name])
+    if not file_:
+        return http_bad_request(request,
+                                messages='Invalid {0}'.format(attr_name))
+    if not request.user.is_admin_for_project(file_.project):
+        return HTTPForbidden()
+    redir_location = request.route_path('project_edit',
+                                        project_id=file_.project.id)
+    request.session.flash('Deleted {0} {1}.'.format(cls.__name__,
+                                                    file_.filename))
+    # Delete the file
+    session = Session()
+    session.delete(file_)
+    transaction.commit()
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='build_file', request_method='PUT',
@@ -87,50 +105,7 @@ def build_file_create(request, build_file_id, filename, project_id):
 @view_config(route_name='build_file_item', request_method='DELETE',
              permission='authenticated', renderer='json')
 def build_file_delete(request):
-    build_file = BuildFile.fetch_by_id(request.matchdict['build_file_id'])
-    if not build_file:
-        return http_bad_request(request, messages='Invalid build_file_id')
-    if not request.user.is_admin_for_project(build_file.project):
-        return HTTPForbidden()
-    project_id = build_file.project.id
-    filename = build_file.filename
-    # Delete the file
-    session = Session()
-    session.delete(build_file)
-    transaction.commit()
-    request.session.flash('Deleted BuildFile {0}.'.format(filename))
-    redir_location = request.route_path('project_edit', project_id=project_id)
-    return http_ok(request, redir_location=redir_location)
-
-
-@view_config(route_name='execution_file', request_method='PUT',
-             permission='authenticated', renderer='json')
-@validated_form(execution_file_id=TextNumber('execution_file_id', min_value=0),
-                filename=String('filename', min_length=1),
-                project_id=TextNumber('project_id', min_value=0))
-def execution_file_create(request, execution_file_id, filename, project_id):
-    return project_file_create(request, execution_file_id, filename,
-                               project_id, ExecutionFile, 'execution_file_id')
-
-
-@view_config(route_name='execution_file_item', request_method='DELETE',
-             permission='authenticated', renderer='json')
-def execution_file_delete(request):
-    execution_file = ExecutionFile.fetch_by_id(
-        request.matchdict['execution_file_id'])
-    if not execution_file:
-        return http_bad_request(request, messages='Invalid execution_file_id')
-    if not request.user.is_admin_for_project(execution_file.project):
-        return HTTPForbidden()
-    project_id = execution_file.project.id
-    filename = execution_file.filename
-    # Delete the file
-    session = Session()
-    session.delete(execution_file)
-    transaction.commit()
-    request.session.flash('Deleted ExecutionFile {0}.'.format(filename))
-    redir_location = request.route_path('project_edit', project_id=project_id)
-    return http_ok(request, redir_location=redir_location)
+    return project_file_delete(request, 'build_file_id', BuildFile)
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',
@@ -186,6 +161,22 @@ def class_view(request):
     if not klass:
         return HTTPNotFound()
     return {'page_title': 'Class Page', 'klass': klass}
+
+
+@view_config(route_name='execution_file', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validated_form(execution_file_id=TextNumber('execution_file_id', min_value=0),
+                filename=String('filename', min_length=1),
+                project_id=TextNumber('project_id', min_value=0))
+def execution_file_create(request, execution_file_id, filename, project_id):
+    return project_file_create(request, execution_file_id, filename,
+                               project_id, ExecutionFile, 'execution_file_id')
+
+
+@view_config(route_name='execution_file_item', request_method='DELETE',
+             permission='authenticated', renderer='json')
+def execution_file_delete(request):
+    return project_file_delete(request, 'execution_file_id', ExecutionFile)
 
 
 @view_config(route_name='file_item', request_method='PUT', renderer='json',
@@ -305,6 +296,12 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
                                         project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
+
+
+@view_config(route_name='file_verifier_item', request_method='DELETE',
+             permission='authenticated', renderer='json')
+def file_verifier_delete(request):
+    return project_file_delete(request, 'file_verifier_id', FileVerifier)
 
 
 @view_config(route_name='file_verifier_item', request_method='POST',

@@ -87,6 +87,7 @@
                      value="${fv.id}" tal:attributes="checked 'checked' if fv in testable.file_verifiers else None" />
               <label for="testable_fv_${repeat.testable.index}_${repeat.fv.index}">${fv.filename} <span tal:condition="fv.optional">[optional]</span></label>
               (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
+              (<span data-url="${_R('file_verifier_item', file_verifier_id=fv.id)}" class="delete_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
           </fieldset>
@@ -155,6 +156,7 @@
                      value="${fv.id}" />
               <label for="testable_fv_new_${repeat.fv.index}">${fv.filename} <span tal:condition="fv.optional">[optional]</span></label>
               (<span class="faulink" onclick="$('#file_verifier_${repeat.fv.index}').dialog('open');">edit</span>)
+              (<span data-url="${_R('file_verifier_item', file_verifier_id=fv.id)}" class="delete_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#file_verifier_new').dialog('open');">define new expected file</span>
           </fieldset>
