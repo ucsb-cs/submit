@@ -10,7 +10,8 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, RegexString, TextNumber,
                                        WhiteSpaceString, validated_form)
-from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
+from pyramid.httpexceptions import (HTTPBadRequest, HTTPForbidden, HTTPFound,
+                                    HTTPNotFound)
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
@@ -177,11 +178,12 @@ def file_create(request, b64data):
 def file_item_view(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
-        return http_bad_request(request, 'Invalid sha1sum')
+        return HTTPBadRequest('Invalid sha1sum')
     file = File.fetch_by(sha1=sha1sum)
-    # return not found when the file has not been uploaded by the user
-    if not file or file not in request.user.files:
+    if not file:
         return HTTPNotFound()
+    elif not file.has_access(request.user):
+        return HTTPForbidden()
     source = File.file_path(request.registry.settings['file_directory'],
                             sha1sum)
     contents = open(source).read()
@@ -195,9 +197,10 @@ def file_item_info(request):
     if len(sha1sum) != 40:
         return http_bad_request(request, 'Invalid sha1sum')
     file = File.fetch_by(sha1=sha1sum)
-    # return not found when the file has not been uploaded by the user
-    if not file or file not in request.user.files:
+    if not file:
         return HTTPNotFound()
+    elif not file.has_access(request.user):
+        return HTTPForbidden()
     return {'file_id': file.id}
 
 

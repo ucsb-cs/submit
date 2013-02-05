@@ -138,6 +138,17 @@ class File(BasicBase, Base):
         with open(path, 'wb') as fp:
             fp.write(data)
 
+    def has_access(self, user):
+        # Perform simplest checks first
+        if user.is_admin or self in user.files:
+            return True
+        elif user.admin_for:  # Begin more expensive comparisions
+            makefile_classes = set(x.klass for x in self.makefile_for_projects)
+            if makefile_classes.intersection(user.admin_for):
+                return True
+            # TODO: Compare other project files
+        return False
+
 
 class FileVerifier(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
@@ -234,7 +245,7 @@ class Project(BasicBase, Base):
                                    cascade='all, delete-orphan')
     file_verifiers = relationship('FileVerifier', backref='project',
                                   cascade='all, delete-orphan')
-    makefile = relationship(File)
+    makefile = relationship(File, backref='makefile_for_projects')
     makefile_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     name = Column(Unicode, nullable=False)
     submissions = relationship('Submission', backref='project',
