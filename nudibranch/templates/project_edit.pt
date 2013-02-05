@@ -5,11 +5,10 @@
     $(function() {
         $(".dialog").dialog({autoOpen: false});
         $("#testable_tab").tabs();
-        $(".delete_build_file").on("click", function(event) {
+        $(".delete_file").on("click", function(event) {
             var checkbox = event.target.parentNode.firstElementChild;
             var filename = checkbox.nextElementSibling.textContent;
             var url = event.target.getAttribute('data-url');
-            console.log(url);
             if (confirm("Are you sure you want to delete " + filename + "?")) {
                 $.ajax({url: url, type: 'delete', complete: handle_response});
             }
@@ -63,7 +62,7 @@
                      id="testable_bf_${repeat.testable.index}_${repeat.bf.index}"
                      value="${bf.id}" tal:attributes="checked 'checked' if bf in testable.build_files else None" />
               <label for="testable_bf_${repeat.testable.index}_${repeat.bf.index}">${bf.filename}</label>
-              (<span data-url="${_R('build_file_item', build_file_id=bf.id)}" class="delete_build_file faulink">delete</span>)
+              (<span data-url="${_R('build_file_item', build_file_id=bf.id)}" class="delete_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
           </fieldset>
@@ -75,6 +74,7 @@
                      id="testable_ef_${repeat.testable.index}_${repeat.ef.index}"
                      value="${ef.id}" tal:attributes="checked 'checked' if ef in testable.execution_files else None" />
               <label for="testable_ef_${repeat.testable.index}_${repeat.ef.index}">${ef.filename}</label>
+              (<span data-url="${_R('execution_file_item', execution_file_id=ef.id)}" class="delete_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#execution_file_new').dialog('open');">new execution file</span>
           </fieldset>
@@ -131,7 +131,7 @@
                      id="testable_bf_new_${repeat.bf.index}"
                      value="${bf.id}" />
               <label for="testable_bf_new_${repeat.bf.index}">${bf.filename}</label>
-              (<span data-url="${_R('build_file_item', build_file_id=bf.id)}" class="delete_build_file faulink">delete</span>)
+              (<span data-url="${_R('build_file_item', build_file_id=bf.id)}" class="delete_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
           </fieldset>
@@ -142,6 +142,7 @@
                      id="testable_ef_new_${repeat.ef.index}"
                      value="${ef.id}" />
               <label for="testable_ef_new_${repeat.ef.index}">${ef.filename}</label>
+              (<span data-url="${_R('execution_file_item', execution_file_id=ef.id)}" class="delete_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#execution_file_new').dialog('open');">new execution file</span>
           </fieldset>

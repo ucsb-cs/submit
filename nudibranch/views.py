@@ -98,8 +98,8 @@ def build_file_delete(request):
     session = Session()
     session.delete(build_file)
     transaction.commit()
-    redir_location = request.route_path('project_edit', project_id=project_id)
     request.session.flash('Deleted BuildFile {0}.'.format(filename))
+    redir_location = request.route_path('project_edit', project_id=project_id)
     return http_ok(request, redir_location=redir_location)
 
 
@@ -111,6 +111,26 @@ def build_file_delete(request):
 def execution_file_create(request, execution_file_id, filename, project_id):
     return project_file_create(request, execution_file_id, filename,
                                project_id, ExecutionFile, 'execution_file_id')
+
+
+@view_config(route_name='execution_file_item', request_method='DELETE',
+             permission='authenticated', renderer='json')
+def execution_file_delete(request):
+    execution_file = ExecutionFile.fetch_by_id(
+        request.matchdict['execution_file_id'])
+    if not execution_file:
+        return http_bad_request(request, messages='Invalid execution_file_id')
+    if not request.user.is_admin_for_project(execution_file.project):
+        return HTTPForbidden()
+    project_id = execution_file.project.id
+    filename = execution_file.filename
+    # Delete the file
+    session = Session()
+    session.delete(execution_file)
+    transaction.commit()
+    request.session.flash('Deleted ExecutionFile {0}.'.format(filename))
+    redir_location = request.route_path('project_edit', project_id=project_id)
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',

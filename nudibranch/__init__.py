@@ -25,6 +25,8 @@ def add_routes(config):
     config.add_route('class_join_list', '/class_join_list')
     config.add_route('class_item', '/class/{class_name}')
     config.add_route('execution_file', '/execution_file')
+    config.add_route('execution_file_item',
+                     '/execution_file/{execution_file_id}')
     config.add_route('file', '/file')
     config.add_route('file_item', '/file/{sha1sum}')
     config.add_route('file_item_info', '/file/{sha1sum}/info')
