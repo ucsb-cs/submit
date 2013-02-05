@@ -2,6 +2,7 @@ from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
 from pyramid.security import ALL_PERMISSIONS, Allow, Authenticated
+from pyramid.session import UnencryptedCookieSessionFactoryConfig
 from sqlalchemy import engine_from_config
 from .models import configure_sql, create_schema, populate_database
 from .security import get_user, group_finder
@@ -19,6 +20,7 @@ def add_routes(config):
     # Application routes
     config.add_route('home', '/')
     config.add_route('build_file', '/build_file')
+    config.add_route('build_file_item', '/build_file/{build_file_id}')
     config.add_route('class', '/class')
     config.add_route('class_join_list', '/class_join_list')
     config.add_route('class_item', '/class/{class_name}')
@@ -75,8 +77,10 @@ def main(global_config, **settings):
                                          callback=group_finder,
                                          hashalg='sha512')
     author = ACLAuthorizationPolicy()
+    session_factory = UnencryptedCookieSessionFactoryConfig('<COOKIE_SECRET>')
     config = Configurator(settings=settings, authentication_policy=authen,
-                          authorization_policy=author, root_factory=Root)
+                          authorization_policy=author, root_factory=Root,
+                          session_factory=session_factory)
     config.include('pyramid_mailer')
     config.add_static_view('static', 'static', cache_max_age=3600)
     # Add user attribute to request

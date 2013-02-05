@@ -43,8 +43,8 @@ def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
     :param attr_name: The name of the attribute for exception purposes
     :param verification_list: If provided, a list of acceptable instances
 
-    Raise exception http_bad_request exception using attr_name if any do not
-    exist, or are not present in the verification_list.
+    Raise InvalidId exception using attr_name if any do not
+        exist, or are not present in the verification_list.
 
     """
     if not item_ids:

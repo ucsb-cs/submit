@@ -322,7 +322,7 @@ class FileTests(BaseAPITest):
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': sha1sum})
         info = file_item_info(request)
-        self.assertIsInstance(info, HTTPNotFound)
+        self.assertIsInstance(info, HTTPForbidden)
 
     def test_view_found(self):
         from nudibranch.views import file_item_info
@@ -880,9 +880,8 @@ class SubmissionTests(BaseAPITest):
         request = self.make_request(user=user, json_body=json_data)
         info = submission_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual(1, len(info['messages']))
         self.assertEqual('# file_ids must match # filenames',
-                         info['messages'][0])
+                         info['messages'])
 
     def test_create_valid(self):
         import nudibranch.views

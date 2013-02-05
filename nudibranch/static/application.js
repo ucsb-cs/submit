@@ -33,7 +33,10 @@ function handle_response(xhr) {
     data = JSON.parse(xhr.responseText);
     switch(xhr.status) {
     case 200:  // Ok
-        alert(data['message'])
+        if (data['redir_location'])
+            window.location = data['redir_location'];
+        else
+            alert(data['message'])
         break;
     case 201:  // Created
         window.location = data['redir_location'];

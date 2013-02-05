@@ -3,12 +3,27 @@
 
   <script>
     $(function() {
-      $(".dialog").dialog({autoOpen: false});
-      $("#testable_tab").tabs();
+        $(".dialog").dialog({autoOpen: false});
+        $("#testable_tab").tabs();
+        $(".delete_build_file").on("click", function(event) {
+            var checkbox = event.target.parentNode.firstElementChild;
+            var filename = checkbox.nextElementSibling.textContent;
+            var url = event.target.getAttribute('data-url');
+            console.log(url);
+            if (confirm("Are you sure you want to delete " + filename + "?")) {
+                $.ajax({url: url, type: 'delete', complete: handle_response});
+            }
+        });
     });
   </script>
 
   <div class="header">${page_title}</div>
+
+  <fieldset tal:condition="flash">
+    <legend>Status Messages</legend>
+    <p tal:repeat="msg flash">${msg}</p>
+  </fieldset>
+
   <form id="project_form" name="input" action="${action}"
         onsubmit="return form_request(this, 'POST', true);">
     <fieldset>
@@ -48,6 +63,7 @@
                      id="testable_bf_${repeat.testable.index}_${repeat.bf.index}"
                      value="${bf.id}" tal:attributes="checked 'checked' if bf in testable.build_files else None" />
               <label for="testable_bf_${repeat.testable.index}_${repeat.bf.index}">${bf.filename}</label>
+              (<span data-url="${_R('build_file_item', build_file_id=bf.id)}" class="delete_build_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
           </fieldset>
@@ -115,6 +131,7 @@
                      id="testable_bf_new_${repeat.bf.index}"
                      value="${bf.id}" />
               <label for="testable_bf_new_${repeat.bf.index}">${bf.filename}</label>
+              (<span data-url="${_R('build_file_item', build_file_id=bf.id)}" class="delete_build_file faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
           </fieldset>

@@ -39,7 +39,7 @@ def project_file_create(request, file_id, filename, project_id, cls,
                         attr_name):
     project = Project.fetch_by_id(project_id)
     if not project:
-        return http_bad_request(request, 'Invalid project_id')
+        return http_bad_request(request, messages='Invalid project_id')
 
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
@@ -48,14 +48,16 @@ def project_file_create(request, file_id, filename, project_id, cls,
     if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
                                                   filename=filename,
                                                   optional=False):
-        return http_bad_request(request, 'A required expected file already '
-                                'exists with that name.')
+        return http_bad_request(request, messages=('A required expected file '
+                                                   'already exists with that '
+                                                   'name.'))
 
     try:
         kwargs = {attr_name: file_id}
         verify_user_file_ids(request.user, **kwargs)
     except InvalidId as exc:
-        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+        return http_bad_request(request, messages=('Invalid {0}'
+                                                   .format(exc.message)))
 
     file = cls(file_id=file_id, filename=filename, project=project)
     session = Session()
@@ -64,10 +66,11 @@ def project_file_create(request, file_id, filename, project_id, cls,
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'That filename already exists for the project')
+        return http_conflict(request, message=('That filename already exists '
+                                               'for the project'))
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
+    request.session.flash('Added {0} {1}.'.format(cls.__name__, filename))
     return http_created(request, redir_location=redir_location)
 
 
@@ -79,6 +82,25 @@ def project_file_create(request, file_id, filename, project_id, cls,
 def build_file_create(request, build_file_id, filename, project_id):
     return project_file_create(request, build_file_id, filename, project_id,
                                BuildFile, 'build_file_id')
+
+
+@view_config(route_name='build_file_item', request_method='DELETE',
+             permission='authenticated', renderer='json')
+def build_file_delete(request):
+    build_file = BuildFile.fetch_by_id(request.matchdict['build_file_id'])
+    if not build_file:
+        return http_bad_request(request, messages='Invalid build_file_id')
+    if not request.user.is_admin_for_project(build_file.project):
+        return HTTPForbidden()
+    project_id = build_file.project.id
+    filename = build_file.filename
+    # Delete the file
+    session = Session()
+    session.delete(build_file)
+    transaction.commit()
+    redir_location = request.route_path('project_edit', project_id=project_id)
+    request.session.flash('Deleted BuildFile {0}.'.format(filename))
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='execution_file', request_method='PUT',
@@ -102,8 +124,8 @@ def class_create(request, name):
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'Class \'{0}\' already exists'.format(name))
+        return http_conflict(request, message=('Class \'{0}\' already exists'
+                                               .format(name)))
     return http_created(request, redir_location=request.route_path('class'))
 
 
@@ -156,7 +178,7 @@ def file_create(request, b64data):
     expected_sha1 = sha1(data).hexdigest()
     if sha1sum != expected_sha1:
         msg = 'sha1sum does not match expected: {0}'.format(expected_sha1)
-        return http_bad_request(request, msg)
+        return http_bad_request(request, messages=msg)
 
     # fetch or create (and save to disk) the file
     base_path = request.registry.settings['file_directory']
@@ -195,7 +217,7 @@ def file_item_view(request):
 def file_item_info(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
-        return http_bad_request(request, 'Invalid sha1sum')
+        return http_bad_request(request, messages='Invalid sha1sum')
     file = File.fetch_by(sha1=sha1sum)
     if not file:
         return HTTPNotFound()
@@ -218,17 +240,22 @@ def file_item_info(request):
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, optional, project_id, warning_regex):
     if max_size is not None and max_size < min_size:
-        return http_bad_request(request, 'min_size cannot be > max_size')
+        return http_bad_request(request,
+                                messages='min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
-        return http_bad_request(request, 'min_lines cannot be > max_lines')
+        return http_bad_request(request,
+                                messages='min_lines cannot be > max_lines')
     if min_size < min_lines:
-        return http_bad_request(request, 'min_lines cannot be > min_size')
+        return http_bad_request(request,
+                                messages='min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
-        return http_bad_request(request, 'max_lines cannot be > max_size')
+        return http_bad_request(request,
+                                messages='max_lines cannot be > max_size')
 
     project = Project.fetch_by_id(project_id)
     if not project:
-        return http_bad_request(request, 'Invalid project_id')
+        return http_bad_request(request,
+                                messages='Invalid project_id')
 
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
@@ -236,9 +263,10 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     # Check for build-file conflict
     if not optional and BuildFile.fetch_by(project_id=project.id,
                                            filename=filename):
-        return http_bad_request(request, 'A build file already exists with '
-                                'that name. Provide a different name, or mark '
-                                'as optional.')
+        return http_bad_request(request, messages=('A build file already '
+                                                   'exists with that name. '
+                                                   'Provide a different name, '
+                                                   'or mark as optional.'))
 
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
@@ -250,8 +278,8 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'That filename already exists for the project')
+        return http_conflict(request, message=('That filename already exists '
+                                               'for the project'))
 
     redir_location = request.route_path('project_edit',
                                         project_id=project.id)
@@ -273,18 +301,23 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
                          max_lines, optional, warning_regex):
     # Additional verification
     if max_size is not None and max_size < min_size:
-        return http_bad_request(request, 'min_size cannot be > max_size')
+        return http_bad_request(request,
+                                messages='min_size cannot be > max_size')
     if max_lines is not None and max_lines < min_lines:
-        return http_bad_request(request, 'min_lines cannot be > max_lines')
+        return http_bad_request(request,
+                                messages='min_lines cannot be > max_lines')
     if min_size < min_lines:
-        return http_bad_request(request, 'min_lines cannot be > min_size')
+        return http_bad_request(request,
+                                messages='min_lines cannot be > min_size')
     if max_size is not None and max_lines is not None and max_size < max_lines:
-        return http_bad_request(request, 'max_lines cannot be > max_size')
+        return http_bad_request(request,
+                                messages='max_lines cannot be > max_size')
 
     file_verifier_id = request.matchdict['file_verifier_id']
     file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
     if not file_verifier:
-        return http_bad_request(request, 'Invalid file_verifier_id')
+        return http_bad_request(request,
+                                messages='Invalid file_verifier_id')
 
     if not request.user.is_admin_for_file_verifier(file_verifier):
         return HTTPForbidden()
@@ -292,15 +325,16 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
     # Check for build-file conflict
     if not optional and BuildFile.fetch_by(project_id=file_verifier.project_id,
                                            filename=filename):
-        return http_bad_request(request, 'A build file already exists with '
-                                'that name. Provide a different name, or mark '
-                                'as optional.')
+        return http_bad_request(request, messages=('A build file already '
+                                                   'exists with that name. '
+                                                   'Provide a different name, '
+                                                   'or mark as optional.'))
 
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
                                 max_lines=max_lines, optional=bool(optional),
                                 warning_regex=warning_regex):
-        return http_ok(request, 'Nothing to change')
+        return http_ok(request, message='Nothing to change')
 
     session = Session()
     session.add(file_verifier)
@@ -308,9 +342,9 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'That filename already exists for the project')
-    return http_ok(request, 'updated')
+        return http_conflict(request, message=('That filename already exists '
+                                               'for the project'))
+    return http_ok(request, message='updated')
 
 
 @view_config(route_name='home', renderer='templates/home.pt',
@@ -328,10 +362,10 @@ def home(request):
 @validated_form(username=String('email'))
 def password_reset_create(request, username):
     if username == 'admin':
-        return http_conflict(request, 'Hahaha, nice try!')
+        return http_conflict(request, message='Hahaha, nice try!')
     user = User.fetch_by(username=username)
     if not user:
-        return http_conflict(request, 'Invalid email')
+        return http_conflict(request, message='Invalid email')
     password_reset = PasswordReset.generate(user)
 
     failure_message = 'You were already sent a password reset email.'
@@ -343,7 +377,7 @@ def password_reset_create(request, username):
             session.flush()
         except IntegrityError:
             transaction.abort()
-            return http_conflict(request, failure_message)
+            return http_conflict(request, message=failure_message)
         site_name = request.registry.settings['site_name']
         reset_url = request.route_url('password_reset_item',
                                       token=password_reset.get_token())
@@ -354,9 +388,9 @@ def password_reset_create(request, username):
         get_mailer(request).send(message)
         transaction.commit()
         return http_ok(request,
-                       'A password reset link will be emailed to you.')
+                       message='A password reset link will be emailed to you.')
     else:
-        return http_conflict(request, failure_message)
+        return http_conflict(request, message=failure_message)
 
 
 @view_config(route_name='password_reset',
@@ -374,14 +408,14 @@ def password_reset_edit(request):
 def password_reset_item(request, username, password):
     pr = PasswordReset.fetch_by(reset_token=request.matchdict['token'])
     if not pr or pr.user.username != username:
-        return http_conflict(request, 'The reset token and username '
-                             'combination is not valid.')
+        return http_conflict(request, message=('The reset token and username '
+                                               'combination is not valid.'))
     session = Session()
     pr.user.password = password
     session.add(pr.user)
     session.delete(pr)
     transaction.commit()
-    return http_ok(request, 'Your password was changed successfully.')
+    return http_ok(request, message='Your password was changed successfully.')
 
 
 @view_config(route_name='password_reset_item',
@@ -405,7 +439,7 @@ def password_reset_edit_item(request):
 def project_create(request, name, class_id, makefile_id):
     klass = Class.fetch_by_id(class_id)
     if not klass:
-        return http_bad_request(request, 'Invalid class_id')
+        return http_bad_request(request, messages='Invalid class_id')
 
     if not request.user.is_admin_for_class(klass):
         return HTTPForbidden()
@@ -413,7 +447,8 @@ def project_create(request, name, class_id, makefile_id):
     try:
         verify_user_file_ids(request.user, makefile_id=makefile_id)
     except InvalidId as exc:
-        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+        return http_bad_request(request,
+                                messages='Invalid {0}'.format(exc.message))
     project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
     session = Session()
     session.add(project)
@@ -421,8 +456,8 @@ def project_create(request, name, class_id, makefile_id):
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'Project name already exists for the class')
+        return http_conflict(request, message=('Project name already exists '
+                                               'for the class'))
 
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
@@ -444,9 +479,8 @@ def project_edit(request):
     action = request.route_path('project_item_summary',
                                 class_name=project.klass.name,
                                 project_id=project.id)
-    return {'page_title': 'Edit Project',
-            'project': project,
-            'action': action}
+    return {'page_title': 'Edit Project', 'project': project, 'action': action,
+            'flash': request.session.pop_flash()}
 
 
 @view_config(route_name='project_new',
@@ -475,21 +509,23 @@ def project_update(request, name, makefile_id):
     project_id = request.matchdict['project_id']
     project = Project.fetch_by_id(project_id)
     if not project:
-        return http_bad_request(request, 'Invalid project_id')
+        return http_bad_request(request, messages='Invalid project_id')
 
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
 
     class_name = request.matchdict['class_name']
     if project.klass.name != class_name:
-        return http_bad_request(request, 'Inconsistent class specification')
+        return http_bad_request(request,
+                                messages='Inconsistent class specification')
     try:
         verify_user_file_ids(request.user, makefile_id=makefile_id)
     except InvalidId as exc:
-        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+        return http_bad_request(request,
+                                messages='Invalid {0}'.format(exc.message))
 
     if not project.update(name=name, makefile_id=makefile_id):
-        return http_ok(request, 'Nothing to change')
+        return http_ok(request, message='Nothing to change')
 
     session = Session()
     session.add(project)
@@ -497,9 +533,9 @@ def project_update(request, name, makefile_id):
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'Project name already exists for the class')
-    return http_ok(request, 'Project updated')
+        return http_conflict(request, message=('Project name already exists '
+                                               'for the class'))
+    return http_ok(request, message='Project updated')
 
 
 @view_config(route_name='project_item_detailed',
@@ -593,9 +629,9 @@ def session_create(request, username, password):
         headers = remember(request, user.id)
         url = request.route_path('user_item',
                                  username=user.username)
-        retval = http_created(request, redir_location=url, headers=headers)
+        retval = http_created(request, headers=headers, redir_location=url)
     else:
-        retval = http_conflict(request, 'Invalid login')
+        retval = http_conflict(request, message='Invalid login')
     return retval
 
 
@@ -604,8 +640,8 @@ def session_create(request, username, password):
 @validated_form()
 def session_destroy(request):
     headers = forget(request)
-    return http_gone(request, redir_location=request.route_path('home'),
-                     headers=headers)
+    return http_gone(request, headers=headers,
+                     redir_location=request.route_path('home'))
 
 
 @view_config(route_name='session', renderer='templates/login.pt',
@@ -626,7 +662,8 @@ def session_edit(request):
 def submission_create(request, project_id, file_ids, filenames):
     # Additional input verification
     if len(file_ids) != len(filenames):
-        return http_bad_request(request, ['# file_ids must match # filenames'])
+        return http_bad_request(request,
+                                messages='# file_ids must match # filenames')
 
     # Verify user permission on project and files
     session = Session()
@@ -639,7 +676,7 @@ def submission_create(request, project_id, file_ids, filenames):
         if file_id not in user_file_ids:
             msgs.append('Invalid file "{0}"'.format(filenames[i]))
     if msgs:
-        return http_bad_request(request, msgs)
+        return http_bad_request(request, messages=msgs)
 
     # Make a submission
     submission = Submission(project_id=project.id, user_id=request.user.id)
@@ -788,7 +825,7 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
                      testable_id):
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
-        return http_bad_request(request, 'Invalid testable_id')
+        return http_bad_request(request, messages='Invalid testable_id')
 
     if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
@@ -797,7 +834,8 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
         verify_user_file_ids(request.user, expected_id=expected_id,
                              stdin_id=stdin_id)
     except InvalidId as exc:
-        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+        return http_bad_request(request,
+                                messages='Invalid {0}'.format(exc.message))
     test_case = TestCase(name=name, args=args, expected_id=expected_id,
                          points=points, stdin_id=stdin_id,
                          testable=testable)
@@ -807,8 +845,8 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'That name already exists for the testable')
+        return http_conflict(request, message=('That name already exists for '
+                                               'the testable'))
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
     transaction.commit()
@@ -826,7 +864,7 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
     test_case_id = request.matchdict['test_case_id']
     test_case = TestCase.fetch_by_id(test_case_id)
     if not test_case:
-        return http_bad_request(request, 'Invalid test_case_id')
+        return http_bad_request(request, messages='Invalid test_case_id')
 
     if not request.user.is_admin_for_test_case(test_case):
         return HTTPForbidden()
@@ -835,20 +873,21 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
         verify_user_file_ids(request.user, expected_id=expected_id,
                              stdin_id=stdin_id)
     except InvalidId as exc:
-        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+        return http_bad_request(request,
+                                messages='Invalid {0}'.format(exc.message))
 
     if not test_case.update(name=name, args=args, expected_id=expected_id,
                             points=points, stdin_id=stdin_id):
-        return http_ok(request, 'Nothing to change')
+        return http_ok(request, message='Nothing to change')
     session = Session()
     session.add(test_case)
     try:
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'That name already exists for the project')
-    return http_ok(request, 'Test case updated')
+        return http_conflict(request, message=('That name already exists for '
+                                               'the project'))
+    return http_ok(request, message='Test case updated')
 
 
 @view_config(route_name='testable', request_method='PUT',
@@ -870,12 +909,13 @@ def testable_create(request, name, make_target, executable, build_file_ids,
                     execution_file_ids, file_verifier_ids, project_id):
     project = Project.fetch_by_id(project_id)
     if not project:
-        return http_bad_request(request, 'Invalid project_id')
+        return http_bad_request(request, messages='Invalid project_id')
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
     if make_target and not project.makefile:
-        return http_bad_request(request, 'make_target cannot be specified '
-                                'without a make file')
+        return http_bad_request(request, messages=('make_target cannot be '
+                                                   'specified without a make '
+                                                   'file'))
 
     try:
         # Verify the ids actually exist and are associated with the project
@@ -888,7 +928,8 @@ def testable_create(request, name, make_target, executable, build_file_ids,
                                            'file_verifier_id',
                                            project.file_verifiers)
     except InvalidId as exc:
-        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+        return http_bad_request(request,
+                                messages='Invalid {0}'.format(exc.message))
 
     testable = Testable(name=name, make_target=make_target,
                         executable=executable, project=project)
@@ -902,8 +943,8 @@ def testable_create(request, name, make_target, executable, build_file_ids,
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'That name already exists for the project')
+        return http_conflict(request, message=('That name already exists for '
+                                               'the project'))
 
     redir_location = request.route_path('project_edit',
                                         project_id=project_id)
@@ -929,12 +970,13 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
     testable_id = request.matchdict['testable_id']
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
-        return http_bad_request(request, 'Invalid testable_id')
+        return http_bad_request(request, messages='Invalid testable_id')
     if not request.user.is_admin_for_testable(testable):
         return HTTPForbidden()
     if make_target and not testable.project.makefile:
-        return http_bad_request(request, 'make_target cannot be specified '
-                                'without a make file')
+        return http_bad_request(request, messages=('make_target cannot be '
+                                                   'specified without a make '
+                                                   'file'))
 
     try:
         # Verify the ids actually exist and are associated with the project
@@ -947,7 +989,8 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
                                            'file_verifier_id',
                                            testable.project.file_verifiers)
     except InvalidId as exc:
-        return http_bad_request(request, 'Invalid {0}'.format(exc.message))
+        return http_bad_request(request,
+                                messages='Invalid {0}'.format(exc.message))
 
     if not testable.update(_ignore_order=True, name=name,
                            make_target=make_target,
@@ -955,7 +998,7 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
                            build_files=build_files,
                            execution_files=execution_files,
                            file_verifiers=file_verifiers):
-        return http_ok(request, 'Nothing to change')
+        return http_ok(request, message='Nothing to change')
 
     session = Session()
     session.add(testable)
@@ -963,9 +1006,9 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'That name already exists for the project')
-    return http_ok(request, 'Testable updated')
+        return http_conflict(request, message=('That name already exists for '
+                                               'the project'))
+    return http_ok(request, message='Testable updated')
 
 
 @view_config(route_name='user_class_join', request_method='POST',
@@ -975,10 +1018,10 @@ def user_class_join(request):
     class_name = request.matchdict['class_name']
     username = request.matchdict['username']
     if request.user.username != username:
-        return http_bad_request(request, 'Invalid user')
+        return http_bad_request(request, messages='Invalid user')
     klass = Class.fetch_by(name=class_name)
     if not klass:
-        return http_bad_request(request, 'Invalid class')
+        return http_bad_request(request, messages='Invalid class')
     request.user.classes.append(klass)
     session = Session()
     session.add(request.user)
@@ -1002,7 +1045,7 @@ def user_create(request, name, username, password, admin_for):
         for class_id in admin_for:
             klass = Class.fetch_by_id(class_id)
             if klass is None:
-                return http_bad_request(request, 'Nonexistent class')
+                return http_bad_request(request, messages='Nonexistent class')
             asking_classes.append(klass)
 
     # make sure we can actually grant the permissions we
@@ -1012,7 +1055,8 @@ def user_create(request, name, username, password, admin_for):
         asking_permission_for = frozenset(asking_classes)
         if len(asking_permission_for - can_add_permission_for) > 0:
             return http_bad_request(
-                request, "Don't have permissions to add permissions")
+                request, messages=('Insufficient permissions to add '
+                                   'permissions.'))
 
     session = Session()
     user = User(name=name, username=username, password=password,
@@ -1023,8 +1067,8 @@ def user_create(request, name, username, password, admin_for):
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request,
-                             'User \'{0}\' already exists'.format(username))
+        return http_conflict(request, message=('User \'{0}\' already exists'
+                                               .format(username)))
     redir_location = request.route_path('session',
                                         _query={'username': username})
     return http_created(request, redir_location=redir_location)
