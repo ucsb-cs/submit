@@ -39,7 +39,7 @@
 
   <!-- Tests that are still pending -->
   <div tal:condition="waiting_to_run">
-    <h3><span style="color:red">Note:</span>The following test groups are still pending:</h3>
+    <h3><span style="color:red">Note:</span>The following test groups are still pending: ${_fp(sum([t.points() for t in waiting_to_run]))}</h3>
     <ul>
       <li tal:repeat="testable sorted(waiting_to_run)">
 	${testable.name} ${_fp(testable.points())}
