@@ -287,8 +287,8 @@ class Project(BasicBase, Base):
         file_mapping = dict([(x.filename, x) for x in submission.files])
 
         # Create a list of in-use file verifiers
-        file_verifiers = [fv for testable in self.testables
-                          for fv in testable.file_verifiers]
+        file_verifiers = set(fv for testable in self.testables
+                             for fv in testable.file_verifiers)
 
         for fv in file_verifiers:
             name = fv.filename
@@ -318,6 +318,10 @@ class Project(BasicBase, Base):
             elif testable.file_verifiers:
                 retval.append(testable)
 
+        # Reset existing attributes
+        submission.test_case_results = []
+        submission.testable_results = []
+        # Set new information
         submission.verification_results = results
         submission.verified_at = func.now()
         return retval
@@ -345,9 +349,11 @@ class Project(BasicBase, Base):
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submissions')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
-    test_case_results = relationship('TestCaseResult', backref='submission')
+    test_case_results = relationship('TestCaseResult', backref='submission',
+                                     cascade='all, delete-orphan')
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    testable_results = relationship('TestableResult', backref='submission')
+    testable_results = relationship('TestableResult', backref='submission',
+                                    cascade='all, delete-orphan')
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
@@ -717,6 +723,16 @@ class TestableResult(BasicBase, Base):
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            nullable=False)
     testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
+
+    @staticmethod
+    def fetch_or_create(make_results, **kwargs):
+        tr = TestableResult.fetch_by(**kwargs)
+        if tr:
+            tr.created_at = func.now()
+        else:
+            tr = TestableResult(**kwargs)
+        tr.make_results = make_results
+        return tr
 
 
 class User(UserMixin, BasicBase, Base):

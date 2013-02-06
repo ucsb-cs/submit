@@ -59,7 +59,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
 
     # Store Makefile results
     if os.path.isfile('make'):
-        testable_result = TestableResult(
+        testable_result = TestableResult.fetch_or_create(
             testable=testable, submission=submission,
             make_results=open('make').read().decode('utf-8'))
         session.add(testable_result)
@@ -87,7 +87,11 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
                 test_case_result = TestCaseResult(**results[test_case.id])
             compute_diff(test_case, test_case_result)
             session.add(test_case_result)
-    transaction.commit()
+    try:
+        transaction.commit()
+    except:
+        transaction.abort()
+        raise
 
 
 def compute_diff(test_case, test_case_result):
