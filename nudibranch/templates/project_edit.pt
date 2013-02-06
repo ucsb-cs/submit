@@ -113,7 +113,7 @@
         <legend>Test Cases</legend>
         <ul>
           <li tal:repeat="tc sorted(testable.test_cases, key=lambda x: x.name)">
-            <span class="faulink" onclick="$('#testable_${testable.id}_tc_${tc.id}').dialog('open');">${tc.name}</span>
+            <span class="faulink" onclick="$('#update_tc_${tc.id}').dialog('open');">${tc.name}</span>
           </li>
           <li>(<span class="faulink" onclick="$('#testable_${testable.id}_tc_new').dialog('open');">add new test case</span>)</li>
         </ul>
@@ -277,10 +277,7 @@
   </div>
 
   <div tal:repeat="testable project.testables">
-    <div tal:repeat="tc testable.test_cases" class="dialog"
-         id="update_tc_${tc.id}"
-         title="Update test case ${tc.name}">
-
+    <div tal:repeat="tc testable.test_cases" class="dialog" id="update_tc_${tc.id}" title="Update test case ${tc.name}">
       <form name="test_case"
             action="${_R('test_case_item', test_case_id=tc.id)}"
             onsubmit="return form_request(this, 'POST', true);">
