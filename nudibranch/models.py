@@ -193,6 +193,10 @@ class VerificationResults(object):
         self._extra_filenames = frozenset()
         self._missing_to_testable_ids = {}
 
+    def __str__(self):
+        import pprint
+        return pprint.pformat(vars(self))
+
     def set_errors_for_filename(self, errors, filename):
         self._errors_by_filename[filename] = errors
 

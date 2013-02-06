@@ -10,6 +10,11 @@
 
   <p>Submitted ${_pd(submission.created_at)}</p>
 
+  <div tal:condition="request.user.is_admin">
+    <h3>Admin only debugging information</h3>
+    <pre>${submission.verification_results}</pre>
+  </div>
+
   <p tal:condition="not submission.verified_at">
     The submission is still being verified.
   </p>
