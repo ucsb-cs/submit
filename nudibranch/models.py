@@ -637,7 +637,7 @@ class TestableStatus(object):
         if self.had_build_errors():
             import copy
             self.warn_err = copy.copy(self.warn_err)
-            for file, (warnings, errors) in self.warn_err:
+            for file, (warnings, errors) in self.warn_err.items():
                 new_err = ['Build failed (see make output)'] + errors
                 self.warn_err[file] = (warnings, new_err)
 
