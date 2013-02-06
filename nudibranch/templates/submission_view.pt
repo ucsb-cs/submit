@@ -52,7 +52,7 @@
        tal:replace="structure diff_table"></div>
 
   <!-- For each test group, reasons for failure (if applicable) -->
-  <div tal:repeat="status submission.testable_statuses()">
+  <div tal:repeat="status sorted(submission.testable_statuses(), key=lambda x: x.testable.name)">
     <div tal:condition="status.is_error()">
       <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
       <pre tal:condition="status.has_make_output()">
