@@ -577,9 +577,9 @@ class TestCase(BasicBase, Base):
     expected_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     name = Column(Unicode, nullable=False)
     points = Column(Integer, nullable=False)
-    testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id')
     stdin_id = Column(Integer, ForeignKey('file.id'), nullable=True)
+    testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
     test_case_for = relationship('TestCaseResult', backref='test_case')
 
     def __cmp__(self, other):

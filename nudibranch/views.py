@@ -40,10 +40,8 @@ def project_file_create(request, file_id, filename, project_id, cls,
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, messages='Invalid project_id')
-
     if not request.user.is_admin_for_project(project):
         return HTTPForbidden()
-
     # Check for BuildFile and FileVerifier conflict
     if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
                                                   filename=filename,
@@ -1029,6 +1027,25 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
         return http_conflict(request, message=('That name already exists for '
                                                'the project'))
     return http_ok(request, message='Testable updated')
+
+
+@view_config(route_name='testable_item', request_method='DELETE',
+             permission='authenticated', renderer='json')
+def testable_delete(request):
+    testable = Testable.fetch_by_id(request.matchdict['testable_id'])
+    if not testable:
+        return http_bad_request(request, messages='Invalid testable_id')
+    if not request.user.is_admin_for_testable(testable):
+        return HTTPForbidden()
+
+    redir_location = request.route_path('project_edit',
+                                        project_id=testable.project.id)
+    request.session.flash('Deleted Testable {0}.'.format(testable.name))
+    # Delete the file
+    session = Session()
+    session.delete(testable)
+    transaction.commit()
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='user_class_join', request_method='POST',
