@@ -161,15 +161,21 @@ class HTMLDiff(difflib.HtmlDiff):
         self._diff_html[diff] = self._make_html_for_diff(diff)
 
     def _make_html_for_diff(self, diff):
-        table = self._make_table_for_diff(diff)
-        if not table:
-            table = ''
+        table = None
+        if diff.should_show_table():
+            table = self._make_table_for_diff(diff)
         wrong_things = diff.wrong_things_html_list()
-        if not wrong_things:
-            wrong_things = ''
-
-        retval = table + wrong_things
-        return retval if retval != '' else None
+        inner = ''
+        if table:
+            inner += table
+        if wrong_things:
+            inner += wrong_things
+        if inner != '':
+            return self.FAILING_TEST_BLOCK.format(diff.name_id(),
+                                                  diff.escaped_name(),
+                                                  inner)
+        else:
+            return None
 
     def make_table(self, diff):
         """Makes unique anchor prefixes so that multiple tables may exist
@@ -249,16 +255,13 @@ class HTMLDiff(difflib.HtmlDiff):
         return self.TD_DIFF_HEADER.format(id, linenum, color, text)
 
     def _make_table_for_diff(self, diff):
-        """Returns one of the table, the diff, or None"""
-        if diff.should_show_table():
-            self._last_collapsed = False
-            table = self.make_table(diff)
-            if self._last_collapsed:
-                show_hide = self.SHOW_HIDE_INSTRUMENTATION
-                table = '{0}{1}{0}'.format(show_hide, table)
-            return self.FAILING_TEST_BLOCK.format(diff.name_id(),
-                                                  diff.escaped_name(),
-                                                  table)
+        """Assumes that we should show the table for the diff"""
+        self._last_collapsed = False
+        table = self.make_table(diff)
+        if self._last_collapsed:
+            show_hide = self.SHOW_HIDE_INSTRUMENTATION
+            table = '{0}{1}{0}'.format(show_hide, table)
+        return table
 
     def _ordered_diffs(self, should_include):
         return sorted([diff for diff in self._all_diffs()
