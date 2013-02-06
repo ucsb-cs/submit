@@ -365,6 +365,9 @@ class Submission(BasicBase, Base):
                 retval[testable] = testable_result
         return retval
 
+    def testables_with_statuses(self):
+        return self.all_testables() - self.testables_waiting_to_run()
+
     def testable_statuses(self):
         warn_err = self.verification_warnings_errors()
         with_build_errors = self.testables_with_build_errors()
@@ -373,7 +376,7 @@ class Submission(BasicBase, Base):
                                to_testable_result.get(testable),
                                warn_err,
                                testable in with_build_errors)
-                for testable in self.all_testables()]
+                for testable in self.testables_with_statuses()]
 
     @staticmethod
     def get_or_empty(item, if_not_none, empty={}):
