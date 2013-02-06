@@ -35,7 +35,7 @@ class DiffRenderable(object):
     INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
     CORRECT_HTML_TEST_NAME = \
         '<p style="color:green;margin:0;padding:0;">{0}</p>'
-    HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>'
+    HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
 
     def __init__(self, test_num, test_group, test_name, test_points):
         self.test_num = test_num
@@ -74,7 +74,11 @@ class DiffRenderable(object):
     def __cmp__(self, other):
         groups = cmp(self.test_group, other.test_group)
         if groups == 0:
-            return self.test_num - other.test_num
+            names = cmp(self.test_name, other.test_name)
+            if names == 0:
+                return self.test_num - other.test_num
+            else:
+                return names
         else:
             return groups
 
@@ -90,8 +94,7 @@ class DiffRenderable(object):
             return self.CORRECT_HTML_TEST_NAME.format(self.escaped_name())
 
     def html_header_row(self):
-        return self.HTML_ROW.format(self.test_num,
-                                    self.escaped_group(),
+        return self.HTML_ROW.format(self.escaped_group(),
                                     self.html_test_name(),
                                     self.test_points)
 
