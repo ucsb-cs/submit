@@ -671,7 +671,8 @@ class ProjectTests(BaseAPITest):
         info = project_update(request)
         proj = Session.query(Project).first()
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Project updated', info['message'])
+        expected = route_path('project_edit', request, project_id=proj.id)
+        self.assertEqual(expected, info['redir_location'])
         self.assertEqual(int(json_data['makefile_id']), proj.makefile_id)
 
     def test_update_valid_remove_makefile(self):
@@ -681,9 +682,10 @@ class ProjectTests(BaseAPITest):
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = project_update(request)
-        proj = Session.query(Project).first()
+        proj = Session.query(Project).all()[1]
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Project updated', info['message'])
+        expected = route_path('project_edit', request, project_id=proj.id)
+        self.assertEqual(expected, info['redir_location'])
         self.assertEqual(None, proj.makefile)
 
     def test_update_valid_update_name(self):
@@ -694,7 +696,8 @@ class ProjectTests(BaseAPITest):
         info = project_update(request)
         proj = Session.query(Project).first()
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Project updated', info['message'])
+        expected = route_path('project_edit', request, project_id=proj.id)
+        self.assertEqual(expected, info['redir_location'])
         self.assertEqual('Foobar', proj.name)
 
     def test_view_detailed(self):
