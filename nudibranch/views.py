@@ -776,8 +776,12 @@ def to_full_diff(request, test_case_result):
     test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
     if not test_case:
         return None
+    testable = Testable.fetch_by_id(test_case.testable_id)
+    if not testable:
+        return None
     return DiffWithMetadata(diff,
                             test_case.id,
+                            testable.name,
                             test_case.name,
                             test_case.points,
                             DiffExtraInfo(test_case_result.status,

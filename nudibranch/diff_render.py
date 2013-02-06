@@ -268,7 +268,7 @@ class HTMLDiff(difflib.HtmlDiff):
         """Returns html and the number of rows in the table"""
 
         retval = '<table border="1">\n  <tr>\
-<th>Test Number</th><th>Test Name</th><th>Value</th></tr>'
+<th>Test Number</th><th>Test Group</th><th>Test Name</th><th>Value</th></tr>'
         num_rows = 0
         for diff in self._ordered_diffs(should_include):
             retval += diff.html_header_row()

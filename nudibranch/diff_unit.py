@@ -35,10 +35,11 @@ class DiffRenderable(object):
     INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
     CORRECT_HTML_TEST_NAME = \
         '<p style="color:green;margin:0;padding:0;">{0}</p>'
-    HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
+    HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>'
 
-    def __init__(self, test_num, test_name, test_points):
+    def __init__(self, test_num, test_group, test_name, test_points):
         self.test_num = test_num
+        self.test_group = test_group
         self.test_name = test_name
         self.test_points = test_points
 
@@ -64,11 +65,18 @@ class DiffRenderable(object):
         else:
             return None
 
+    def escaped_group(self):
+        return escape(self.test_group)
+
     def escaped_name(self):
         return escape(self.test_name)
 
     def __cmp__(self, other):
-        return self.test_num - other.test_num
+        groups = cmp(self.test_group, other.test_group)
+        if groups == 0:
+            return self.test_num - other.test_num
+        else:
+            return groups
 
     def name_id(self):
         return "{0}_{1}".format(int(self.test_num),
@@ -83,6 +91,7 @@ class DiffRenderable(object):
 
     def html_header_row(self):
         return self.HTML_ROW.format(self.test_num,
+                                    self.escaped_group(),
                                     self.html_test_name(),
                                     self.test_points)
 
@@ -91,8 +100,10 @@ class NonDiffErrors(DiffRenderable):
     '''Used to encode errors that exist external to a diff, as when
     files are missing so there isn't even a diff to show'''
 
-    def __init__(self, test_num, test_name, test_points, error_list):
-        super(NonDiffErrors, self).__init__(test_num, test_name, test_points)
+    def __init__(self, test_num, test_group,
+                 test_name, test_points, error_list):
+        super(NonDiffErrors, self).__init__(
+            test_num, test_group, test_name, test_points)
         self.error_list = error_list
 
     def is_correct(self):
@@ -109,9 +120,10 @@ class DiffWithMetadata(DiffRenderable):
     '''Wraps around a Diff to impart additional functionality.
     Not intended to be stored.'''
 
-    def __init__(self, diff, test_num, test_name, test_points, extra_info):
+    def __init__(self, diff, test_num, test_group,
+                 test_name, test_points, extra_info):
         super(DiffWithMetadata, self).__init__(
-            test_num, test_name, test_points)
+            test_num, test_group, test_name, test_points)
         self._diff = diff
         self.extra_info = extra_info
 
