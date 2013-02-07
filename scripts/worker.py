@@ -39,7 +39,7 @@ class SubmissionHandler(object):
                     raise Exception('Unexpected `done` file.')
                 print('file_wait took {0} seconds'.format(time.time() - start))
                 return
-            time.sleep(1)
+            time.sleep(0.1)
 
     @staticmethod
     def execute(command, stdout, stdin=None, time_limit=3, files=None,

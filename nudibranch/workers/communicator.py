@@ -2,6 +2,7 @@ import amqp_worker
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import transaction
 import pickle
@@ -28,11 +29,15 @@ def complete_file(func):
         finally:
             shutil.rmtree(new_cwd)
             os.chdir(prev_cwd)
+            # Always abort
+            transaction.abort()
         complete_file = os.path.join(remote_dir, complete_file)
-        command = 'echo -n {0}.{1} | ssh -i {2} {3}@{4} tee -a {5}'.format(
+        cmd = 'echo -n {0}.{1} | ssh -i {2} {3}@{4} tee -a {5}'.format(
             submission_id, testable_id, PRIVATE_KEY_FILE, user, host,
             complete_file)
-        os.system(command)
+        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
+        print('Success: submission: {0} testable: {1}'.format(submission_id,
+                                                              testable_id))
         return retval
     return wrapped
 
@@ -53,7 +58,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
     # Rsync to retrieve results
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3} .'.format(
         PRIVATE_KEY_FILE, user, host, os.path.join(remote_dir, 'results/'))
-    os.system(cmd)
+    subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
 
     session = Session()
 
@@ -180,7 +185,4 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
     # Rsync files
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv . {1}@{2}:{3}'.format(
         PRIVATE_KEY_FILE, user, host, remote_dir)
-    os.system(cmd)
-
-    # The session needs to be restored
-    transaction.abort()
+    subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
