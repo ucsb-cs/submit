@@ -181,3 +181,6 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv . {1}@{2}:{3}'.format(
         PRIVATE_KEY_FILE, user, host, remote_dir)
     os.system(cmd)
+
+    # The session needs to be restored
+    transaction.abort()
