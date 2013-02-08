@@ -8,7 +8,6 @@ README = open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 requires = [
     'alembic>=0.4.0',
     'amqp_worker>=0.0.6',
-    'mock>=1.0.0',
     'pika>=0.9.6',
     'pyramid>=1.4',
     'pyramid_addons>=0.12',

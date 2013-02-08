@@ -5,6 +5,7 @@ import re
 import sys
 import transaction
 import uuid
+from .exceptions import InvalidId
 from hashlib import sha1
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Binary, Boolean, Column, DateTime, Enum, ForeignKey,

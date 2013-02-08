@@ -1,12 +1,29 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
 
+
+  <script>
+    $(function() {
+        $(".requeue").on("click", function(event) {
+            if (confirm("Are you sure you want to requeue this submission?")) {
+                $.ajax({url: window.url, type: 'put', complete: handle_response});
+            }
+        });
+    });
+  </script>
+
+
   <!-- Determining the next user/submission -->
   <div tal:condition="prev_next">
     <hr />
     <div tal:replace="structure prev_next"></div>
     <hr />
   </div>
+
+  <fieldset tal:condition="flash">
+    <legend>Status Messages</legend>
+    <p tal:repeat="msg flash">${msg}</p>
+  </fieldset>
 
   <p>Submitted ${_pd(submission.created_at)}</p>
 
@@ -88,10 +105,10 @@
     </ul>
   </div>
 
-  <!-- Download a submission -->
-  <a tal:condition="request.user.is_admin_for_submission(submission)"
-     href="${_R('zipfile_download', submission_id=submission.id)}">
-    Download submission zipfile
-  </a>
+  <div tal:condition="submission_admin">
+    <input type="button" value="requeue" class="requeue" />
+    <!-- Download a submission -->
+    <a href="${_R('zipfile_download', submission_id=submission.id)}">Download submission zipfile</a>
+  </div>
 </div>
 </div>

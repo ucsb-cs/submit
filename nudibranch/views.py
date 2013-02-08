@@ -776,6 +776,19 @@ def to_full_diff(request, test_case_result):
                                           test_case_result.extra))
 
 
+@view_config(route_name='submission_item', renderer='json',
+             request_method='PUT', permission='authenticated')
+def submission_requeue(request):
+    submission = Submission.fetch_by_id(request.matchdict['submission_id'])
+    if not submission:
+        return HTTPNotFound()
+    if not request.user.is_admin_for_submission(submission):
+        return HTTPForbidden()
+    request.queue(submission_id=submission.id)
+    request.session.flash('Requeued the submission')
+    return http_ok(request, redir_location=request.url)
+
+
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
@@ -785,12 +798,9 @@ def submission_view(request):
     if not submission:
         return HTTPNotFound()
 
-    project = Project.fetch_by_id(submission.project_id)
-    if not project:
-        return HTTPNotFound()
-
     prev_next_html = None
-    if request.user.is_admin_for_submission(submission):
+    submission_admin = request.user.is_admin_for_submission(submission)
+    if submission_admin:
         try:
             prev_next_html = PrevNextFull(request, submission).to_html()
         except (NoSuchUserException, NoSuchProjectException):
@@ -798,7 +808,7 @@ def submission_view(request):
 
     diff_renderer = HTMLDiff(
         calc_score=ScoreWithSetTotal(
-            project.total_available_points()))
+            submission.project.total_available_points()))
     for test_case_result in submission.test_case_results:
         full_diff = to_full_diff(request, test_case_result)
         if not full_diff:
@@ -812,11 +822,13 @@ def submission_view(request):
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
+            'flash': request.session.pop_flash(),
             'submission': submission,
             '_pd': pretty_date,
             '_fp': format_points,
             'testable_statuses': testable_statuses,
             'waiting_to_run': waiting_to_run,
+            'submission_admin': submission_admin,
             'verification': verification_info,
             'extra_files': extra_files,
             'diff_table': diff_renderer.make_whole_file(),

@@ -3,7 +3,6 @@ import sys
 import transaction
 import unittest
 from chameleon.zpt.template import Macro
-from mock import MagicMock
 from nudibranch import add_routes
 from nudibranch.models import (BuildFile, Class, File, FileVerifier, Project,
                                Session, Submission, SubmissionToFile, TestCase,
@@ -887,11 +886,10 @@ class SubmissionTests(BaseAPITest):
                          info['messages'])
 
     def test_create_valid(self):
-        import nudibranch.views
-        nudibranch.views.pika = MagicMock()
         from nudibranch.views import submission_create
         user, json_data = self.get_objects()
-        request = self.make_request(user=user, json_body=json_data)
+        request = self.make_request(user=user, json_body=json_data,
+                                    queue=lambda submission_id: None)
         info = submission_create(request)
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         expected_prefix = route_path('submission', request,
