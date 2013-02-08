@@ -2,7 +2,7 @@
 <div metal:fill-slot="content">
     <div class="header">LOGIN</div>
     <div class="bottom">
-        <form name="login" action="${_R('session')}"
+        <form name="login" action="${_R('session')}" method="POST"
               onsubmit="return form_request(this, 'put');">
             <p>
                 <label for="email">Email</label><br/>
