@@ -4,6 +4,7 @@ from pyramid.config import Configurator
 from pyramid.security import ALL_PERMISSIONS, Allow, Authenticated
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 from sqlalchemy import engine_from_config
+from .helpers import get_queue_func
 from .models import configure_sql, create_schema, populate_database
 from .security import get_user, group_finder
 
@@ -85,8 +86,9 @@ def main(global_config, **settings):
                           session_factory=session_factory)
     config.include('pyramid_mailer')
     config.add_static_view('static', 'static', cache_max_age=3600)
-    # Add user attribute to request
-    config.set_request_property(get_user, 'user', reify=True)
+    # Add attributes to request
+    config.add_request_method(get_user, 'user', reify=True)
+    config.add_request_method(get_queue_func, 'queue', reify=True)
 
     add_routes(config)
     config.scan()

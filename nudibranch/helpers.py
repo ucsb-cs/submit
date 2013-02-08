@@ -1,6 +1,7 @@
+import json
+import pika
 import xml.sax.saxutils
 from .exceptions import InvalidId
-from .models import File
 
 
 class DummyTemplateAttr(object):
@@ -11,23 +12,25 @@ class DummyTemplateAttr(object):
         return self.default
 
 
+def get_queue_func(request):
+    """Establish the connection to rabbitmq."""
+    def cleanup(request):
+        conn.close()
+
+    def queue_func(**kwargs):
+        return conn.channel().basic_publish(
+            exchange='', body=json.dumps(kwargs), routing_key=queue,
+            properties=pika.BasicProperties(delivery_mode=2))
+    server = request.registry.settings['queue_server']
+    queue = request.registry.settings['queue_verification']
+    conn = pika.BlockingConnection(pika.ConnectionParameters(host=server))
+    request.add_finished_callback(cleanup)
+    return queue_func
+
+
 def readlines(path):
     with open(path, 'r') as fh:
         return fh.read().splitlines()
-
-
-def verify_user_file_ids(user, **kwargs):
-    """Raise InvalidId exception if a file_id is not valid.
-
-    To be valid the file object must exist, and must be in the user.files list.
-
-    """
-    for attr_name, item_id in kwargs.items():
-        if item_id:
-            item_file = File.fetch_by_id(item_id)
-            if not item_file or item_file not in user.files:
-                raise InvalidId(attr_name)
-    return None
 
 
 def escape(string):

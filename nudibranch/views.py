@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
-import json
 import pickle
-import pika
 import transaction
 from base64 import b64decode
 from hashlib import sha1
@@ -21,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
-from .helpers import DummyTemplateAttr, fetch_request_ids, verify_user_file_ids
+from .helpers import DummyTemplateAttr, fetch_request_ids
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -51,8 +49,7 @@ def project_file_create(request, file_id, filename, project_id, cls,
                                                    'name.'))
 
     try:
-        kwargs = {attr_name: file_id}
-        verify_user_file_ids(request.user, **kwargs)
+        request.user.verify_file_ids(**{attr_name: file_id})
     except InvalidId as exc:
         return http_bad_request(request, messages=('Invalid {0}'
                                                    .format(exc.message)))
@@ -460,7 +457,7 @@ def project_create(request, name, class_id, makefile_id):
         return HTTPForbidden()
 
     try:
-        verify_user_file_ids(request.user, makefile_id=makefile_id)
+        request.user.verify_file_ids(makefile_id=makefile_id)
     except InvalidId as exc:
         return http_bad_request(request,
                                 messages='Invalid {0}'.format(exc.message))
@@ -534,7 +531,7 @@ def project_update(request, name, makefile_id):
         return http_bad_request(request,
                                 messages='Inconsistent class specification')
     try:
-        verify_user_file_ids(request.user, makefile_id=makefile_id)
+        request.user.verify_file_ids(makefile_id=makefile_id)
     except InvalidId as exc:
         return http_bad_request(request,
                                 messages='Invalid {0}'.format(exc.message))
@@ -707,17 +704,8 @@ def submission_create(request, project_id, file_ids, filenames):
     session.flush()
     submission_id = submission.id
     transaction.commit()
-    # TODO: create a connection manager so we don't have to establish a
-    # rabbitmq connection each time
-    server = request.registry.settings['queue_server']
-    queue = request.registry.settings['queue_verification']
-    conn = pika.BlockingConnection(pika.ConnectionParameters(host=server))
-    channel = conn.channel()
-    # Create the verification job (this will result in all future jobs)
-    queue_msg = json.dumps({'submission_id': submission_id})
-    channel.basic_publish(exchange='', body=queue_msg, routing_key=queue,
-                          properties=pika.BasicProperties(delivery_mode=2))
-    conn.close()
+    # Create the verification job
+    request.queue(submission_id=submission_id)
     # Redirect to submission result page
     redir_location = request.route_path('submission_item',
                                         submission_id=submission_id)
@@ -853,8 +841,8 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
         return HTTPForbidden()
 
     try:
-        verify_user_file_ids(request.user, expected_id=expected_id,
-                             stdin_id=stdin_id)
+        request.user.verify_file_ids(expected_id=expected_id,
+                                     stdin_id=stdin_id)
     except InvalidId as exc:
         return http_bad_request(request,
                                 messages='Invalid {0}'.format(exc.message))
@@ -892,8 +880,8 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
         return HTTPForbidden()
 
     try:
-        verify_user_file_ids(request.user, expected_id=expected_id,
-                             stdin_id=stdin_id)
+        request.user.verify_file_ids(expected_id=expected_id,
+                                     stdin_id=stdin_id)
     except InvalidId as exc:
         return http_bad_request(request,
                                 messages='Invalid {0}'.format(exc.message))

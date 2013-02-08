@@ -863,6 +863,18 @@ class User(UserMixin, BasicBase, Base):
         return 'Name: {0} Email: {1} {2}'.format(self.name, self.username,
                                                  admin_str)
 
+    def verify_file_ids(self, **kwargs):
+        """Raise InvalidId exception if a file_id is not valid.
+
+        To be valid the file object must exist, and must be owned by the user.
+
+        """
+        for attr_name, item_id in kwargs.items():
+            if item_id:
+                item_file = File.fetch_by_id(item_id)
+                if not item_file or item_file not in self.files:
+                    raise InvalidId(attr_name)
+
 
 def configure_sql(engine):
     """Configure session and metadata with the database engine."""
