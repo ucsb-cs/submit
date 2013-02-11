@@ -90,6 +90,10 @@ class Class(BasicBase, Base):
     def all_classes_by_name():
         return Session().query(Class).order_by(Class.name).all()
 
+    def can_edit(self, user):
+        """Return whether or not `user` can edit the class settings."""
+        return user.is_admin or self in user.admin_for
+
 
 class ExecutionFile(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
@@ -740,15 +744,6 @@ class User(UserMixin, BasicBase, Base):
                              backref='admins')
     submissions = relationship('Submission', backref='user')
 
-    @staticmethod
-    def is_int(value):
-        try:
-            int(value)
-            return True
-        except ValueError:
-            pass
-        return False
-
     def classes_can_admin(self):
         '''Gets all the classes that this user can administrate.
         Returned in order by name'''
@@ -771,22 +766,6 @@ class User(UserMixin, BasicBase, Base):
 
     def is_admin_for_any_class(self):
         return len(self.admin_for) > 0
-
-    def is_admin_for_class(self, cls):
-        '''Takes either a class, a class name, or a class id.
-        Note that the toplevel admin is considered viable.
-        If we are given a string representation of a class id,
-        it will try it as a class name first, then as a normal id'''
-        if self.is_admin:
-            return True
-        if isinstance(cls, int):
-            cls = Class.fetch_by(id=cls)
-        elif isinstance(cls, basestring):
-            orig = cls
-            cls = Class.fetch_by(name=cls)
-            if not cls and User.is_int(orig):
-                cls = Class.fetch_by(id=orig)
-        return cls and cls in self.admin_for
 
     @staticmethod
     def get_value(cls, value):
@@ -811,7 +790,7 @@ class User(UserMixin, BasicBase, Base):
         The project id may be a string representation of the id'''
         return self.is_admin_for_something(
             Project, project,
-            lambda p: self.is_admin_for_class(p.class_id))
+            lambda p: p.klass.can_edit(self))
 
     def is_admin_for_file_verifier(self, file_verifier):
         '''Takes either a file verifier or a file verifier id.

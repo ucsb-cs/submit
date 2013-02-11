@@ -156,7 +156,8 @@ def class_view(request):
     klass = Class.fetch_by(name=request.matchdict['class_name'])
     if not klass:
         return HTTPNotFound()
-    return {'page_title': 'Class Page', 'klass': klass}
+    return {'page_title': 'Class Page',
+            'class_admin': klass.can_edit(request.user), 'klass': klass}
 
 
 @view_config(route_name='execution_file', request_method='PUT',
@@ -454,7 +455,7 @@ def project_create(request, name, class_id, makefile_id):
     if not klass:
         return http_bad_request(request, messages='Invalid class_id')
 
-    if not request.user.is_admin_for_class(klass):
+    if not klass.can_edit(request.user):
         return HTTPForbidden()
 
     try:
@@ -505,7 +506,7 @@ def project_new(request):
     if not klass:
         return HTTPNotFound()
 
-    if not request.user.is_admin_for_class(klass):
+    if not klass.can_edit(request.user):
         return HTTPForbidden()
 
     dummy_project = DummyTemplateAttr(None)

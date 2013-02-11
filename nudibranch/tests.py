@@ -197,7 +197,9 @@ class ClassTests(BaseAPITest):
 
     def test_class_view(self):
         from nudibranch.views import class_view
-        request = self.make_request(matchdict={'class_name': 'Class 1'})
+        user = User.fetch_by(username='user1@email')
+        request = self.make_request(matchdict={'class_name': 'Class 1'},
+                                    user=user)
         info = class_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Class 1', info['klass'].name)
