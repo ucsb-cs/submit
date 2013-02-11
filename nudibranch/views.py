@@ -236,10 +236,10 @@ def file_item_info(request):
                 max_lines=TextNumber('max_lines', min_value=0, optional=True),
                 optional=TextNumber('optional', min_value=0, max_value=1,
                                     optional=True),
-                project_id=TextNumber('project_id', min_value=0),
+                project=ExistingDBThing('project_id', Project),
                 warning_regex=RegexString('warning_regex', optional=True))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
-                         max_lines, optional, project_id, warning_regex):
+                         max_lines, optional, project, warning_regex):
     if max_size is not None and max_size < min_size:
         return http_bad_request(request,
                                 messages='min_size cannot be > max_size')
@@ -252,18 +252,11 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request,
                                 messages='max_lines cannot be > max_size')
-
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request,
-                                messages='Invalid project_id')
-
     if not project.can_edit(request.user):
         return HTTPForbidden()
 
     # Check for build-file conflict
-    if not optional and BuildFile.fetch_by(project_id=project.id,
-                                           filename=filename):
+    if not optional and BuildFile.fetch_by(project=project, filename=filename):
         return http_bad_request(request, messages=('A build file already '
                                                    'exists with that name. '
                                                    'Provide a different name, '
@@ -272,7 +265,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, optional=bool(optional),
-                         project_id=project_id, warning_regex=warning_regex)
+                         project=project, warning_regex=warning_regex)
     session = Session()
     session.add(filev)
     try:
@@ -282,8 +275,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
         return http_conflict(request, message=('That filename already exists '
                                                'for the project'))
 
-    redir_location = request.route_path('project_edit',
-                                        project_id=project.id)
+    redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
 
@@ -440,23 +432,14 @@ def password_reset_edit_item(request):
 @view_config(route_name='project', request_method='PUT',
              permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=2),
-                class_id=TextNumber('class_id', min_value=0),
-                makefile_id=TextNumber('makefile_id', min_value=0,
-                                       optional=True))
-def project_create(request, name, class_id, makefile_id):
-    klass = Class.fetch_by_id(class_id)
-    if not klass:
-        return http_bad_request(request, messages='Invalid class_id')
-
-    if not klass.can_edit(request.user):
+                class_=ExistingDBThing('class_id', Class),
+                makefile=ExistingDBThing('makefile_id', File, optional=True))
+def project_create(request, name, class_, makefile):
+    if not class_.can_edit(request.user):
         return HTTPForbidden()
-
-    try:
-        request.user.verify_file_ids(makefile_id=makefile_id)
-    except InvalidId as exc:
-        return http_bad_request(request,
-                                messages='Invalid {0}'.format(exc.message))
-    project = Project(name=name, class_id=class_id, makefile_id=makefile_id)
+    if makefile and not request.user.has_access(makefile):
+        return http_bad_request(request, messages='Invalid makefile_id')
+    project = Project(name=name, klass=class_, makefile=makefile)
     session = Session()
     session.add(project)
     try:
@@ -510,28 +493,22 @@ def project_new(request):
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='authenticated', renderer='json')
 @validated_form(name=String('name', min_length=2),
-                makefile_id=TextNumber('makefile_id', min_value=0,
-                                       optional=True))
-def project_update(request, name, makefile_id):
+                makefile=ExistingDBThing('makefile_id', File, optional=True))
+def project_update(request, name, makefile):
     project_id = request.matchdict['project_id']
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, messages='Invalid project_id')
-
     if not project.can_edit(request.user):
         return HTTPForbidden()
-
+    if makefile and not request.user.has_access(makefile):
+        return http_bad_request(request, messages='Invalid makefile_id')
     class_name = request.matchdict['class_name']
     if project.klass.name != class_name:
         return http_bad_request(request,
                                 messages='Inconsistent class specification')
-    try:
-        request.user.verify_file_ids(makefile_id=makefile_id)
-    except InvalidId as exc:
-        return http_bad_request(request,
-                                messages='Invalid {0}'.format(exc.message))
 
-    if not project.update(name=name, makefile_id=makefile_id):
+    if not project.update(name=name, makefile=makefile):
         return http_ok(request, message='Nothing to change')
 
     session = Session()

@@ -463,7 +463,7 @@ class Submission(BasicBase, Base):
         retval = {}
         for file_ in files:
             retval[file_] = (warnings.get(file_, []),
-                            errors.get(file_, []))
+                             errors.get(file_, []))
         return retval
 
     def tests_that_ran(self):
