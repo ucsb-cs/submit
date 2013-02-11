@@ -208,10 +208,10 @@ def file_item_view(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return HTTPBadRequest('Invalid sha1sum')
-    file = File.fetch_by(sha1=sha1sum)
-    if not file:
+    the_file = File.fetch_by(sha1=sha1sum)
+    if not the_file:
         return HTTPNotFound()
-    elif not file.has_access(request.user):
+    elif not request.user.has_access(the_file):
         return HTTPForbidden()
     source = File.file_path(request.registry.settings['file_directory'],
                             sha1sum)
@@ -225,12 +225,12 @@ def file_item_info(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, messages='Invalid sha1sum')
-    file = File.fetch_by(sha1=sha1sum)
-    if not file:
+    the_file = File.fetch_by(sha1=sha1sum)
+    if not the_file:
         return HTTPNotFound()
-    elif not file.has_access(request.user):
+    elif not request.user.has_access(the_file):
         return HTTPForbidden()
-    return {'file_id': file.id}
+    return {'file_id': the_file.id}
 
 
 @view_config(route_name='file_verifier', request_method='PUT',
