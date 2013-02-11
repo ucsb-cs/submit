@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+import codecs
 import pickle
 import transaction
 from base64 import b64decode
@@ -214,7 +215,7 @@ def file_item_view(request):
         return HTTPForbidden()
     source = File.file_path(request.registry.settings['file_directory'],
                             sha1sum)
-    contents = open(source).read()
+    contents = codecs.open(source, encoding='utf-8').read()
     return {'page_title': 'File Contents', 'contents': contents}
 
 
@@ -819,6 +820,9 @@ def submission_view(request):
     waiting_to_run = submission.testables_waiting_to_run()
     testable_statuses = submission.testable_statuses()
     extra_files = submission.extra_filenames()
+
+    # Decode utf-8 and ignore errors until the data is diffed in unicode.
+    diff_table = diff_renderer.make_whole_file().decode('utf-8', 'ignore')
     return {'page_title': 'Submission Page',
             'css_files': ['diff.css', 'prev_next.css'],
             'javascripts': ['diff.js'],
@@ -831,7 +835,7 @@ def submission_view(request):
             'submission_admin': submission_admin,
             'verification': verification_info,
             'extra_files': extra_files,
-            'diff_table': diff_renderer.make_whole_file(),
+            'diff_table': diff_table,
             'prev_next': prev_next_html}
 
 

@@ -5,4 +5,5 @@ build/
 dist/
 *.DS_Store
 .coverage
+load_from_backup.sh
 update_app.sh
