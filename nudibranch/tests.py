@@ -852,8 +852,8 @@ class SubmissionTests(BaseAPITest):
     def get_objects(**kwargs):
         user = User.fetch_by(username='user1@email')
         project = Session.query(Project).first()
-        the_file = Session.query(File).first()
-        json_data = {'file_ids': [text_type(the_file.id)],
+        file_ = Session.query(File).first()
+        json_data = {'file_ids': [text_type(file_.id)],
                      'filenames': ['File 1'],
                      'project_id': text_type(project.id)}
         json_data.update(kwargs)

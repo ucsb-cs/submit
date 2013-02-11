@@ -39,7 +39,7 @@ def project_file_create(request, file_id, filename, project_id, cls,
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, messages='Invalid project_id')
-    if not request.user.is_admin_for_project(project):
+    if not project.can_edit(request.user):
         return HTTPForbidden()
     # Check for BuildFile and FileVerifier conflict
     if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
@@ -75,7 +75,7 @@ def project_file_delete(request, attr_name, cls):
     if not file_:
         return http_bad_request(request,
                                 messages='Invalid {0}'.format(attr_name))
-    if not request.user.is_admin_for_project(file_.project):
+    if not file_.project.can_edit(request.user):
         return HTTPForbidden()
     redir_location = request.route_path('project_edit',
                                         project_id=file_.project.id)
@@ -209,10 +209,10 @@ def file_item_view(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return HTTPBadRequest('Invalid sha1sum')
-    the_file = File.fetch_by(sha1=sha1sum)
-    if not the_file:
+    file_ = File.fetch_by(sha1=sha1sum)
+    if not file_:
         return HTTPNotFound()
-    elif not request.user.has_access(the_file):
+    elif not request.user.has_access(file_):
         return HTTPForbidden()
     source = File.file_path(request.registry.settings['file_directory'],
                             sha1sum)
@@ -226,12 +226,12 @@ def file_item_info(request):
     sha1sum = request.matchdict['sha1sum']
     if len(sha1sum) != 40:
         return http_bad_request(request, messages='Invalid sha1sum')
-    the_file = File.fetch_by(sha1=sha1sum)
-    if not the_file:
+    file_ = File.fetch_by(sha1=sha1sum)
+    if not file_:
         return HTTPNotFound()
-    elif not request.user.has_access(the_file):
+    elif not request.user.has_access(file_):
         return HTTPForbidden()
-    return {'file_id': the_file.id}
+    return {'file_id': file_.id}
 
 
 @view_config(route_name='file_verifier', request_method='PUT',
@@ -265,7 +265,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request,
                                 messages='Invalid project_id')
 
-    if not request.user.is_admin_for_project(project):
+    if not project.can_edit(request.user):
         return HTTPForbidden()
 
     # Check for build-file conflict
@@ -333,7 +333,7 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
         return http_bad_request(request,
                                 messages='Invalid file_verifier_id')
 
-    if not request.user.is_admin_for_file_verifier(file_verifier):
+    if not file_verifier.project.can_edit(request.user):
         return HTTPForbidden()
 
     # Check for build-file conflict
@@ -487,7 +487,7 @@ def project_edit(request):
     if not project:
         return HTTPNotFound()
 
-    if not request.user.is_admin_for_project(project):
+    if not project.can_edit(request.user):
         return HTTPForbidden()
 
     action = request.route_path('project_item_summary',
@@ -525,7 +525,7 @@ def project_update(request, name, makefile_id):
     if not project:
         return http_bad_request(request, messages='Invalid project_id')
 
-    if not request.user.is_admin_for_project(project):
+    if not project.can_edit(request.user):
         return HTTPForbidden()
 
     class_name = request.matchdict['class_name']
@@ -571,7 +571,7 @@ def project_view_detailed(request):
         return HTTPNotFound()
 
     # Authorization checks
-    project_admin = request.user.is_admin_for_project(project)
+    project_admin = project.can_edit(request.user)
     if not project_admin and request.user != user:
         return HTTPForbidden()
 
@@ -596,6 +596,7 @@ def project_view_detailed(request):
     return {'page_title': 'Project Page',
             'css_files': ['prev_next.css'],
             'project': project,
+            'project_admin': project_admin,
             'name': user.name,
             'prev_next_user': prev_next_user,
             'can_edit': project_admin,
@@ -616,7 +617,7 @@ def project_view_summary(request):
     if not project or project.klass.name != class_name:
         return HTTPNotFound()
 
-    if not request.user.is_admin_for_project(project):
+    if not project.can_edit(request.user):
         return HTTPForbidden()
 
     submissions = {}
@@ -720,7 +721,7 @@ def zipfile_download(request):
     submission = Submission.fetch_by_id(request.matchdict['submission_id'])
     if not submission:
         return HTTPNotFound()
-    if not request.user.is_admin_for_submission(submission):
+    if not submission.project.can_edit(request.user):
         return HTTPForbidden()
     with ZipSubmission(submission, request) as zipfile:
         # The str() part is needed, or else these will be converted
@@ -784,7 +785,7 @@ def submission_requeue(request):
     submission = Submission.fetch_by_id(request.matchdict['submission_id'])
     if not submission:
         return HTTPNotFound()
-    if not request.user.is_admin_for_submission(submission):
+    if not submission.project.can_edit(request.user):
         return HTTPForbidden()
     request.queue(submission_id=submission.id)
     request.session.flash('Requeued the submission')
@@ -801,7 +802,7 @@ def submission_view(request):
         return HTTPNotFound()
 
     prev_next_html = None
-    submission_admin = request.user.is_admin_for_submission(submission)
+    submission_admin = submission.project.can_edit(request.user)
     if submission_admin:
         try:
             prev_next_html = PrevNextFull(request, submission).to_html()
@@ -854,7 +855,7 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
     if not testable:
         return http_bad_request(request, messages='Invalid testable_id')
 
-    if not request.user.is_admin_for_testable(testable):
+    if not testable.project.can_edit(request.user):
         return HTTPForbidden()
 
     try:
@@ -893,7 +894,7 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
     if not test_case:
         return http_bad_request(request, messages='Invalid test_case_id')
 
-    if not request.user.is_admin_for_test_case(test_case):
+    if not test_case.testable.project.can_edit(request.user):
         return HTTPForbidden()
 
     try:
@@ -937,7 +938,7 @@ def testable_create(request, name, make_target, executable, build_file_ids,
     project = Project.fetch_by_id(project_id)
     if not project:
         return http_bad_request(request, messages='Invalid project_id')
-    if not request.user.is_admin_for_project(project):
+    if not project.can_edit(request.user):
         return HTTPForbidden()
     if make_target and not project.makefile:
         return http_bad_request(request, messages=('make_target cannot be '
@@ -998,7 +999,7 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
         return http_bad_request(request, messages='Invalid testable_id')
-    if not request.user.is_admin_for_testable(testable):
+    if not testable.project.can_edit(request.user):
         return HTTPForbidden()
     if make_target and not testable.project.makefile:
         return http_bad_request(request, messages=('make_target cannot be '
@@ -1044,7 +1045,7 @@ def testable_delete(request):
     testable = Testable.fetch_by_id(request.matchdict['testable_id'])
     if not testable:
         return http_bad_request(request, messages='Invalid testable_id')
-    if not request.user.is_admin_for_testable(testable):
+    if not testable.project.can_edit(request.user):
         return HTTPForbidden()
 
     redir_location = request.route_path('project_edit',

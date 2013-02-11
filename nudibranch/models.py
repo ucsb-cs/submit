@@ -91,7 +91,7 @@ class Class(BasicBase, Base):
         return Session().query(Class).order_by(Class.name).all()
 
     def can_edit(self, user):
-        """Return whether or not `user` can edit the class settings."""
+        """Return whether or not `user` can make changes to the class."""
         return user.is_admin or self in user.admin_for
 
 
@@ -112,13 +112,13 @@ class File(BasicBase, Base):
     def fetch_or_create(data, base_path, sha1sum=None):
         if not sha1sum:
             sha1sum = sha1(data).hexdigest()
-        file = File.fetch_by(sha1=sha1sum)
-        if not file:
-            file = File(base_path=base_path, data=data, sha1=sha1sum)
+        file_ = File.fetch_by(sha1=sha1sum)
+        if not file_:
+            file_ = File(base_path=base_path, data=data, sha1=sha1sum)
             session = Session()
-            session.add(file)
+            session.add(file_)
             session.flush()  # Cannot commit the transaction here
-        return file
+        return file_
 
     @staticmethod
     def file_path(base_path, sha1sum):
@@ -158,15 +158,15 @@ class FileVerifier(BasicBase, Base):
     def __cmp__(self, other):
         return cmp(self.filename, other.filename)
 
-    def verify(self, base_path, file):
+    def verify(self, base_path, file_):
         errors = []
-        if file.size < self.min_size:
+        if file_.size < self.min_size:
             errors.append('must be >= {0} bytes'.format(self.min_size))
-        elif self.max_size and file.size > self.max_size:
+        elif self.max_size and file_.size > self.max_size:
             errors.append('must be <= {0} bytes'.format(self.max_size))
-        if file.lines < self.min_lines:
+        if file_.lines < self.min_lines:
             errors.append('must have >= {0} lines'.format(self.min_lines))
-        elif self.max_lines and file.lines > self.max_lines:
+        elif self.max_lines and file_.lines > self.max_lines:
             errors.append('must have <= {0} lines'.format(self.max_lines))
 
         if not self.warning_regex:
@@ -174,7 +174,7 @@ class FileVerifier(BasicBase, Base):
 
         regex = re.compile(self.warning_regex)
         warnings = []
-        for i, line in enumerate(open(File.file_path(base_path, file.sha1))):
+        for i, line in enumerate(open(File.file_path(base_path, file_.sha1))):
             for match in regex.findall(line):
                 warnings.append({'lineno': i + 1, 'token': match})
         return errors, warnings
@@ -250,6 +250,10 @@ class Project(BasicBase, Base):
                                cascade='all, delete-orphan')
     testables = relationship('Testable', backref='project',
                              cascade='all, delete-orphan')
+
+    def can_edit(self, user):
+        """Return whether or not `user` can make changes to the project."""
+        return self.klass.can_edit(user)
 
     def optional_files(self):
         return frozenset([file_verifier.filename
@@ -457,9 +461,9 @@ class Submission(BasicBase, Base):
         warnings = self.file_warnings()
         files = frozenset(errors.keys() + warnings.keys())
         retval = {}
-        for file in files:
-            retval[file] = (warnings.get(file, []),
-                            errors.get(file, []))
+        for file_ in files:
+            retval[file_] = (warnings.get(file_, []),
+                            errors.get(file_, []))
         return retval
 
     def tests_that_ran(self):
@@ -644,9 +648,9 @@ class TestableStatus(object):
         if self.had_build_errors():
             import copy
             self.warn_err = copy.copy(self.warn_err)
-            for file, (warnings, errors) in self.warn_err.items():
+            for file_, (warnings, errors) in self.warn_err.items():
                 new_err = ['Build failed (see make output)'] + errors
-                self.warn_err[file] = (warnings, new_err)
+                self.warn_err[file_] = (warnings, new_err)
 
     def had_build_errors(self):
         return self.build_err
@@ -672,8 +676,8 @@ class TestableStatus(object):
 
     def sorted_files_to_warnings_errors(self):
         unsorted = self.files_to_warnings_errors()
-        return [(file, unsorted[file])
-                for file in sorted(unsorted.keys())]
+        return [(file_, unsorted[file_])
+                for file_ in sorted(unsorted.keys())]
 
 
 class Testable(BasicBase, Base):
@@ -752,14 +756,13 @@ class User(UserMixin, BasicBase, Base):
         else:
             return sorted(self.admin_for)
 
-    def has_access(self, the_file):
+    def has_access(self, file_):
         # Perform simplest checks first
-        if self.is_admin or the_file in self.files:
+        if self.is_admin or file_ in self.files:
             return True
         elif self.admin_for:  # Begin more expensive comparisions
-            makefile_classes = set(x.klass for x in
-                                   the_file.makefile_for_projects)
-            if makefile_classes.intersection(self.admin_for):
+            mf_classes = set(x.klass for x in file_.makefile_for_projects)
+            if mf_classes.intersection(self.admin_for):
                 return True
             # TODO: Compare other project files
         return False
@@ -776,49 +779,6 @@ class User(UserMixin, BasicBase, Base):
         if isinstance(value, (basestring, int)):
             value = cls.fetch_by(id=value)
         return value if isinstance(value, cls) else None
-
-    def is_admin_for_something(self, cls, value, chain):
-        '''chain is called only on something that is an instance
-        of type cls'''
-        if self.is_admin:
-            return True
-        value = User.get_value(cls, value)
-        return value and chain(value)
-
-    def is_admin_for_project(self, project):
-        '''Takes either a project or a project id.
-        The project id may be a string representation of the id'''
-        return self.is_admin_for_something(
-            Project, project,
-            lambda p: p.klass.can_edit(self))
-
-    def is_admin_for_file_verifier(self, file_verifier):
-        '''Takes either a file verifier or a file verifier id.
-        The file verifier id may be a string representation.'''
-        return self.is_admin_for_something(
-            FileVerifier, file_verifier,
-            lambda f: self.is_admin_for_project(f.project))
-
-    def is_admin_for_test_case(self, test_case):
-        '''Takes either a test case or a test case id.
-        The test case id may be a string representation.'''
-        return self.is_admin_for_something(
-            TestCase, test_case,
-            lambda t: self.is_admin_for_project(t.testable.project_id))
-
-    def is_admin_for_testable(self, testable):
-        '''Takes either a testabe or a testable id.
-        The testable id may be a string representation.'''
-        return self.is_admin_for_something(
-            Testable, testable,
-            lambda t: self.is_admin_for_project(t.project_id))
-
-    def is_admin_for_submission(self, submission):
-        '''Takes either a submission or a submission id.
-        The submission id may be a string representation.'''
-        return self.is_admin_for_something(
-            Submission, submission,
-            lambda s: self.is_admin_for_project(s.project_id))
 
     @staticmethod
     def login(username, password):

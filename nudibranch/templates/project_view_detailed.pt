@@ -17,13 +17,13 @@
   <blockquote>Files in brackets indicate partial submissions can be made without those
     files. Note that this does necessarily mean you will receive partial credit
     for such submissions.</blockquote>
-  <p tal:condition="request.user.is_admin_for_project(project) and not submissions">
+  <p tal:condition="project_admin and not submissions">
     ${name} has no submissions</p>
-  <p tal:condition="not request.user.is_admin_for_project(project) and not submissions">You have no submissions</p>
+  <p tal:condition="not project_admin and not submissions">You have no submissions</p>
 
-  <p tal:condition="request.user.is_admin_for_project(project) and submissions">
+  <p tal:condition="project_admin and submissions">
     These are the submissions for ${name}:</p>
-  <p tal:condition="not request.user.is_admin_for_project(project) and submissions">
+  <p tal:condition="not project_admin and submissions">
     There are your submissions:</p>
   <ul tal:condition="submissions">
     <li tal:repeat="submission submissions">
