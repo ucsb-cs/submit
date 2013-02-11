@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
-from .helpers import DummyTemplateAttr, fetch_request_ids
+from .helpers import DummyTemplateAttr, ExistingDBThing, fetch_request_ids
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -34,13 +34,13 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-def project_file_create(request, file_id, filename, project_id, cls,
-                        attr_name):
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, messages='Invalid project_id')
+def project_file_create(request, file_, filename, project, cls):
     if not project.can_edit(request.user):
         return HTTPForbidden()
+    if not request.user.has_access(file_):
+        return http_bad_request(request, messages=('You do not have access to '
+                                                   'that file_id.'))
+
     # Check for BuildFile and FileVerifier conflict
     if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
                                                   filename=filename,
@@ -49,15 +49,9 @@ def project_file_create(request, file_id, filename, project_id, cls,
                                                    'already exists with that '
                                                    'name.'))
 
-    try:
-        request.user.verify_file_ids(**{attr_name: file_id})
-    except InvalidId as exc:
-        return http_bad_request(request, messages=('Invalid {0}'
-                                                   .format(exc.message)))
-
-    file_ = cls(file_id=file_id, filename=filename, project=project)
+    cls_file = cls(file=file_, filename=filename, project=project)
     session = Session()
-    session.add(file_)
+    session.add(cls_file)
     try:
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
@@ -90,12 +84,11 @@ def project_file_delete(request, attr_name, cls):
 
 @view_config(route_name='build_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(build_file_id=TextNumber('build_file_id', min_value=0),
+@validated_form(file_=ExistingDBThing('file_id', File),
                 filename=String('filename', min_length=1),
-                project_id=TextNumber('project_id', min_value=0))
-def build_file_create(request, build_file_id, filename, project_id):
-    return project_file_create(request, build_file_id, filename, project_id,
-                               BuildFile, 'build_file_id')
+                project=ExistingDBThing('project_id', Project))
+def build_file_create(request, file_, filename, project):
+    return project_file_create(request, file_, filename, project, BuildFile)
 
 
 @view_config(route_name='build_file_item', request_method='DELETE',
@@ -162,12 +155,12 @@ def class_view(request):
 
 @view_config(route_name='execution_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(execution_file_id=TextNumber('execution_file_id', min_value=0),
+@validated_form(file_=ExistingDBThing('file_id', File),
                 filename=String('filename', min_length=1),
-                project_id=TextNumber('project_id', min_value=0))
-def execution_file_create(request, execution_file_id, filename, project_id):
-    return project_file_create(request, execution_file_id, filename,
-                               project_id, ExecutionFile, 'execution_file_id')
+                project=ExistingDBThing('project_id', Project))
+def execution_file_create(request, file_, filename, project):
+    return project_file_create(request, file_, filename, project,
+                               ExecutionFile)
 
 
 @view_config(route_name='execution_file_item', request_method='DELETE',

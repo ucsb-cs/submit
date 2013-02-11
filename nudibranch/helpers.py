@@ -1,6 +1,7 @@
 import json
 import pika
 import xml.sax.saxutils
+from pyramid_addons.validation import TextNumber, Validator
 from .exceptions import InvalidId
 
 
@@ -10,6 +11,24 @@ class DummyTemplateAttr(object):
 
     def __getattr__(self, attr):
         return self.default
+
+
+class ExistingDBThing(Validator):
+    """A validator that converts a primary key into the database object."""
+    def __init__(self, param, cls, **kwargs):
+        super(ExistingDBThing, self).__init__(param, **kwargs)
+        self.id_validator = TextNumber(param, min_value=0)
+        self.cls = cls
+
+    def run(self, value, errors):
+        """Return the object if valid and available, otherwise None."""
+        self.id_validator(value, errors)
+        if errors:
+            return None
+        retval = self.cls.fetch_by_id(value)
+        if not retval:
+            self.add_error(errors, 'item does not exist')
+        return retval
 
 
 def get_queue_func(request):
