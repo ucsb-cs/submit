@@ -20,6 +20,8 @@ SRC_PATH = 'src'
 INPUT_PATH = 'inputs'
 RESULTS_PATH = 'results'
 
+MAX_FILE_SIZE = 65536
+
 
 class SubmissionHandler(object):
     @staticmethod
@@ -37,7 +39,7 @@ class SubmissionHandler(object):
             if os.path.isfile(filename):
                 if open(filename).read() != expected_message:
                     raise Exception('Unexpected `done` file.')
-                print('file_wait took {0} seconds'.format(time.time() - start))
+                print('\t\tfile_wait took {0} seconds'.format(time.time() - start))
                 return
             time.sleep(0.1)
 
@@ -115,7 +117,7 @@ class SubmissionHandler(object):
         self.communicate(queue=self.settings['queue_sync_files'],
                          complete_file='sync_files',
                          submission_id=submission_id, testable_id=testable_id)
-        print('Files synced: {0}.{1}'.format(submission_id, testable_id))
+        print('\tFiles synced: {0}.{1}'.format(submission_id, testable_id))
         data = json.load(open('post_sync_data'))
         os.mkdir(RESULTS_PATH)
         if self.make_project(data['executable'], data['make_target']):
@@ -123,7 +125,7 @@ class SubmissionHandler(object):
         self.communicate(queue=self.settings['queue_fetch_results'],
                          complete_file='results_fetched',
                          submission_id=submission_id, testable_id=testable_id)
-        print('Results fetched: {0}.{1}'.format(submission_id, testable_id))
+        print('\tResults fetched: {0}.{1}'.format(submission_id, testable_id))
 
     def make_project(self, executable, make_target):
         """Build the project and return True if the executable exists."""
@@ -163,6 +165,13 @@ class SubmissionHandler(object):
                     result['status'] = 'signal'
                 except TimeoutException:
                     result['status'] = 'timed_out'
+            if os.path.getsize(output_file) > MAX_FILE_SIZE:
+                # Truncate output file size
+                print 'Truncating outputfile', os.path.getsize(output_file)
+                fd = os.open(output_file, os.O_WRONLY)
+                os.ftruncate(fd, MAX_FILE_SIZE)
+                os.close(fd)
+                result['status'] = 'timed_out'  # Hack onto this status for now
             results[tc['id']] = result
         with open(os.path.join(RESULTS_PATH, 'test_cases'), 'w') as fp:
             json.dump(results, fp)
