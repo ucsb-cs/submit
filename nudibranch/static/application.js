@@ -42,12 +42,13 @@ function handle_response(xhr) {
         window.location = data['redir_location'];
         break;
     case 400:  // BadRequest
+    case 403:  // Forbidden
         msg = data['error']
         if (typeof data['messages'] === 'string')
-            msg += '\n' + data['messages']
+            msg += '\n * ' + data['messages']
         else
             for (i in data['messages'])
-                msg += '\n' + data['messages'][i]
+                msg += '\n * ' + data['messages'][i]
         alert(msg);
         break;
     case 409:  // Conflict

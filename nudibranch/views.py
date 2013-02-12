@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
-from .helpers import DummyTemplateAttr, ExistingDBThing, fetch_request_ids
+from .helpers import DummyTemplateAttr, EditableDBThing, fetch_request_ids
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -36,12 +36,6 @@ def not_found(request):
 
 
 def project_file_create(request, file_, filename, project, cls):
-    if not project.can_edit(request.user):
-        return HTTPForbidden()
-    if not request.user.has_access(file_):
-        return http_bad_request(request, messages=('You do not have access to '
-                                                   'that file_id.'))
-
     # Check for BuildFile and FileVerifier conflict
     if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
                                                   filename=filename,
@@ -49,7 +43,6 @@ def project_file_create(request, file_, filename, project, cls):
         return http_bad_request(request, messages=('A required expected file '
                                                    'already exists with that '
                                                    'name.'))
-
     cls_file = cls(file=file_, filename=filename, project=project)
     session = Session()
     session.add(cls_file)
@@ -66,8 +59,6 @@ def project_file_create(request, file_, filename, project, cls):
 
 
 def project_file_delete(request, project_file):
-    if not project_file.project.can_edit(request.user):
-        return HTTPForbidden()
     redir_location = request.route_path('project_edit',
                                         project_id=project_file.project.id)
     request.session.flash('Deleted {0} {1}.'
@@ -82,16 +73,16 @@ def project_file_delete(request, project_file):
 
 @view_config(route_name='build_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validate(file_=ExistingDBThing('file_id', File),
+@validate(file_=EditableDBThing('file_id', File),
           filename=String('filename', min_length=1),
-          project=ExistingDBThing('project_id', Project))
+          project=EditableDBThing('project_id', Project))
 def build_file_create(request, file_, filename, project):
     return project_file_create(request, file_, filename, project, BuildFile)
 
 
 @view_config(route_name='build_file_item', request_method='DELETE',
              permission='authenticated', renderer='json')
-@validate(build_file=ExistingDBThing('build_file_id', BuildFile,
+@validate(build_file=EditableDBThing('build_file_id', BuildFile,
                                      source=SOURCE_MATCHDICT))
 def build_file_delete(request, build_file):
     return project_file_delete(request, build_file)
@@ -155,9 +146,9 @@ def class_view(request):
 
 @view_config(route_name='execution_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validate(file_=ExistingDBThing('file_id', File),
+@validate(file_=EditableDBThing('file_id', File),
           filename=String('filename', min_length=1),
-          project=ExistingDBThing('project_id', Project))
+          project=EditableDBThing('project_id', Project))
 def execution_file_create(request, file_, filename, project):
     return project_file_create(request, file_, filename, project,
                                ExecutionFile)
@@ -165,7 +156,7 @@ def execution_file_create(request, file_, filename, project):
 
 @view_config(route_name='execution_file_item', request_method='DELETE',
              permission='authenticated', renderer='json')
-@validate(execution_file=ExistingDBThing('execution_file_id', ExecutionFile,
+@validate(execution_file=EditableDBThing('execution_file_id', ExecutionFile,
                                          source=SOURCE_MATCHDICT))
 def execution_file_delete(request, execution_file):
     return project_file_delete(request, execution_file)
@@ -207,7 +198,7 @@ def file_item_view(request):
     file_ = File.fetch_by(sha1=sha1sum)
     if not file_:
         return HTTPNotFound()
-    elif not request.user.has_access(file_):
+    elif not file_.can_edit(request.user):
         return HTTPForbidden()
     source = File.file_path(request.registry.settings['file_directory'],
                             sha1sum)
@@ -224,7 +215,7 @@ def file_item_info(request):
     file_ = File.fetch_by(sha1=sha1sum)
     if not file_:
         return HTTPNotFound()
-    elif not request.user.has_access(file_):
+    elif not file_.can_edit(request.user):
         return HTTPForbidden()
     return {'file_id': file_.id}
 
@@ -238,7 +229,7 @@ def file_item_info(request):
           max_lines=TextNumber('max_lines', min_value=0, optional=True),
           optional=TextNumber('optional', min_value=0, max_value=1,
                               optional=True),
-          project=ExistingDBThing('project_id', Project),
+          project=EditableDBThing('project_id', Project),
           warning_regex=RegexString('warning_regex', optional=True))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, optional, project, warning_regex):
@@ -254,9 +245,6 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request,
                                 messages='max_lines cannot be > max_size')
-    if not project.can_edit(request.user):
-        return HTTPForbidden()
-
     # Check for build-file conflict
     if not optional and BuildFile.fetch_by(project=project, filename=filename):
         return http_bad_request(request, messages=('A build file already '
@@ -434,13 +422,9 @@ def password_reset_edit_item(request):
 @view_config(route_name='project', request_method='PUT',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=2),
-          class_=ExistingDBThing('class_id', Class),
-          makefile=ExistingDBThing('makefile_id', File, optional=True))
+          class_=EditableDBThing('class_id', Class),
+          makefile=EditableDBThing('makefile_id', File, optional=True))
 def project_create(request, name, class_, makefile):
-    if not class_.can_edit(request.user):
-        return HTTPForbidden()
-    if makefile and not request.user.has_access(makefile):
-        return http_bad_request(request, messages='Invalid makefile_id')
     project = Project(name=name, klass=class_, makefile=makefile)
     session = Session()
     session.add(project)
@@ -495,7 +479,7 @@ def project_new(request):
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=2),
-          makefile=ExistingDBThing('makefile_id', File, optional=True))
+          makefile=EditableDBThing('makefile_id', File, optional=True))
 def project_update(request, name, makefile):
     project_id = request.matchdict['project_id']
     project = Project.fetch_by_id(project_id)
@@ -503,8 +487,6 @@ def project_update(request, name, makefile):
         return http_bad_request(request, messages='Invalid project_id')
     if not project.can_edit(request.user):
         return HTTPForbidden()
-    if makefile and not request.user.has_access(makefile):
-        return http_bad_request(request, messages='Invalid makefile_id')
     class_name = request.matchdict['class_name']
     if project.klass.name != class_name:
         return http_bad_request(request,

@@ -143,6 +143,18 @@ class File(BasicBase, Base):
         with open(path, 'wb') as fp:
             fp.write(data)
 
+    def can_edit(self, user):
+        """Return true if the user can view and update the file."""
+        # Perform simplest checks first
+        if user.is_admin or self in user.files:
+            return True
+        elif user.admin_for:  # Begin more expensive comparisions
+            mf_classes = set(x.klass for x in self.makefile_for_projects)
+            if mf_classes.intersection(user.admin_for):
+                return True
+            # TODO: Compare other project files
+        return False
+
 
 class FileVerifier(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
@@ -755,17 +767,6 @@ class User(UserMixin, BasicBase, Base):
             return Class.all_classes_by_name()
         else:
             return sorted(self.admin_for)
-
-    def has_access(self, file_):
-        # Perform simplest checks first
-        if self.is_admin or file_ in self.files:
-            return True
-        elif self.admin_for:  # Begin more expensive comparisions
-            mf_classes = set(x.klass for x in file_.makefile_for_projects)
-            if mf_classes.intersection(self.admin_for):
-                return True
-            # TODO: Compare other project files
-        return False
 
     def is_admin_for_any_class(self):
         return len(self.admin_for) > 0

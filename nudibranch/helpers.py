@@ -1,7 +1,8 @@
 import json
 import pika
 import xml.sax.saxutils
-from pyramid_addons.validation import TextNumber, Validator
+from pyramid_addons.helpers import http_forbidden
+from pyramid_addons.validation import TextNumber, ValidateAbort, Validator
 from .exceptions import InvalidId
 
 
@@ -13,12 +14,12 @@ class DummyTemplateAttr(object):
         return self.default
 
 
-class ExistingDBThing(Validator):
+class DBThing(Validator):
 
     """A validator that converts a primary key into the database object."""
 
     def __init__(self, param, cls, **kwargs):
-        super(ExistingDBThing, self).__init__(param, **kwargs)
+        super(DBThing, self).__init__(param, **kwargs)
         self.id_validator = TextNumber(param, min_value=0)
         self.cls = cls
 
@@ -31,6 +32,26 @@ class ExistingDBThing(Validator):
         if not thing:
             self.add_error(errors, '{0} does not exist'
                            .format(self.cls.__name__))
+        return thing
+
+
+class EditableDBThing(DBThing):
+
+    """An extension of DBThing that also checks for access.
+
+    Usage of this validator assumes the Thing class has a `can_edit` method
+    that takes as a sole argument a User object.
+
+    """
+
+    def run(self, value, errors, request):
+        """Return thing, but abort validation if request.user cannot edit."""
+        thing = super(EditableDBThing, self).run(value, errors, request)
+        if errors:
+            return None
+        if not thing.can_edit(request.user):
+            message = 'Insufficient permissions for {0}'.format(self.param)
+            raise ValidateAbort(http_forbidden(request, messages=message))
         return thing
 
 
