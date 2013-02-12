@@ -207,8 +207,7 @@ class ClassTests(BaseAPITest):
     def test_class_view_invalid(self):
         from nudibranch.views import class_view
         request = self.make_request(matchdict={'class_name': 'Test Invalid'})
-        info = class_view(request)
-        self.assertIsInstance(info, HTTPNotFound)
+        self.assertRaises(HTTPNotFound, class_view, request)
 
 
 class ClassJoinTests(BaseAPITest):
@@ -297,7 +296,8 @@ class FileTests(BaseAPITest):
                                     matchdict={'sha1sum': 'a' * 39})
         info = file_item_info(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid sha1sum', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('must be >= 40 characters' in info['messages'][0])
 
     def test_view_invalid_sha1sum_too_big(self):
         from nudibranch.views import file_item_info
@@ -306,15 +306,15 @@ class FileTests(BaseAPITest):
                                     matchdict={'sha1sum': 'a' * 41})
         info = file_item_info(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid sha1sum', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('must be <= 40 characters' in info['messages'][0])
 
     def test_info_file_not_found(self):
         from nudibranch.views import file_item_info
         user, _ = self.get_objects()
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': 'a' * 40})
-        info = file_item_info(request)
-        self.assertIsInstance(info, HTTPNotFound)
+        self.assertRaises(HTTPNotFound, file_item_info, request)
 
     def test_view_user_did_not_upload_file(self):
         from nudibranch.views import file_item_info
@@ -322,8 +322,7 @@ class FileTests(BaseAPITest):
         sha1sum = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
         request = self.make_request(user=user,
                                     matchdict={'sha1sum': sha1sum})
-        info = file_item_info(request)
-        self.assertIsInstance(info, HTTPForbidden)
+        self.assertRaises(HTTPForbidden, file_item_info, request)
 
     def test_view_found(self):
         from nudibranch.views import file_item_info
@@ -536,6 +535,7 @@ class ProjectTests(BaseAPITest):
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual(1, len(info['messages']))
+        self.assertTrue('unicode string' in info['messages'][0])
 
     def test_create_invalid_id_value(self):
         from nudibranch.views import project_create
@@ -543,7 +543,8 @@ class ProjectTests(BaseAPITest):
         request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid class_id', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('Invalid Class' in info['messages'][0])
 
     def test_create_invalid_makefile_id(self):
         from nudibranch.views import project_create
@@ -551,15 +552,17 @@ class ProjectTests(BaseAPITest):
         request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid makefile_id', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('Invalid File' in info['messages'][0])
 
     def test_create_invalid_makefile_id_perms(self):
         from nudibranch.views import project_create
-        user, json_data = self.get_objects(makefile_id='1')
+        user, json_data = self.get_objects(username='user1@email',
+                                           makefile_id='1')
         request = self.make_request(json_body=json_data, user=user)
         info = project_create(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid makefile_id', info['messages'])
+        self.assertEqual(HTTPForbidden.code, request.response.status_code)
+        self.assertTrue('Insufficient permissions' in info['messages'])
 
     def test_create_no_params(self):
         from nudibranch.views import project_create
@@ -620,16 +623,18 @@ class ProjectTests(BaseAPITest):
                                     user=user)
         info = project_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid makefile_id', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('Invalid File' in info['messages'][0])
 
     def test_update_invalid_makefile_id_perms(self):
         from nudibranch.views import project_update
-        user, matchdict, json_data = self.get_update_objects(makefile_id='1')
+        user, matchdict, json_data = self.get_update_objects(
+            username='user2@email', makefile_id='1')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = project_update(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid makefile_id', info['messages'])
+        self.assertEqual(HTTPForbidden.code, request.response.status_code)
+        self.assertTrue('Insufficient permissions' in info['messages'])
 
     def test_update_invalid_product_id(self):
         from nudibranch.views import project_update

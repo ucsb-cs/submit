@@ -41,7 +41,7 @@ class DBThing(Validator):
             # If part of the URL we should have a not-found error
             raise HTTPNotFound()
         elif not thing:
-            self.add_error(errors, '{0} does not exist'
+            self.add_error(errors, 'Invalid {0}'
                            .format(self.cls.__name__))
         return thing
 
