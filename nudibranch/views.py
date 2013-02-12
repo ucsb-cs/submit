@@ -8,10 +8,9 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, RegexString, TextNumber,
-                                       WhiteSpaceString, SOURCE_MATCHDICT,
-                                       validate)
-from pyramid.httpexceptions import (HTTPBadRequest, HTTPForbidden, HTTPFound,
-                                    HTTPNotFound)
+                                       WhiteSpaceString, validate,
+                                       SOURCE_MATCHDICT as MATCHDICT)
+from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import notfound_view_config, view_config
@@ -21,13 +20,21 @@ from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
-from .helpers import DummyTemplateAttr, EditableDBThing, fetch_request_ids
+from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
+                      EditableDBThing, fetch_request_ids)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
 from .prev_next import (NoSuchProjectException, NoSuchUserException,
                         PrevNextFull, PrevNextUser)
 from .zipper import ZipSubmission
+
+
+# A few reoccuring validators
+SHA1_VALIDATOR = String('sha1sum', min_length=40, max_length=40,
+                        source=MATCHDICT)
+UUID_VALIDATOR = String('token', min_length=36, max_length=36,
+                        source=MATCHDICT)
 
 
 @notfound_view_config()
@@ -83,7 +90,7 @@ def build_file_create(request, file_, filename, project):
 @view_config(route_name='build_file_item', request_method='DELETE',
              permission='authenticated', renderer='json')
 @validate(build_file=EditableDBThing('build_file_id', BuildFile,
-                                     source=SOURCE_MATCHDICT))
+                                     source=MATCHDICT))
 def build_file_delete(request, build_file):
     return project_file_delete(request, build_file)
 
@@ -135,13 +142,12 @@ def class_list(request):
 
 @view_config(route_name='class_item', request_method='GET',
              renderer='templates/class_view.pt', permission='authenticated')
+@validate(class_=AnyDBThing('class_name', Class, fetch_by='name',
+                            validator=String('class_name'), source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def class_view(request):
-    klass = Class.fetch_by(name=request.matchdict['class_name'])
-    if not klass:
-        return HTTPNotFound()
+def class_view(request, class_):
     return {'page_title': 'Class Page',
-            'class_admin': klass.can_edit(request.user), 'klass': klass}
+            'class_admin': class_.can_edit(request.user), 'klass': class_}
 
 
 @view_config(route_name='execution_file', request_method='PUT',
@@ -157,16 +163,15 @@ def execution_file_create(request, file_, filename, project):
 @view_config(route_name='execution_file_item', request_method='DELETE',
              permission='authenticated', renderer='json')
 @validate(execution_file=EditableDBThing('execution_file_id', ExecutionFile,
-                                         source=SOURCE_MATCHDICT))
+                                         source=MATCHDICT))
 def execution_file_delete(request, execution_file):
     return project_file_delete(request, execution_file)
 
 
 @view_config(route_name='file_item', request_method='PUT', renderer='json',
              permission='authenticated')
-@validate(b64data=WhiteSpaceString('b64data'))
-def file_create(request, b64data):
-    sha1sum = request.matchdict['sha1sum']
+@validate(b64data=WhiteSpaceString('b64data'), sha1sum=SHA1_VALIDATOR)
+def file_create(request, b64data, sha1sum):
     data = b64decode(b64data.encode('ascii'))
     # Verify the sha1 matches
     expected_sha1 = sha1(data).hexdigest()
@@ -190,33 +195,21 @@ def file_create(request, b64data):
 
 @view_config(route_name='file_item', request_method='GET',
              permission='authenticated', renderer='templates/file_view.pt')
+@validate(file_=EditableDBThing('sha1sum', File, fetch_by='sha1',
+                                validator=SHA1_VALIDATOR, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def file_item_view(request):
-    sha1sum = request.matchdict['sha1sum']
-    if len(sha1sum) != 40:
-        return HTTPBadRequest('Invalid sha1sum')
-    file_ = File.fetch_by(sha1=sha1sum)
-    if not file_:
-        return HTTPNotFound()
-    elif not file_.can_edit(request.user):
-        return HTTPForbidden()
+def file_item_view(request, file_):
     source = File.file_path(request.registry.settings['file_directory'],
-                            sha1sum)
+                            file_.sha1)
     contents = codecs.open(source, encoding='utf-8').read()
     return {'page_title': 'File Contents', 'contents': contents}
 
 
 @view_config(route_name='file_item_info', request_method='GET',
              permission='authenticated', renderer='json')
-def file_item_info(request):
-    sha1sum = request.matchdict['sha1sum']
-    if len(sha1sum) != 40:
-        return http_bad_request(request, messages='Invalid sha1sum')
-    file_ = File.fetch_by(sha1=sha1sum)
-    if not file_:
-        return HTTPNotFound()
-    elif not file_.can_edit(request.user):
-        return HTTPForbidden()
+@validate(file_=EditableDBThing('sha1sum', File, fetch_by='sha1',
+                                validator=SHA1_VALIDATOR, source=MATCHDICT))
+def file_item_info(request, file_):
     return {'file_id': file_.id}
 
 
@@ -278,7 +271,9 @@ def file_verifier_delete(request):
 
 @view_config(route_name='file_verifier_item', request_method='POST',
              permission='authenticated', renderer='json')
-@validate(filename=String('filename', min_length=1),
+@validate(file_verifier=EditableDBThing('file_verifier_id', FileVerifier,
+                                        source=MATCHDICT),
+          filename=String('filename', min_length=1),
           min_size=TextNumber('min_size', min_value=0),
           max_size=TextNumber('max_size', min_value=0, optional=True),
           min_lines=TextNumber('min_lines', min_value=0),
@@ -286,8 +281,8 @@ def file_verifier_delete(request):
           optional=TextNumber('optional', min_value=0, max_value=1,
                               optional=True),
           warning_regex=RegexString('warning_regex', optional=True))
-def file_verifier_update(request, filename, min_size, max_size, min_lines,
-                         max_lines, optional, warning_regex):
+def file_verifier_update(request, file_verifier, filename, min_size, max_size,
+                         min_lines, max_lines, optional, warning_regex):
     # Additional verification
     if max_size is not None and max_size < min_size:
         return http_bad_request(request,
@@ -301,16 +296,6 @@ def file_verifier_update(request, filename, min_size, max_size, min_lines,
     if max_size is not None and max_lines is not None and max_size < max_lines:
         return http_bad_request(request,
                                 messages='max_lines cannot be > max_size')
-
-    file_verifier_id = request.matchdict['file_verifier_id']
-    file_verifier = FileVerifier.fetch_by_id(file_verifier_id)
-    if not file_verifier:
-        return http_bad_request(request,
-                                messages='Invalid file_verifier_id')
-
-    if not file_verifier.project.can_edit(request.user):
-        return HTTPForbidden()
-
     # Check for build-file conflict
     if not optional and BuildFile.fetch_by(project_id=file_verifier.project_id,
                                            filename=filename):
@@ -393,16 +378,17 @@ def password_reset_edit(request):
 @view_config(route_name='password_reset_item', renderer='json',
              request_method='PUT')
 @validate(username=String('email'),
-          password=WhiteSpaceString('password', min_length=6))
-def password_reset_item(request, username, password):
-    pr = PasswordReset.fetch_by(reset_token=request.matchdict['token'])
-    if not pr or pr.user.username != username:
+          password=WhiteSpaceString('password', min_length=6),
+          reset=AnyDBThing('token', PasswordReset, fetch_by='reset_token',
+                           validator=UUID_VALIDATOR, source=MATCHDICT))
+def password_reset_item(request, username, password, reset):
+    if reset.user.username != username:
         return http_conflict(request, message=('The reset token and username '
                                                'combination is not valid.'))
     session = Session()
-    pr.user.password = password
-    session.add(pr.user)
-    session.delete(pr)
+    reset.user.password = password
+    session.add(reset.user)
+    session.delete(reset)
     transaction.commit()
     return http_ok(request, message='Your password was changed successfully.')
 
@@ -410,13 +396,12 @@ def password_reset_item(request, username, password):
 @view_config(route_name='password_reset_item',
              renderer='templates/password_reset_item.pt',
              request_method='GET')
+@validate(reset=AnyDBThing('token', PasswordReset, fetch_by='reset_token',
+                           validator=UUID_VALIDATOR, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def password_reset_edit_item(request):
-    pr = PasswordReset.fetch_by(reset_token=request.matchdict['token'])
-    if not pr:
-        return HTTPNotFound()
+def password_reset_edit_item(request, reset):
     return {'page_title': 'Password Reset',
-            'token': request.matchdict['token']}
+            'token': reset.get_token()}
 
 
 @view_config(route_name='project', request_method='PUT',

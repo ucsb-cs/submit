@@ -348,11 +348,13 @@ class FileVerifierTests(BaseAPITest):
         return user, json_data
 
     @staticmethod
-    def get_update_objects(**kwargs):
+    def get_update_objects(username='admin', **kwargs):
+        user = User.fetch_by(username=username)
         file_verifier = Session.query(FileVerifier).first()
         json_data = {'filename': 'File 3', 'min_size': '0', 'min_lines': '0'}
         json_data.update(kwargs)
-        return {'file_verifier_id': file_verifier.id}, json_data
+        return (user, {'file_verifier_id': text_type(file_verifier.id)},
+                json_data)
 
     def test_create_invalid_duplicate_name(self):
         from nudibranch.views import file_verifier_create
@@ -381,16 +383,16 @@ class FileVerifierTests(BaseAPITest):
 
     def test_create_invalid_mins(self):
         from nudibranch.views import file_verifier_create
-        _, json_data = self.get_objects(min_lines='1', min_size='0')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(min_lines='1', min_size='0')
+        request = self.make_request(json_body=json_data, user=user)
         info = file_verifier_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('min_lines cannot be > min_size', info['messages'])
 
     def test_create_invalid_size(self):
         from nudibranch.views import file_verifier_create
-        _, json_data = self.get_objects(min_size='10', max_size='9')
-        request = self.make_request(json_body=json_data)
+        user, json_data = self.get_objects(min_size='10', max_size='9')
+        request = self.make_request(json_body=json_data, user=user)
         info = file_verifier_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('min_size cannot be > max_size', info['messages'])
@@ -418,8 +420,7 @@ class FileVerifierTests(BaseAPITest):
 
     def test_update_invalid_duplicate_name(self):
         from nudibranch.views import file_verifier_update
-        matchdict, json_data = self.get_update_objects(filename='File 2')
-        user = User.fetch_by(username='admin')
+        user, matchdict, json_data = self.get_update_objects(filename='File 2')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = file_verifier_update(request)
@@ -429,36 +430,40 @@ class FileVerifierTests(BaseAPITest):
 
     def test_update_invalid_lines(self):
         from nudibranch.views import file_verifier_update
-        matchdict, json_data = self.get_update_objects(min_lines='10',
-                                                       max_lines='9')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(min_lines='10',
+                                                             max_lines='9')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = file_verifier_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('min_lines cannot be > max_lines', info['messages'])
 
     def test_update_invalid_maxes(self):
         from nudibranch.views import file_verifier_update
-        matchdict, json_data = self.get_update_objects(max_lines='10',
-                                                       max_size='9')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(max_lines='10',
+                                                             max_size='9')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = file_verifier_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('max_lines cannot be > max_size', info['messages'])
 
     def test_update_invalid_mins(self):
         from nudibranch.views import file_verifier_update
-        matchdict, json_data = self.get_update_objects(min_lines='1',
-                                                       min_size='0')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(min_lines='1',
+                                                             min_size='0')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = file_verifier_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('min_lines cannot be > min_size', info['messages'])
 
     def test_update_invalid_size(self):
         from nudibranch.views import file_verifier_update
-        matchdict, json_data = self.get_update_objects(min_size='10',
-                                                       max_size='9')
-        request = self.make_request(json_body=json_data, matchdict=matchdict)
+        user, matchdict, json_data = self.get_update_objects(min_size='10',
+                                                             max_size='9')
+        request = self.make_request(json_body=json_data, matchdict=matchdict,
+                                    user=user)
         info = file_verifier_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
         self.assertEqual('min_size cannot be > max_size', info['messages'])
@@ -468,12 +473,11 @@ class FileVerifierTests(BaseAPITest):
         request = self.make_request(json_body={})
         info = file_verifier_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual(3, len(info['messages']))
+        self.assertEqual(4, len(info['messages']))
 
     def test_update_valid(self):
         from nudibranch.views import file_verifier_update
-        matchdict, json_data = self.get_update_objects()
-        user = User.fetch_by(username='admin')
+        user, matchdict, json_data = self.get_update_objects()
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = file_verifier_update(request)

@@ -2,7 +2,9 @@ import json
 import pika
 import xml.sax.saxutils
 from pyramid_addons.helpers import http_forbidden
-from pyramid_addons.validation import TextNumber, ValidateAbort, Validator
+from pyramid_addons.validation import (SOURCE_MATCHDICT, TextNumber,
+                                       ValidateAbort, Validator)
+from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
 from .exceptions import InvalidId
 
 
@@ -18,18 +20,27 @@ class DBThing(Validator):
 
     """A validator that converts a primary key into the database object."""
 
-    def __init__(self, param, cls, **kwargs):
+    def __init__(self, param, cls, fetch_by=None, validator=None,
+                 **kwargs):
         super(DBThing, self).__init__(param, **kwargs)
-        self.id_validator = TextNumber(param, min_value=0)
         self.cls = cls
+        self.fetch_by = fetch_by
+        self.id_validator = validator if validator else TextNumber(param,
+                                                                   min_value=0)
 
     def run(self, value, errors, request):
         """Return the object if valid and available, otherwise None."""
         self.id_validator(value, errors, request)
         if errors:
             return None
-        thing = self.cls.fetch_by_id(value)
-        if not thing:
+        if self.fetch_by:
+            thing = self.cls.fetch_by(**{self.fetch_by: value})
+        else:
+            thing = self.cls.fetch_by_id(value)
+        if not thing and self.source == SOURCE_MATCHDICT:
+            # If part of the URL we should have a not-found error
+            raise HTTPNotFound()
+        elif not thing:
             self.add_error(errors, '{0} does not exist'
                            .format(self.cls.__name__))
         return thing
@@ -50,6 +61,9 @@ class EditableDBThing(DBThing):
         if errors:
             return None
         if not thing.can_edit(request.user):
+            if self.source == SOURCE_MATCHDICT:
+                # If part of the URL don't provide any extra information
+                raise HTTPForbidden()
             message = 'Insufficient permissions for {0}'.format(self.param)
             raise ValidateAbort(http_forbidden(request, messages=message))
         return thing

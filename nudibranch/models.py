@@ -170,6 +170,9 @@ class FileVerifier(BasicBase, Base):
     def __cmp__(self, other):
         return cmp(self.filename, other.filename)
 
+    def can_edit(self, user):
+        return self.project.klass.can_edit(user)
+
     def verify(self, base_path, file_):
         errors = []
         if file_.size < self.min_size:
