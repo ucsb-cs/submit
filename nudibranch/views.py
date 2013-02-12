@@ -8,7 +8,8 @@ from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, RegexString, TextNumber,
-                                       WhiteSpaceString, validated_form)
+                                       WhiteSpaceString, SOURCE_MATCHDICT,
+                                       validate)
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPForbidden, HTTPFound,
                                     HTTPNotFound)
 from pyramid.response import FileResponse, Response
@@ -64,42 +65,41 @@ def project_file_create(request, file_, filename, project, cls):
     return http_created(request, redir_location=redir_location)
 
 
-def project_file_delete(request, attr_name, cls):
-    file_ = cls.fetch_by_id(request.matchdict[attr_name])
-    if not file_:
-        return http_bad_request(request,
-                                messages='Invalid {0}'.format(attr_name))
-    if not file_.project.can_edit(request.user):
+def project_file_delete(request, project_file):
+    if not project_file.project.can_edit(request.user):
         return HTTPForbidden()
     redir_location = request.route_path('project_edit',
-                                        project_id=file_.project.id)
-    request.session.flash('Deleted {0} {1}.'.format(cls.__name__,
-                                                    file_.filename))
+                                        project_id=project_file.project.id)
+    request.session.flash('Deleted {0} {1}.'
+                          .format(project_file.__class__.__name__,
+                                  project_file.filename))
     # Delete the file
     session = Session()
-    session.delete(file_)
+    session.delete(project_file)
     transaction.commit()
     return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='build_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(file_=ExistingDBThing('file_id', File),
-                filename=String('filename', min_length=1),
-                project=ExistingDBThing('project_id', Project))
+@validate(file_=ExistingDBThing('file_id', File),
+          filename=String('filename', min_length=1),
+          project=ExistingDBThing('project_id', Project))
 def build_file_create(request, file_, filename, project):
     return project_file_create(request, file_, filename, project, BuildFile)
 
 
 @view_config(route_name='build_file_item', request_method='DELETE',
              permission='authenticated', renderer='json')
-def build_file_delete(request):
-    return project_file_delete(request, 'build_file_id', BuildFile)
+@validate(build_file=ExistingDBThing('build_file_id', BuildFile,
+                                     source=SOURCE_MATCHDICT))
+def build_file_delete(request, build_file):
+    return project_file_delete(request, build_file)
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',
              renderer='json')
-@validated_form(name=String('name', min_length=3))
+@validate(name=String('name', min_length=3))
 def class_create(request, name):
     session = Session()
     klass = Class(name=name)
@@ -155,9 +155,9 @@ def class_view(request):
 
 @view_config(route_name='execution_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(file_=ExistingDBThing('file_id', File),
-                filename=String('filename', min_length=1),
-                project=ExistingDBThing('project_id', Project))
+@validate(file_=ExistingDBThing('file_id', File),
+          filename=String('filename', min_length=1),
+          project=ExistingDBThing('project_id', Project))
 def execution_file_create(request, file_, filename, project):
     return project_file_create(request, file_, filename, project,
                                ExecutionFile)
@@ -165,13 +165,15 @@ def execution_file_create(request, file_, filename, project):
 
 @view_config(route_name='execution_file_item', request_method='DELETE',
              permission='authenticated', renderer='json')
-def execution_file_delete(request):
-    return project_file_delete(request, 'execution_file_id', ExecutionFile)
+@validate(execution_file=ExistingDBThing('execution_file_id', ExecutionFile,
+                                         source=SOURCE_MATCHDICT))
+def execution_file_delete(request, execution_file):
+    return project_file_delete(request, execution_file)
 
 
 @view_config(route_name='file_item', request_method='PUT', renderer='json',
              permission='authenticated')
-@validated_form(b64data=WhiteSpaceString('b64data'))
+@validate(b64data=WhiteSpaceString('b64data'))
 def file_create(request, b64data):
     sha1sum = request.matchdict['sha1sum']
     data = b64decode(b64data.encode('ascii'))
@@ -229,15 +231,15 @@ def file_item_info(request):
 
 @view_config(route_name='file_verifier', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(filename=String('filename', min_length=1),
-                min_size=TextNumber('min_size', min_value=0),
-                max_size=TextNumber('max_size', min_value=0, optional=True),
-                min_lines=TextNumber('min_lines', min_value=0),
-                max_lines=TextNumber('max_lines', min_value=0, optional=True),
-                optional=TextNumber('optional', min_value=0, max_value=1,
-                                    optional=True),
-                project=ExistingDBThing('project_id', Project),
-                warning_regex=RegexString('warning_regex', optional=True))
+@validate(filename=String('filename', min_length=1),
+          min_size=TextNumber('min_size', min_value=0),
+          max_size=TextNumber('max_size', min_value=0, optional=True),
+          min_lines=TextNumber('min_lines', min_value=0),
+          max_lines=TextNumber('max_lines', min_value=0, optional=True),
+          optional=TextNumber('optional', min_value=0, max_value=1,
+                              optional=True),
+          project=ExistingDBThing('project_id', Project),
+          warning_regex=RegexString('warning_regex', optional=True))
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, optional, project, warning_regex):
     if max_size is not None and max_size < min_size:
@@ -288,14 +290,14 @@ def file_verifier_delete(request):
 
 @view_config(route_name='file_verifier_item', request_method='POST',
              permission='authenticated', renderer='json')
-@validated_form(filename=String('filename', min_length=1),
-                min_size=TextNumber('min_size', min_value=0),
-                max_size=TextNumber('max_size', min_value=0, optional=True),
-                min_lines=TextNumber('min_lines', min_value=0),
-                max_lines=TextNumber('max_lines', min_value=0, optional=True),
-                optional=TextNumber('optional', min_value=0, max_value=1,
-                                    optional=True),
-                warning_regex=RegexString('warning_regex', optional=True))
+@validate(filename=String('filename', min_length=1),
+          min_size=TextNumber('min_size', min_value=0),
+          max_size=TextNumber('max_size', min_value=0, optional=True),
+          min_lines=TextNumber('min_lines', min_value=0),
+          max_lines=TextNumber('max_lines', min_value=0, optional=True),
+          optional=TextNumber('optional', min_value=0, max_value=1,
+                              optional=True),
+          warning_regex=RegexString('warning_regex', optional=True))
 def file_verifier_update(request, filename, min_size, max_size, min_lines,
                          max_lines, optional, warning_regex):
     # Additional verification
@@ -358,7 +360,7 @@ def home(request):
 
 @view_config(route_name='password_reset', renderer='json',
              request_method='PUT')
-@validated_form(username=String('email'))
+@validate(username=String('email'))
 def password_reset_create(request, username):
     if username == 'admin':
         return http_conflict(request, message='Hahaha, nice try!')
@@ -402,8 +404,8 @@ def password_reset_edit(request):
 
 @view_config(route_name='password_reset_item', renderer='json',
              request_method='PUT')
-@validated_form(username=String('email'),
-                password=WhiteSpaceString('password', min_length=6))
+@validate(username=String('email'),
+          password=WhiteSpaceString('password', min_length=6))
 def password_reset_item(request, username, password):
     pr = PasswordReset.fetch_by(reset_token=request.matchdict['token'])
     if not pr or pr.user.username != username:
@@ -431,9 +433,9 @@ def password_reset_edit_item(request):
 
 @view_config(route_name='project', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(name=String('name', min_length=2),
-                class_=ExistingDBThing('class_id', Class),
-                makefile=ExistingDBThing('makefile_id', File, optional=True))
+@validate(name=String('name', min_length=2),
+          class_=ExistingDBThing('class_id', Class),
+          makefile=ExistingDBThing('makefile_id', File, optional=True))
 def project_create(request, name, class_, makefile):
     if not class_.can_edit(request.user):
         return HTTPForbidden()
@@ -492,8 +494,8 @@ def project_new(request):
 
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='authenticated', renderer='json')
-@validated_form(name=String('name', min_length=2),
-                makefile=ExistingDBThing('makefile_id', File, optional=True))
+@validate(name=String('name', min_length=2),
+          makefile=ExistingDBThing('makefile_id', File, optional=True))
 def project_update(request, name, makefile):
     project_id = request.matchdict['project_id']
     project = Project.fetch_by_id(project_id)
@@ -609,8 +611,7 @@ def project_view_summary(request):
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
-@validated_form(username=String('email'),
-                password=WhiteSpaceString('password'))
+@validate(username=String('email'), password=WhiteSpaceString('password'))
 def session_create(request, username, password):
     user = User.login(username, password)
     if user:
@@ -625,7 +626,6 @@ def session_create(request, username, password):
 
 @view_config(route_name='session', renderer='json', request_method='DELETE',
              permission='authenticated')
-@validated_form()
 def session_destroy(request):
     headers = forget(request)
     return http_gone(request, headers=headers,
@@ -642,11 +642,11 @@ def session_edit(request):
 
 @view_config(route_name='submission', renderer='json', request_method='PUT',
              permission='authenticated')
-@validated_form(project_id=TextNumber('project_id', min_value=0),
-                file_ids=List('file_ids', TextNumber('', min_value=0),
-                              min_elements=1),
-                filenames=List('filenames', String('', min_length=1),
-                               min_elements=1))
+@validate(project_id=TextNumber('project_id', min_value=0),
+          file_ids=List('file_ids', TextNumber('', min_value=0),
+                        min_elements=1),
+          filenames=List('filenames', String('', min_length=1),
+                         min_elements=1))
 def submission_create(request, project_id, file_ids, filenames):
     # Additional input verification
     if len(file_ids) != len(filenames):
@@ -813,12 +813,12 @@ def submission_view(request):
 
 @view_config(route_name='test_case', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(name=String('name', min_length=1),
-                args=String('args', min_length=1),
-                expected_id=TextNumber('expected_id', min_value=0),
-                points=TextNumber('points'),
-                stdin_id=TextNumber('stdin_id', min_value=0, optional=True),
-                testable_id=TextNumber('testable_id', min_value=0))
+@validate(name=String('name', min_length=1),
+          args=String('args', min_length=1),
+          expected_id=TextNumber('expected_id', min_value=0),
+          points=TextNumber('points'),
+          stdin_id=TextNumber('stdin_id', min_value=0, optional=True),
+          testable_id=TextNumber('testable_id', min_value=0))
 def test_case_create(request, name, args, expected_id, points, stdin_id,
                      testable_id):
     testable = Testable.fetch_by_id(testable_id)
@@ -853,11 +853,11 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
 
 @view_config(route_name='test_case_item', request_method='POST',
              permission='authenticated', renderer='json')
-@validated_form(name=String('name', min_length=1),
-                args=String('args', min_length=1),
-                expected_id=TextNumber('expected_id', min_value=0),
-                points=TextNumber('points'),
-                stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
+@validate(name=String('name', min_length=1),
+          args=String('args', min_length=1),
+          expected_id=TextNumber('expected_id', min_value=0),
+          points=TextNumber('points'),
+          stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
 def test_case_update(request, name, args, expected_id, points, stdin_id):
     test_case_id = request.matchdict['test_case_id']
     test_case = TestCase.fetch_by_id(test_case_id)
@@ -890,19 +890,16 @@ def test_case_update(request, name, args, expected_id, points, stdin_id):
 
 @view_config(route_name='testable', request_method='PUT',
              permission='authenticated', renderer='json')
-@validated_form(name=String('name', min_length=1),
-                make_target=String('make_target', min_length=1, optional=True),
-                executable=String('executable', min_length=1),
-                build_file_ids=List('build_file_ids',
-                                    TextNumber('', min_value=0),
-                                    optional=True),
-                execution_file_ids=List('execution_file_ids',
-                                        TextNumber('', min_value=0),
-                                        optional=True),
-                file_verifier_ids=List('file_verifier_ids',
-                                       TextNumber('', min_value=0),
-                                       optional=True),
-                project_id=TextNumber('project_id', min_value=0))
+@validate(name=String('name', min_length=1),
+          make_target=String('make_target', min_length=1, optional=True),
+          executable=String('executable', min_length=1),
+          build_file_ids=List('build_file_ids', TextNumber('', min_value=0),
+                              optional=True),
+          execution_file_ids=List('execution_file_ids',
+                                  TextNumber('', min_value=0), optional=True),
+          file_verifier_ids=List('file_verifier_ids',
+                                 TextNumber('', min_value=0), optional=True),
+          project_id=TextNumber('project_id', min_value=0))
 def testable_create(request, name, make_target, executable, build_file_ids,
                     execution_file_ids, file_verifier_ids, project_id):
     project = Project.fetch_by_id(project_id)
@@ -951,18 +948,15 @@ def testable_create(request, name, make_target, executable, build_file_ids,
 
 @view_config(route_name='testable_item', request_method='POST',
              permission='authenticated', renderer='json')
-@validated_form(name=String('name', min_length=1),
-                make_target=String('make_target', min_length=1, optional=True),
-                executable=String('executable', min_length=1),
-                build_file_ids=List('build_file_ids',
-                                    TextNumber('', min_value=0),
-                                    optional=True),
-                execution_file_ids=List('execution_file_ids',
-                                        TextNumber('', min_value=0),
-                                        optional=True),
-                file_verifier_ids=List('file_verifier_ids',
-                                       TextNumber('', min_value=0),
-                                       optional=True))
+@validate(name=String('name', min_length=1),
+          make_target=String('make_target', min_length=1, optional=True),
+          executable=String('executable', min_length=1),
+          build_file_ids=List('build_file_ids', TextNumber('', min_value=0),
+                              optional=True),
+          execution_file_ids=List('execution_file_ids',
+                                  TextNumber('', min_value=0), optional=True),
+          file_verifier_ids=List('file_verifier_ids',
+                                 TextNumber('', min_value=0), optional=True))
 def testable_edit(request, name, make_target, executable, build_file_ids,
                   execution_file_ids, file_verifier_ids):
     testable_id = request.matchdict['testable_id']
@@ -1030,7 +1024,6 @@ def testable_delete(request):
 
 @view_config(route_name='user_class_join', request_method='POST',
              permission='authenticated', renderer='json')
-@validated_form()
 def user_class_join(request):
     class_name = request.matchdict['class_name']
     username = request.matchdict['username']
@@ -1049,11 +1042,11 @@ def user_class_join(request):
 
 
 @view_config(route_name='user', renderer='json', request_method='PUT')
-@validated_form(name=String('name', min_length=3),
-                username=String('email', min_length=6, max_length=64),
-                password=WhiteSpaceString('password', min_length=6),
-                admin_for=List('admin_for', TextNumber('', min_value=0),
-                               optional=True))
+@validate(name=String('name', min_length=3),
+          username=String('email', min_length=6, max_length=64),
+          password=WhiteSpaceString('password', min_length=6),
+          admin_for=List('admin_for', TextNumber('', min_value=0),
+                         optional=True))
 def user_create(request, name, username, password, admin_for):
     # get the classes we are requesting, and make sure
     # they are all valid
