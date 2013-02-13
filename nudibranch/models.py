@@ -94,6 +94,10 @@ class Class(BasicBase, Base):
         """Return whether or not `user` can make changes to the class."""
         return user.is_admin or self in user.admin_for
 
+    def can_view(self, user):
+        """Return whether or not `user` can view the class."""
+        return self.can_edit(user) or self in user.classes
+
 
 class ExecutionFile(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
@@ -269,6 +273,10 @@ class Project(BasicBase, Base):
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the project."""
         return self.klass.can_edit(user)
+
+    def can_view(self, user):
+        """Return whether or not `user` can view the project."""
+        return self.klass.can_view(user)
 
     def optional_files(self):
         return frozenset([file_verifier.filename
@@ -763,17 +771,6 @@ class User(UserMixin, BasicBase, Base):
                              backref='admins')
     submissions = relationship('Submission', backref='user')
 
-    def classes_can_admin(self):
-        '''Gets all the classes that this user can administrate.
-        Returned in order by name'''
-        if self.is_admin:
-            return Class.all_classes_by_name()
-        else:
-            return sorted(self.admin_for)
-
-    def is_admin_for_any_class(self):
-        return len(self.admin_for) > 0
-
     @staticmethod
     def get_value(cls, value):
         '''Takes the class of the item that we want to
@@ -807,6 +804,22 @@ class User(UserMixin, BasicBase, Base):
         admin_str = '(admin)' if self.is_admin else ''
         return 'Name: {0} Email: {1} {2}'.format(self.name, self.username,
                                                  admin_str)
+
+    def can_view(self, user):
+        """Return whether or not `user` can view information about the user."""
+        return user.is_admin or self == user \
+            or set(self.classes).intersection(user.admin_for)
+
+    def classes_can_admin(self):
+        '''Gets all the classes that this user can administrate.
+        Returned in order by name'''
+        if self.is_admin:
+            return Class.all_classes_by_name()
+        else:
+            return sorted(self.admin_for)
+
+    def is_admin_for_any_class(self):
+        return len(self.admin_for) > 0
 
     def verify_file_ids(self, **kwargs):
         """Raise InvalidId exception if a file_id is not valid.

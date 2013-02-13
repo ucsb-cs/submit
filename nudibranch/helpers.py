@@ -48,7 +48,7 @@ class DBThing(Validator):
 
 class EditableDBThing(DBThing):
 
-    """An extension of DBThing that also checks for access.
+    """An extension of DBThing that also checks for edit access.
 
     Usage of this validator assumes the Thing class has a `can_edit` method
     that takes as a sole argument a User object.
@@ -61,6 +61,29 @@ class EditableDBThing(DBThing):
         if errors:
             return None
         if not thing.can_edit(request.user):
+            if self.source == SOURCE_MATCHDICT:
+                # If part of the URL don't provide any extra information
+                raise HTTPForbidden()
+            message = 'Insufficient permissions for {0}'.format(self.param)
+            raise ValidateAbort(http_forbidden(request, messages=message))
+        return thing
+
+
+class ViewableDBThing(DBThing):
+
+    """An extension of DBThing that also checks for view access.
+
+    Usage of this validator assumes the Thing class has a `can_view` method
+    that takes as a sole argument a User object.
+
+    """
+
+    def run(self, value, errors, request):
+        """Return thing, but abort validation if request.user cannot view."""
+        thing = super(ViewableDBThing, self).run(value, errors, request)
+        if errors:
+            return None
+        if not thing.can_view(request.user):
             if self.source == SOURCE_MATCHDICT:
                 # If part of the URL don't provide any extra information
                 raise HTTPForbidden()

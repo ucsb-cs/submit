@@ -21,7 +21,7 @@ from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
-                      EditableDBThing, fetch_request_ids)
+                      EditableDBThing, ViewableDBThing, fetch_request_ids)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -498,26 +498,20 @@ def project_update(request, name, makefile):
              renderer='templates/project_view_detailed.pt',
              request_method=('GET', 'HEAD'),
              permission='authenticated')
+@validate(class_name=String('class_name', source=MATCHDICT),
+          project = ViewableDBThing('project_id', Project, source=MATCHDICT),
+          user=ViewableDBThing('username', User, fetch_by='username',
+                               validator=String('username'), source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def project_view_detailed(request):
-    class_name = request.matchdict['class_name']
-    username = request.matchdict['username']
-    user = User.fetch_by(username=username)
-    project = Project.fetch_by_id(request.matchdict['project_id'])
+def project_view_detailed(request, class_name, project, user):
     # Additional verification
-    if not (user and project) or project.klass.name != class_name \
-            or project.klass not in user.classes:
-        return HTTPNotFound()
-
-    # Authorization checks
-    project_admin = project.can_edit(request.user)
-    if not project_admin and request.user != user:
-        return HTTPForbidden()
-
+    if project.klass.name != class_name:
+        raise HTTPNotFound()
     submissions = Submission.query_by(project_id=project.id, user_id=user.id)
     if not submissions:
-        return HTTPNotFound()
+        raise HTTPNotFound()
 
+    project_admin = project.can_edit(request.user)
     prev_next_user = None
     if project_admin:
         prev_next_user = PrevNextUser(request, project, user).to_html()

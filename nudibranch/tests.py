@@ -515,7 +515,8 @@ class ProjectTests(BaseAPITest):
     def get_view_objects(username='user1@email', **kwargs):
         user = User.fetch_by(username=username)
         proj = Session.query(Project).first()
-        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id,
+        matchdict = {'class_name': proj.klass.name,
+                     'project_id': text_type(proj.id),
                      'username': user.username}
         matchdict.update(kwargs)
         return user, matchdict
@@ -734,31 +735,27 @@ class ProjectTests(BaseAPITest):
         from nudibranch.views import project_view_detailed
         user, matchdict = self.get_view_objects(class_name='Test Invalid')
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view_detailed(request)
-        self.assertIsInstance(info, HTTPNotFound)
+        self.assertRaises(HTTPNotFound, project_view_detailed, request)
 
     def test_view_detailed_user_cannot_access_other_user_info(self):
         from nudibranch.views import project_view_detailed
         user, matchdict = self.get_view_objects()
         matchdict['username'] = 'user3@email'
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view_detailed(request)
-        self.assertIsInstance(info, HTTPForbidden)
+        self.assertRaises(HTTPForbidden, project_view_detailed, request)
 
     def test_view_detailed_user_not_part_of_class(self):
         from nudibranch.views import project_view_detailed
         user, matchdict = self.get_view_objects(username='user2@email')
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view_detailed(request)
-        self.assertIsInstance(info, HTTPNotFound)
+        self.assertRaises(HTTPForbidden, project_view_detailed, request)
 
     def test_view_detailed_invalid_id(self):
         from nudibranch.views import project_view_detailed
         user = User.fetch_by(username='user1@email')
         user, matchdict = self.get_view_objects(project_id='100')
         request = self.make_request(user=user, matchdict=matchdict)
-        info = project_view_detailed(request)
-        self.assertIsInstance(info, HTTPNotFound)
+        self.assertRaises(HTTPNotFound, project_view_detailed, request)
 
     def test_view_summary_as_admin(self):
         from nudibranch.views import project_view_summary
