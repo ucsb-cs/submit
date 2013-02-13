@@ -265,6 +265,7 @@ class Project(BasicBase, Base):
     makefile = relationship(File, backref='makefile_for_projects')
     makefile_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     name = Column(Unicode, nullable=False)
+    is_ready = Column(Boolean, default=False, nullable=False)
     submissions = relationship('Submission', backref='project',
                                cascade='all, delete-orphan')
     testables = relationship('Testable', backref='project',
@@ -275,8 +276,13 @@ class Project(BasicBase, Base):
         return self.klass.can_edit(user)
 
     def can_view(self, user):
-        """Return whether or not `user` can view the project."""
-        return self.klass.can_view(user)
+        """Return whether or not `user` can view the project.
+
+        The project's is_ready field must be set for a user to view.
+
+        """
+        return self.klass.can_edit(user) or \
+            self.is_ready and self.klass in user.classes
 
     def optional_files(self):
         return frozenset([file_verifier.filename

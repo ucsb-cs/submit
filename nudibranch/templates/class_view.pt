@@ -8,7 +8,8 @@
 
   <p>Projects</p>
   <ul>
-    <li tal:repeat="project klass.projects">
+    <div tal:repeat="project klass.projects" omit-tag="">
+    <li tal:condition="project.can_view(request.user)">
       <a tal:condition="class_admin"
 	 href="${_R('project_item_summary', class_name=project.klass.name, project_id=project.id)}">
 	${project.name}</a>
@@ -16,6 +17,7 @@
 	 href="${_R('project_item_detailed', class_name=project.klass.name, project_id=project.id, username=request.user.username)}">
         ${project.name}</a>
     </li>
+    </div>
   </ul>
 </div>
 </div>
