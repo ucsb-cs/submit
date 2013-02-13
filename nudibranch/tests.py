@@ -6,7 +6,8 @@ from chameleon.zpt.template import Macro
 from nudibranch import add_routes
 from nudibranch.models import (BuildFile, Class, File, FileVerifier, Project,
                                Session, Submission, SubmissionToFile, TestCase,
-                               Testable, User, configure_sql, create_schema)
+                               TestCaseResult, Testable, User, configure_sql,
+                               create_schema)
 from pyramid import testing
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPCreated,
                                     HTTPForbidden, HTTPNotFound, HTTPOk)
@@ -1118,6 +1119,15 @@ class TestCaseTests(BaseAPITest):
         self.assertEqual(json_data['args'], tc.args)
         self.assertEqual(json_data['name'], tc.name)
         self.assertEqual(int(json_data['points']), tc.points)
+
+
+class TestCaseResultTests(BaseAPITest):
+    """Test the TestCaseResult model"""
+    def test_output_limit_exceeded(self):
+        tc = test_case_result = TestCaseResult(submission_id=1, test_case_id=1)
+        tc.status = 'output_limit_exceeded'
+        Session.add(tc)
+        Session.flush()
 
 
 class UserTests(BaseAPITest):

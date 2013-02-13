@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import ConfigParser
 import amqp_worker
 import errno
 import json
@@ -39,7 +38,8 @@ class SubmissionHandler(object):
             if os.path.isfile(filename):
                 if open(filename).read() != expected_message:
                     raise Exception('Unexpected `done` file.')
-                print('\t\tfile_wait took {0} seconds'.format(time.time() - start))
+                print('\t\tfile_wait took {0} seconds'
+                      .format(time.time() - start))
                 return
             time.sleep(0.1)
 
@@ -171,7 +171,7 @@ class SubmissionHandler(object):
                 fd = os.open(output_file, os.O_WRONLY)
                 os.ftruncate(fd, MAX_FILE_SIZE)
                 os.close(fd)
-                result['status'] = 'timed_out'  # Hack onto this status for now
+                result['status'] = 'output_limit_exceeded'
             results[tc['id']] = result
         with open(os.path.join(RESULTS_PATH, 'test_cases'), 'w') as fp:
             json.dump(results, fp)

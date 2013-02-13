@@ -14,16 +14,19 @@ class DiffExtraInfo(object):
         return self._status != 'nonexistent_executable'
 
     def wrong_things(self):
-        '''Returns a list of strings describing what's wrong'''
+        """Returns a list of strings describing the error."""
         if self._status == 'nonexistent_executable':
-            return ["Executable was not produced during make"]
+            return ['The expected executable was not produced during make']
+        elif self._status == 'output_limit_exceeded':
+            return ['Your program produced too much output']
         elif self._status == 'signal':
-            return ["Your program threw signal {0}".format(self._extra)]
+            return ['Your program terminated with signal {0}'
+                    .format(self._extra)]
         elif self._status == 'timed_out':
-            return ["Your program timed out"]
+            return ['Your program timed out']
         elif self._status == 'success' and self._extra != 0:
-            return ["Your program terminated with exit code {0}".format(
-                    self._extra)]
+            return ['Your program terminated with exit code {0}'
+                    .format(self._extra)]
         else:
             return []
 
@@ -179,10 +182,6 @@ class Diff(object):
         elif self.is_given_empty() and not self.is_correct_empty():
             retval.append(
                 "You produced no output")
-
-        if not self.outputs_match():
-            retval.append("Your output did not match the expected output")
-
         return retval
 
     def _make_diff(self, correct, given):
