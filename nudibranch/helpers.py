@@ -108,6 +108,36 @@ def get_queue_func(request):
     return queue_func
 
 
+def get_submission_stats(cls, project):
+    """Return a dictionary of items containing submission stats.
+
+    :key count: The total number of submissions
+    :key unique: The total number of unique students submitting
+    :key by_hour: A list containing the count and unique submissions by hour
+    :key start: The datetime of the first submission
+    :key end: The datetime of the most recent submission
+
+    """
+    count = 0
+    unique = set()
+    start = cur_date = None
+    by_hour = []
+    cur = None
+    for submission in cls.query_by(project=project).order_by('created_at'):
+        if submission.created_at.hour != cur_date:
+            cur_date = submission.created_at.hour
+            cur = {'count': 0, 'unique': set()}
+            by_hour.append(cur)
+        if not start:
+            start = submission.created_at
+        count += 1
+        unique.add(submission.user_id)
+        cur['count'] += 1
+        cur['unique'].add(submission.user_id)
+    return {'count': count, 'unique': len(unique), 'start': start,
+            'end': submission.created_at, 'by_hour': by_hour}
+
+
 def readlines(path):
     with open(path, 'r') as fh:
         return fh.read().splitlines()

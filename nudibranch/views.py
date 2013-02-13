@@ -21,7 +21,8 @@ from .diff_render import HTMLDiff, ScoreWithSetTotal
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
-                      EditableDBThing, ViewableDBThing, fetch_request_ids)
+                      EditableDBThing, ViewableDBThing, get_submission_stats,
+                      fetch_request_ids)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -492,6 +493,20 @@ def project_update(request, name, makefile):
     redir_location = request.route_path('project_edit',
                                         project_id=project_id)
     return http_ok(request, redir_location=redir_location)
+
+
+@view_config(route_name='project_item_stats',
+             renderer='templates/project_stats.pt', permission='authenticated')
+@validate(class_name=String('class_name', source=MATCHDICT),
+          project = EditableDBThing('project_id', Project, source=MATCHDICT))
+@site_layout('nudibranch:templates/layout.pt')
+def project_view_stats(request, class_name, project):
+    # Additional verification
+    if project.klass.name != class_name:
+        raise HTTPNotFound()
+    retval = get_submission_stats(Submission, project)
+    retval['project'] = project
+    return retval
 
 
 @view_config(route_name='project_item_detailed',

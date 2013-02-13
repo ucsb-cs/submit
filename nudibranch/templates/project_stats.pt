@@ -1,0 +1,13 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+  <h1>Statistics for ${project.name}</h1>
+  <div>Total Submissions: ${count}</div>
+  <div>Unique submissions: ${unique}</div>
+  <div>Average submissions per user: ${count / unique}</div>
+  <div>Submission Date Span: ${end - start}</div>
+  <h3>Statistics by hour</h3>
+  <ul>
+    <li tal:repeat="x by_hour">${x['count']} ${len(x['unique'])}</li>
+  </ul>
+</div>
+</div>

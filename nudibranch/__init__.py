@@ -38,6 +38,8 @@ def add_routes(config):
     config.add_route('project', '/project')
     config.add_route('project_item_summary',
                      '/class/{class_name}/{project_id}')
+    config.add_route('project_item_stats',
+                     '/class/{class_name}/{project_id}/stats')
     config.add_route('project_item_detailed',
                      '/class/{class_name}/{project_id}/{username}')
     config.add_route('session', '/session')
