@@ -98,8 +98,18 @@ class Submit(object):
     def request(self, url, method='get', **data):
         time.sleep(self.request_delay)
         args = (json.dumps(data),) if data else ()
-        return getattr(self.session, method.lower())(
+        retval = getattr(self.session, method.lower())(
             url, *args, verify=False, timeout=self.request_timeout)
+        # Handle outage issues
+        if retval.status_code == 502:
+            print('The submission site is unexpectedly down. Please email '
+                  'bboe@cs.ucsb.edu with the URL: {0}'.format(url))
+            sys.exit(1)
+        elif retval.status_code == 503:
+            print('The submission site is temporarily down for maintenance. '
+                  'Please try your submission again in a minute.')
+            sys.exit(1)
+        return retval
 
     def send_file(self, the_file):
         print('Sending {0}'.format(os.path.basename(the_file.name)))
