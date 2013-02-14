@@ -161,8 +161,23 @@ class File(BasicBase, Base):
         if user.is_admin or self in user.files:
             return True
         elif user.admin_for:  # Begin more expensive comparisions
-            mf_classes = set(x.klass for x in self.makefile_for_projects)
-            if mf_classes.intersection(user.admin_for):
+            # Single-indirect lookup
+            classes = set(x.klass for x in self.makefile_for_projects)
+            if classes.intersection(user.admin_for):
+                return True
+            # Double indirect lookups
+            classes = set(x.project.klass for x in self.build_files)
+            if classes.intersection(user.admin_for):
+                return True
+            classes = set(x.project.klass for x in self.execution_files)
+            if classes.intersection(user.admin_for):
+                return True
+            # Triple-indirect lookups
+            classes = set(x.testable.project.klass for x in self.expected_for)
+            if classes.intersection(user.admin_for):
+                return True
+            classes = set(x.testable.project.klass for x in self.stdin_for)
+            if classes.intersection(user.admin_for):
                 return True
             # TODO: Compare other project files
         return False
@@ -625,11 +640,13 @@ class SubmissionToFile(Base):
 class TestCase(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'testable_id'),)
     args = Column(Unicode, nullable=False)
-    expected = relationship(File, primaryjoin='File.id==TestCase.expected_id')
+    expected = relationship(File, primaryjoin='File.id==TestCase.expected_id',
+                            backref='expected_for')
     expected_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     name = Column(Unicode, nullable=False)
     points = Column(Integer, nullable=False)
-    stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id')
+    stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id',
+                         backref='stdin_for')
     stdin_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
     test_case_for = relationship('TestCaseResult', backref='test_case')

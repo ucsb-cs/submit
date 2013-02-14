@@ -64,6 +64,7 @@
                      id="testable_bf_${testable.id}_${bf.id}"
                      value="${bf.id}" tal:attributes="checked 'checked' if bf in testable.build_files else None" />
               <label for="testable_bf_${testable.id}_${bf.id}">${bf.filename}</label>
+              (<a href="${_R('file_item', sha1sum=bf.file.sha1)}">view</a>)
               (<span data-name="${bf.filename}" data-url="${_R('build_file_item', build_file_id=bf.id)}" class="delete faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#build_file_new').dialog('open');">new build file</span>
@@ -76,6 +77,7 @@
                      id="testable_ef_${testable.id}_${ef.filename}"
                      value="${ef.id}" tal:attributes="checked 'checked' if ef in testable.execution_files else None" />
               <label for="testable_ef_${testable.id}_${ef.filename}">${ef.filename}</label>
+              (<a href="${_R('file_item', sha1sum=ef.file.sha1)}">view</a>)
               (<span data-name="${ef.filename}" data-url="${_R('execution_file_item', execution_file_id=ef.id)}" class="delete faulink">delete</span>)
             </div>
             <span class="faulink" onclick="$('#execution_file_new').dialog('open');">new execution file</span>
