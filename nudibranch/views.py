@@ -429,15 +429,9 @@ def project_create(request, name, class_, makefile):
 @view_config(route_name='project_edit',
              renderer='templates/project_edit.pt',
              request_method='GET', permission='authenticated')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def project_edit(request):
-    project = Project.fetch_by_id(request.matchdict['project_id'])
-    if not project:
-        return HTTPNotFound()
-
-    if not project.can_edit(request.user):
-        return HTTPForbidden()
-
+def project_edit(request, project):
     action = request.route_path('project_item_summary',
                                 class_name=project.klass.name,
                                 project_id=project.id)
@@ -448,39 +442,31 @@ def project_edit(request):
 @view_config(route_name='project_new',
              renderer='templates/project_new.pt',
              request_method='GET', permission='authenticated')
+@validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
+                                 validator=String('class_name'),
+                                 source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def project_new(request):
-    klass = Class.fetch_by(name=request.matchdict['class_name'])
-    if not klass:
-        return HTTPNotFound()
-
-    if not klass.can_edit(request.user):
-        return HTTPForbidden()
-
+def project_new(request, class_):
     dummy_project = DummyTemplateAttr(None)
-    dummy_project.klass = klass
+    dummy_project.klass = class_
     return {'page_title': 'Create Project', 'project': dummy_project}
 
 
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=2),
-          makefile=EditableDBThing('makefile_id', File, optional=True))
-def project_update(request, name, makefile):
-    project_id = request.matchdict['project_id']
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, messages='Invalid project_id')
-    if not project.can_edit(request.user):
-        return HTTPForbidden()
-    class_name = request.matchdict['class_name']
+          makefile=EditableDBThing('makefile_id', File, optional=True),
+          is_ready=TextNumber('is_ready', min_value=0, max_value=1,
+                              optional=True),
+          class_name=String('class_name', source=MATCHDICT),
+          project=EditableDBThing('project_id', Project, source=MATCHDICT))
+def project_update(request, name, makefile, is_ready, class_name, project):
     if project.klass.name != class_name:
-        return http_bad_request(request,
-                                messages='Inconsistent class specification')
-
-    if not project.update(name=name, makefile=makefile):
+        raise HTTPNotFound()
+    if not project.update(name=name, makefile=makefile,
+                          is_ready=bool(is_ready)):
         return http_ok(request, message='Nothing to change')
-
+    project_id = project.id
     session = Session()
     session.add(project)
     try:

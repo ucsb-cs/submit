@@ -504,8 +504,9 @@ class ProjectTests(BaseAPITest):
         else:
             proj = Session.query(Project).all()[1]
         user = User.fetch_by(username=username)
-        matchdict = {'class_name': proj.klass.name, 'project_id': proj.id}
-        json_data = {'name': 'Foobar'}
+        matchdict = {'class_name': proj.klass.name,
+                     'project_id': text_type(proj.id)}
+        json_data = {'name': 'Foobar', 'is_ready': '1'}
         if md_update:
             matchdict.update(md_update)
         json_data.update(kwargs)
@@ -590,8 +591,8 @@ class ProjectTests(BaseAPITest):
         from nudibranch.views import project_edit
         project = Session.query(Project).first()
         user = User.fetch_by(username='admin')
-        request = self.make_request(matchdict={'project_id': project.id},
-                                    user=user)
+        request = self.make_request(
+            matchdict={'project_id': text_type(project.id)}, user=user)
         info = project_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Edit Project', info['page_title'])
@@ -641,12 +642,10 @@ class ProjectTests(BaseAPITest):
     def test_update_invalid_product_id(self):
         from nudibranch.views import project_update
         user, matchdict, json_data = self.get_update_objects(
-            {'project_id': 100})
+            {'project_id': text_type(100)})
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
-        info = project_update(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid project_id', info['messages'])
+        self.assertRaises(HTTPNotFound, project_update, request)
 
     def test_update_inconsistent_class_name(self):
         from nudibranch.views import project_update
@@ -654,9 +653,7 @@ class ProjectTests(BaseAPITest):
             {'class_name': 'Invalid'})
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
-        info = project_update(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Inconsistent class specification', info['messages'])
+        self.assertRaises(HTTPNotFound, project_update, request)
 
     def test_update_no_change(self):
         from nudibranch.views import project_update
@@ -672,7 +669,7 @@ class ProjectTests(BaseAPITest):
         request = self.make_request(json_body={})
         info = project_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual(1, len(info['messages']))
+        self.assertEqual(3, len(info['messages']))
 
     def test_update_valid_add_makefile(self):
         from nudibranch.views import project_update
