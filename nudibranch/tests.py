@@ -923,7 +923,7 @@ class SubmissionTests(BaseAPITest):
         from nudibranch.views import submission_view
         user, matchdict = self.get_view_objects()
         request = self.make_request(user=user, matchdict=matchdict)
-        info = submission_view(request)
+        submission_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
 
 
@@ -1142,7 +1142,7 @@ class TestCaseTests(BaseAPITest):
 class TestCaseResultTests(BaseAPITest):
     """Test the TestCaseResult model"""
     def test_output_limit_exceeded(self):
-        tc = test_case_result = TestCaseResult(submission_id=1, test_case_id=1)
+        tc = TestCaseResult(submission_id=1, test_case_id=1)
         tc.status = 'output_limit_exceeded'
         Session.add(tc)
         Session.flush()

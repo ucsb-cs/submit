@@ -498,7 +498,7 @@ def project_update(request, name, makefile):
 @view_config(route_name='project_item_stats',
              renderer='templates/project_stats.pt', permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
-          project = EditableDBThing('project_id', Project, source=MATCHDICT))
+          project=EditableDBThing('project_id', Project, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_stats(request, class_name, project):
     # Additional verification
@@ -514,7 +514,7 @@ def project_view_stats(request, class_name, project):
              request_method=('GET', 'HEAD'),
              permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
-          project = ViewableDBThing('project_id', Project, source=MATCHDICT),
+          project=ViewableDBThing('project_id', Project, source=MATCHDICT),
           user=ViewableDBThing('username', User, fetch_by='username',
                                validator=String('username'), source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
