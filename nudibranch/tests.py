@@ -41,8 +41,8 @@ def _init_testing_db():
     Session.flush()
 
     # Add two projects associated with klass1
-    project1 = Project(name='Project 1', klass=klass1)
-    project2 = Project(name='Project 2', klass=klass1)
+    project1 = Project(name='Project 1', klass=klass1, is_ready=True)
+    project2 = Project(name='Project 2', klass=klass1, is_ready=True)
     Session.add_all([project1, project2])
     Session.flush()
 
@@ -866,6 +866,14 @@ class SubmissionTests(BaseAPITest):
         json_data.update(kwargs)
         return user, json_data
 
+    @staticmethod
+    def get_view_objects(username='user1@email', **kwargs):
+        user = User.fetch_by(username=username)
+        submission = Session.query(Submission).first()
+        matchdict = {'submission_id': text_type(submission.id)}
+        matchdict.update(kwargs)
+        return user, matchdict
+
     def test_create_invalid_file(self):
         from nudibranch.views import submission_create
         user, json_data = self.get_objects(file_ids=['100'])
@@ -904,6 +912,19 @@ class SubmissionTests(BaseAPITest):
         expected_prefix = route_path('submission', request,
                                      submission_id=0)[:-1]
         self.assertTrue(info['redir_location'].startswith(expected_prefix))
+
+    def test_view_invalid_user(self):
+        from nudibranch.views import submission_view
+        user, matchdict = self.get_view_objects(username='user2@email')
+        request = self.make_request(user=user, matchdict=matchdict)
+        self.assertRaises(HTTPForbidden, submission_view, request)
+
+    def test_view_valid(self):
+        from nudibranch.views import submission_view
+        user, matchdict = self.get_view_objects()
+        request = self.make_request(user=user, matchdict=matchdict)
+        info = submission_view(request)
+        self.assertEqual(HTTPOk.code, request.response.status_code)
 
 
 class TestCaseTests(BaseAPITest):
