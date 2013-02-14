@@ -81,7 +81,7 @@ def project_file_delete(request, project_file):
 
 @view_config(route_name='build_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validate(file_=EditableDBThing('file_id', File),
+@validate(file_=ViewableDBThing('file_id', File),
           filename=String('filename', min_length=1),
           project=EditableDBThing('project_id', Project))
 def build_file_create(request, file_, filename, project):
@@ -153,7 +153,7 @@ def class_view(request, class_):
 
 @view_config(route_name='execution_file', request_method='PUT',
              permission='authenticated', renderer='json')
-@validate(file_=EditableDBThing('file_id', File),
+@validate(file_=ViewableDBThing('file_id', File),
           filename=String('filename', min_length=1),
           project=EditableDBThing('project_id', Project))
 def execution_file_create(request, file_, filename, project):
@@ -196,7 +196,7 @@ def file_create(request, b64data, sha1sum):
 
 @view_config(route_name='file_item', request_method='GET',
              permission='authenticated', renderer='templates/file_view.pt')
-@validate(file_=EditableDBThing('sha1sum', File, fetch_by='sha1',
+@validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
                                 validator=SHA1_VALIDATOR, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def file_item_view(request, file_):
@@ -208,7 +208,7 @@ def file_item_view(request, file_):
 
 @view_config(route_name='file_item_info', request_method='GET',
              permission='authenticated', renderer='json')
-@validate(file_=EditableDBThing('sha1sum', File, fetch_by='sha1',
+@validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
                                 validator=SHA1_VALIDATOR, source=MATCHDICT))
 def file_item_info(request, file_):
     return {'file_id': file_.id}
@@ -409,7 +409,7 @@ def password_reset_edit_item(request, reset):
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=2),
           class_=EditableDBThing('class_id', Class),
-          makefile=EditableDBThing('makefile_id', File, optional=True))
+          makefile=ViewableDBThing('makefile_id', File, optional=True))
 def project_create(request, name, class_, makefile):
     project = Project(name=name, klass=class_, makefile=makefile)
     session = Session()
@@ -455,7 +455,7 @@ def project_new(request, class_):
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=2),
-          makefile=EditableDBThing('makefile_id', File, optional=True),
+          makefile=ViewableDBThing('makefile_id', File, optional=True),
           is_ready=TextNumber('is_ready', min_value=0, max_value=1,
                               optional=True),
           class_name=String('class_name', source=MATCHDICT),

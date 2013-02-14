@@ -71,6 +71,10 @@ class BuildFile(BasicBase, Base):
     filename = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
+    def can_edit(self, user):
+        """Return whether or not the user can edit the build file."""
+        return self.project.can_edit(user)
+
 
 class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
@@ -105,6 +109,10 @@ class ExecutionFile(BasicBase, Base):
     file_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     filename = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+
+    def can_edit(self, user):
+        """Return whether or not the user can edit the build file."""
+        return self.project.can_edit(user)
 
 
 class File(BasicBase, Base):
@@ -147,8 +155,8 @@ class File(BasicBase, Base):
         with open(path, 'wb') as fp:
             fp.write(data)
 
-    def can_edit(self, user):
-        """Return true if the user can view and update the file."""
+    def can_view(self, user):
+        """Return true if the user can view the file."""
         # Perform simplest checks first
         if user.is_admin or self in user.files:
             return True
