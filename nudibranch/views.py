@@ -741,12 +741,10 @@ def submission_requeue(request):
 @view_config(route_name='submission_item', request_method='GET',
              renderer='templates/submission_view.pt',
              permission='authenticated')
+@validate(submission=ViewableDBThing('submission_id', Submission,
+                                     source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def submission_view(request):
-    submission = Submission.fetch_by_id(request.matchdict['submission_id'])
-    if not submission:
-        return HTTPNotFound()
-
+def submission_view(request, submission):
     prev_next_html = None
     submission_admin = submission.project.can_edit(request.user)
     if submission_admin:

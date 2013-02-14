@@ -384,6 +384,10 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
+    def can_view(self, user):
+        """Return whether or not `user` can view the submission."""
+        return user == self.user or self.project.can_edit(user)
+
     def testable_to_testable_results(self):
         retval = {}
         for testable_result in self.testable_results:
