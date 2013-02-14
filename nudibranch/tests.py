@@ -31,7 +31,7 @@ def _init_testing_db():
 
     # Add an admin user, two users, and two classes
     admin = User(name='admin', username='admin', password='password',
-                 is_admin=True)
+                 is_admin=False)  # Only make classadmin
     user1 = User(name='User 1', username='user1@email', password='pswd1')
     user2 = User(name='User 2', username='user2@email', password='pswd2')
     user3 = User(name='User 3', username='user3@email', password='pswd3')
@@ -59,13 +59,15 @@ def _init_testing_db():
                  sha1='da39a3ee5e6b4b0d3255bfef95601890afd80709')
     file2 = File(base_path=FILE_DIR, data=b'all:\n\tls',
                  sha1='5a874c84b1abdd164ce1ac6cdaa901575d3d7612')
+    file3 = File(base_path=FILE_DIR, data=b'hello world\n',
+                 sha1='22596363b3de40b06f981fb85d82312e8c0ed511')
     filev1 = FileVerifier(filename='File 1', min_size=0, min_lines=0,
                           project=testable1.project)
     filev1.testables.append(testable1)
     filev2 = FileVerifier(filename='File 2', min_size=0, min_lines=0,
                           project=testable1.project)
     filev2.testables.append(testable1)
-    Session.add_all([file1, file2, filev1, filev2])
+    Session.add_all([file1, file2, file3, filev1, filev2])
     Session.flush()
 
     # Add two test cases
@@ -83,6 +85,7 @@ def _init_testing_db():
 
     # Make associatations
     admin.files.append(file2)
+    admin.admin_for.append(klass1)
     user1.classes.append(klass1)
     user1.files.append(file1)
     user3.classes.append(klass1)
@@ -940,7 +943,7 @@ class TestCaseTests(BaseAPITest):
             test_case = Session.query(TestCase).first()
         else:
             test_case = Session.query(TestCase).all()[1]
-        matchdict = {'test_case_id': test_case.id}
+        matchdict = {'test_case_id': text_type(test_case.id)}
         json_data = {'name': 'Test Case 3', 'args': 'test', 'points': '10',
                      'expected_id': '2'}
         if md_update:
@@ -965,16 +968,18 @@ class TestCaseTests(BaseAPITest):
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid expected_id', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('Invalid File' in info['messages'][0])
 
     def test_create_invalid_expected_id_perms(self):
         from nudibranch.views import test_case_create
         user = User.fetch_by(username='admin')
-        json_data = self.get_objects(expected_id='1')
+        json_data = self.get_objects(expected_id='3')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid expected_id', info['messages'])
+        self.assertEqual(HTTPForbidden.code, request.response.status_code)
+        self.assertEqual('Insufficient permissions for expected_id',
+                         info['messages'])
 
     def test_create_invalid_stdin_id(self):
         from nudibranch.views import test_case_create
@@ -983,16 +988,18 @@ class TestCaseTests(BaseAPITest):
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid stdin_id', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('Invalid File' in info['messages'][0])
 
     def test_create_invalid_stdin_id_perms(self):
         from nudibranch.views import test_case_create
         user = User.fetch_by(username='admin')
-        json_data = self.get_objects(stdin_id='1')
+        json_data = self.get_objects(stdin_id='3')
         request = self.make_request(json_body=json_data, user=user)
         info = test_case_create(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid stdin_id', info['messages'])
+        self.assertEqual(HTTPForbidden.code, request.response.status_code)
+        self.assertEqual('Insufficient permissions for stdin_id',
+                         info['messages'])
 
     def test_create_no_params(self):
         from nudibranch.views import test_case_create
@@ -1043,17 +1050,19 @@ class TestCaseTests(BaseAPITest):
                                     user=user)
         info = test_case_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid expected_id', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('Invalid File' in info['messages'][0])
 
     def test_update_invalid_expected_id_perms(self):
         from nudibranch.views import test_case_update
         user = User.fetch_by(username='admin')
-        matchdict, json_data = self.get_update_objects(expected_id='1')
+        matchdict, json_data = self.get_update_objects(expected_id='3')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = test_case_update(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid expected_id', info['messages'])
+        self.assertEqual(HTTPForbidden.code, request.response.status_code)
+        self.assertEqual('Insufficient permissions for expected_id',
+                         info['messages'])
 
     def test_update_invalid_stdin_id(self):
         from nudibranch.views import test_case_update
@@ -1063,24 +1072,26 @@ class TestCaseTests(BaseAPITest):
                                     user=user)
         info = test_case_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid stdin_id', info['messages'])
+        self.assertEqual(1, len(info['messages']))
+        self.assertTrue('Invalid File' in info['messages'][0])
 
     def test_update_invalid_stdin_id_perms(self):
         from nudibranch.views import test_case_update
         user = User.fetch_by(username='admin')
-        matchdict, json_data = self.get_update_objects(stdin_id='1')
+        matchdict, json_data = self.get_update_objects(stdin_id='3')
         request = self.make_request(json_body=json_data, matchdict=matchdict,
                                     user=user)
         info = test_case_update(request)
-        self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual('Invalid stdin_id', info['messages'])
+        self.assertEqual(HTTPForbidden.code, request.response.status_code)
+        self.assertEqual('Insufficient permissions for stdin_id',
+                         info['messages'])
 
     def test_update_no_params(self):
         from nudibranch.views import test_case_update
         request = self.make_request(json_body={})
         info = test_case_update(request)
         self.assertEqual(HTTPBadRequest.code, request.response.status_code)
-        self.assertEqual(4, len(info['messages']))
+        self.assertEqual(5, len(info['messages']))
 
     def test_update_no_change(self):
         from nudibranch.views import test_case_update
