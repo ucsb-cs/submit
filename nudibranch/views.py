@@ -779,28 +779,13 @@ def submission_view(request, submission):
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
           args=String('args', min_length=1),
-          expected_id=TextNumber('expected_id', min_value=0),
+          expected=ViewableDBThing('expected_id', File),
           points=TextNumber('points'),
-          stdin_id=TextNumber('stdin_id', min_value=0, optional=True),
-          testable_id=TextNumber('testable_id', min_value=0))
-def test_case_create(request, name, args, expected_id, points, stdin_id,
-                     testable_id):
-    testable = Testable.fetch_by_id(testable_id)
-    if not testable:
-        return http_bad_request(request, messages='Invalid testable_id')
-
-    if not testable.project.can_edit(request.user):
-        return HTTPForbidden()
-
-    try:
-        request.user.verify_file_ids(expected_id=expected_id,
-                                     stdin_id=stdin_id)
-    except InvalidId as exc:
-        return http_bad_request(request,
-                                messages='Invalid {0}'.format(exc.message))
-    test_case = TestCase(name=name, args=args, expected_id=expected_id,
-                         points=points, stdin_id=stdin_id,
-                         testable=testable)
+          stdin=ViewableDBThing('stdin_id', File, optional=True),
+          testable=EditableDBThing('testable_id', Testable))
+def test_case_create(request, name, args, expected, points, stdin, testable):
+    test_case = TestCase(name=name, args=args, expected=expected,
+                         points=points, stdin=stdin, testable=testable)
     session = Session()
     session.add(test_case)
     try:
@@ -819,27 +804,14 @@ def test_case_create(request, name, args, expected_id, points, stdin_id,
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
           args=String('args', min_length=1),
-          expected_id=TextNumber('expected_id', min_value=0),
+          expected=ViewableDBThing('expected_id', File),
           points=TextNumber('points'),
-          stdin_id=TextNumber('stdin_id', min_value=0, optional=True))
-def test_case_update(request, name, args, expected_id, points, stdin_id):
-    test_case_id = request.matchdict['test_case_id']
-    test_case = TestCase.fetch_by_id(test_case_id)
-    if not test_case:
-        return http_bad_request(request, messages='Invalid test_case_id')
-
-    if not test_case.testable.project.can_edit(request.user):
-        return HTTPForbidden()
-
-    try:
-        request.user.verify_file_ids(expected_id=expected_id,
-                                     stdin_id=stdin_id)
-    except InvalidId as exc:
-        return http_bad_request(request,
-                                messages='Invalid {0}'.format(exc.message))
-
-    if not test_case.update(name=name, args=args, expected_id=expected_id,
-                            points=points, stdin_id=stdin_id):
+          stdin=ViewableDBThing('stdin_id', File, optional=True),
+          test_case=EditableDBThing('test_case_id', TestCase,
+                                    source=MATCHDICT))
+def test_case_update(request, name, args, expected, points, stdin, test_case):
+    if not test_case.update(name=name, args=args, expected=expected,
+                            points=points, stdin=stdin):
         return http_ok(request, message='Nothing to change')
     session = Session()
     session.add(test_case)

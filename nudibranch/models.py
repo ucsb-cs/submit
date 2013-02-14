@@ -5,7 +5,6 @@ import re
 import sys
 import transaction
 import uuid
-from .exceptions import InvalidId
 from hashlib import sha1
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Binary, Boolean, Column, DateTime, Enum, ForeignKey,
@@ -198,7 +197,7 @@ class FileVerifier(BasicBase, Base):
         return cmp(self.filename, other.filename)
 
     def can_edit(self, user):
-        return self.project.klass.can_edit(user)
+        return self.project.can_edit(user)
 
     def verify(self, base_path, file_):
         errors = []
@@ -654,6 +653,10 @@ class TestCase(BasicBase, Base):
     def __cmp__(self, other):
         return cmp(self.name, other.name)
 
+    def can_edit(self, user):
+        """Return whether or not `user` can make changes to the test_case."""
+        return self.testable.project.can_edit(user)
+
     def serialize(self):
         data = dict([(x, getattr(self, x)) for x in ('id', 'args')])
         if self.stdin:
@@ -756,6 +759,10 @@ class Testable(BasicBase, Base):
     testable_results = relationship('TestableResult', backref='testable',
                                     cascade='all, delete-orphan')
 
+    def can_edit(self, user):
+        """Return whether or not `user` can make changes to the testable."""
+        return self.project.can_edit(user)
+
     def filter_file_verifiers(self, predicate):
         return frozenset([file_verifier.filename
                           for file_verifier in self.file_verifiers
@@ -855,18 +862,6 @@ class User(UserMixin, BasicBase, Base):
 
     def is_admin_for_any_class(self):
         return len(self.admin_for) > 0
-
-    def verify_file_ids(self, **kwargs):
-        """Raise InvalidId exception if a file_id is not valid.
-
-        To be valid the file object must exist, and must be owned by the user.
-
-        """
-        for attr_name, item_id in kwargs.items():
-            if item_id:
-                item_file = File.fetch_by_id(item_id)
-                if not item_file or item_file not in self.files:
-                    raise InvalidId(attr_name)
 
 
 def configure_sql(engine):
