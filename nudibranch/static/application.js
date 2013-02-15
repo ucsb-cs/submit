@@ -18,11 +18,16 @@ function form_request(form, method, skip_empty) {
         console.log('About to submit');
         console.log(js_form);
         $.ajax({url: form.action, data: jsonified_form, type: method,
-                complete: handle_response});
+                complete: handle_response, error: handle_error,
+                timeout: 30000});
     });
     return false;  // Ensure the form submission doesn't actually happen
 }
 
+function handle_error(xhr, status, error) {
+    if (status == 'timeout')
+        console.log('The request timed out.');
+}
 
 function handle_response(xhr) {
     if (xhr.status > 500) {
@@ -30,7 +35,12 @@ function handle_response(xhr) {
         console.log(xhr.responseText);
         return;
     }
-    data = JSON.parse(xhr.responseText);
+    text = xhr.responseText;
+    if (text == undefined) {
+        console.log('Unexpected empty response body.')
+        return;
+    }
+    data = JSON.parse(text);
     switch(xhr.status) {
     case 200:  // Ok
         if (data['redir_location'])
@@ -54,7 +64,7 @@ function handle_response(xhr) {
     case 409:  // Conflict
         alert(data['message']);
         break;
-        case 410:  // Gone
+    case 410:  // Gone
         window.location = data['redir_location'];
         break;
     default:
