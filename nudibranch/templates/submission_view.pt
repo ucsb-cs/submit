@@ -34,7 +34,7 @@
   <h4>Submission Files</h4>
   <ul tal:condition="submission.files">
     <li tal:repeat="f sorted(submission.files, key=lambda x:x.filename)">
-      <a href="${_R('file_item', sha1sum=f.file.sha1)}">${f.filename}</a>
+      <a href="${_R('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
     </li>
   </ul>
 

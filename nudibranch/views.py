@@ -200,14 +200,16 @@ def file_create(request, b64data, sha1sum):
 @view_config(route_name='file_item', request_method='GET',
              permission='authenticated', renderer='templates/file_view.pt')
 @validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
-                                validator=SHA1_VALIDATOR, source=MATCHDICT))
+                                validator=SHA1_VALIDATOR, source=MATCHDICT),
+          filename=String('filename', min_length=1, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def file_item_view(request, file_):
+def file_item_view(request, file_, filename):
     source = File.file_path(request.registry.settings['file_directory'],
                             file_.sha1)
     contents = codecs.open(source, encoding='utf-8').read()
-    return {'page_title': 'File Contents',
+    return {'page_title': filename,
             'contents': contents,
+            'filename': filename,
             'css_files': ['highlight_github.css'],
             'javascripts': ['highlight.pack.js']}
 
