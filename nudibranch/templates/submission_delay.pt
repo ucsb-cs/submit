@@ -1,6 +1,18 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <p>Submitted ${_pd(submission.created_at)}</p>
+  <h3>Submission</h3>
+  <div>User: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
+  <div>Class: ${submission.project.klass.name}</div>
+  <div>Project: ${submission.project.name}</div>
+  <div>Submitted: ${submission.created_at}</div>
+
+  <h4>Submission Files</h4>
+  <ul tal:condition="submission.files">
+    <li tal:repeat="f sorted(submission.files, key=lambda x:x.filename)">
+      <a href="${_R('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
+    </li>
+  </ul>
+
   <p>You can see the results of this submission in ${delay}.</p>
 </div>
 </div>

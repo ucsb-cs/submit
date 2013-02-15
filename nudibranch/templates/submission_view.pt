@@ -83,9 +83,7 @@
   <div tal:repeat="status sorted(submission.testable_statuses(), key=lambda x: x.testable.name)">
     <div tal:condition="status.is_error()">
       <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
-      <pre tal:condition="status.has_make_output()">
-	${status.testable_results.make_results}
-      </pre>
+      <pre tal:condition="status.has_make_output()" class="make_output">${status.testable_results.make_results}</pre>
       <p tal:condition="not status.has_files()">
 	There are no files in this test group
       </p>
