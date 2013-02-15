@@ -137,7 +137,7 @@ class HTMLDiff(difflib.HtmlDiff):
         """'difflib_chg_{0}_top');">Hide All</a>\n""" + \
         "</p>"
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
-    TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative total score: {0} / {1}</li>\
+    TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative execution score: {0} / {1}</li>\
 <li>Tentative percentage score: {2:.2f}</li></ul>\n'
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'

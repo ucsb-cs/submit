@@ -178,7 +178,10 @@ class File(BasicBase, Base):
             classes = set(x.testable.project.klass for x in self.stdin_for)
             if classes.intersection(user.admin_for):
                 return True
-            # TODO: Compare other project files
+            classes = set(x.submission.project.klass for x in
+                          self.submission_assocs)
+            if classes.intersection(user.admin_for):
+                return True
         return False
 
 
@@ -396,7 +399,7 @@ class Project(BasicBase, Base):
 
 
 class Submission(BasicBase, Base):
-    files = relationship('SubmissionToFile', backref='submissions')
+    files = relationship('SubmissionToFile', backref='submission')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_case_results = relationship('TestCaseResult', backref='submission',
                                      cascade='all, delete-orphan')
