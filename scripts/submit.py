@@ -14,8 +14,8 @@ from urlparse import urljoin
 
 class Submit(object):
     PATHS = {'auth':           'session',
-             'file_item':      'file/{sha1sum}',
-             'file_item_info': 'file/{sha1sum}/info',
+             'file_item':      'file/{sha1sum}/_',
+             'file_item_info': 'file/info/{sha1sum}',
              'project_item':   'class/{class_name}/{project_id}/{email}',
              'submission':     'submission'}
 

@@ -29,8 +29,8 @@ def add_routes(config):
     config.add_route('execution_file_item',
                      '/execution_file/{execution_file_id}')
     config.add_route('file', '/file')
+    config.add_route('file_item_info', '/file/info/{sha1sum}')
     config.add_route('file_item', '/file/{sha1sum}/{filename}')
-    config.add_route('file_item_info', '/file/{sha1sum}/info')
     config.add_route('file_verifier', '/file_verifier')
     config.add_route('file_verifier_item', '/file_verifier/{file_verifier_id}')
     config.add_route('password_reset', '/password_reset')
