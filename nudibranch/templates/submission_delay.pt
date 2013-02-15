@@ -1,0 +1,6 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+  <p>Submitted ${_pd(submission.created_at)}</p>
+  <p>You can see the results of this submission in ${delay}.</p>
+</div>
+</div>

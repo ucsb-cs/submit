@@ -3,8 +3,9 @@ import codecs
 import pickle
 import transaction
 from base64 import b64decode
+from datetime import datetime
 from hashlib import sha1
-from pyramid_addons.helpers import (http_bad_request, http_conflict,
+from pyramid_addons.helpers import (UTC, http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, RegexString, TextNumber,
@@ -36,6 +37,8 @@ SHA1_VALIDATOR = String('sha1sum', min_length=40, max_length=40,
                         source=MATCHDICT)
 UUID_VALIDATOR = String('token', min_length=36, max_length=36,
                         source=MATCHDICT)
+
+SUBMISSION_RESULTS_DELAY = 10  # Minutes
 
 
 @notfound_view_config()
@@ -731,8 +734,16 @@ def submission_requeue(request):
                                      source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def submission_view(request, submission):
-    prev_next_html = None
     submission_admin = submission.project.can_edit(request.user)
+    if not submission_admin:  # See if we need to delay the results
+        diff = datetime.now(UTC()) - submission.created_at
+        delay = SUBMISSION_RESULTS_DELAY - diff.total_seconds() / 60
+        if delay > 0:
+            request.override_renderer = 'templates/submission_delay.pt'
+            return {'_pd': pretty_date,
+                    'delay': '{0:.1f} minutes'.format(delay),
+                    'submission': submission}
+    prev_next_html = None
     calc_score = ScoreWithSetTotal(
         submission.project.total_available_points())
     diff_renderer = None
