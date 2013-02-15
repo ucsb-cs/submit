@@ -26,6 +26,8 @@
   </fieldset>
 
   <h3>Submission</h3>
+  <p tal:condition="submission_admin"><a href="?as_user=1">View this page from the user's perspective</a><p>
+
   <div>User: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
   <div>Class: ${submission.project.klass.name}</div>
   <div>Project: ${submission.project.name}</div>

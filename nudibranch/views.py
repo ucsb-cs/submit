@@ -9,7 +9,7 @@ from pyramid_addons.helpers import (UTC, http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, RegexString, TextNumber,
-                                       WhiteSpaceString, validate,
+                                       WhiteSpaceString, validate, SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import FileResponse, Response
@@ -736,10 +736,13 @@ def submission_requeue(request):
              renderer='templates/submission_view.pt',
              permission='authenticated')
 @validate(submission=ViewableDBThing('submission_id', Submission,
-                                     source=MATCHDICT))
+                                     source=MATCHDICT),
+          as_user=TextNumber('as_user', min_value=0, max_value=1,
+                              optional=True, source=SOURCE_GET))
 @site_layout('nudibranch:templates/layout.pt')
-def submission_view(request, submission):
-    submission_admin = submission.project.can_edit(request.user)
+def submission_view(request, submission, as_user):
+    submission_admin = (not bool(as_user) and
+                        submission.project.can_edit(request.user))
     if not submission_admin:  # See if we need to delay the results
         diff = datetime.now(UTC()) - submission.created_at
         delay = SUBMISSION_RESULTS_DELAY - diff.total_seconds() / 60
