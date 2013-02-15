@@ -11,17 +11,6 @@ legend {
     color: #333;
 }
 
-pre {
-    width: 95%;
-    font-family: monospace;
-    font-size: 0.9em;
-    padding: 1px 2px;
-    margin: 0 0 1em auto;
-    border: 1px inset #666;
-    background-color: #eee;
-    overflow: auto;
-}
-
 #logout {
     float: right;
 }

@@ -1,5 +1,11 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <pre>${contents}</pre>
+  <script>
+    hljs.tabReplace = '    ';
+    hljs.initHighlightingOnLoad();
+  </script>
+  <noscript>Enable javascript to see a syntax highlighted version.</noscript>
+  <h3>Source</h3>
+  <pre><code>${contents}</code></pre>
 </div>
 </div>

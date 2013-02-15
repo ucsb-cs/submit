@@ -206,7 +206,10 @@ def file_item_view(request, file_):
     source = File.file_path(request.registry.settings['file_directory'],
                             file_.sha1)
     contents = codecs.open(source, encoding='utf-8').read()
-    return {'page_title': 'File Contents', 'contents': contents}
+    return {'page_title': 'File Contents',
+            'contents': contents,
+            'css_files': ['highlight_github.css'],
+            'javascripts': ['highlight.pack.js']}
 
 
 @view_config(route_name='file_item_info', request_method='GET',
