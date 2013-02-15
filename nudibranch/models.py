@@ -298,7 +298,7 @@ class Project(BasicBase, Base):
     testables = relationship('Testable', backref='project',
                              cascade='all, delete-orphan')
 
-    delay = timedelta(minutes=10)
+    delay = timedelta(minutes=5)
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the project."""
