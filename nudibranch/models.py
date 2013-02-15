@@ -5,7 +5,9 @@ import re
 import sys
 import transaction
 import uuid
+from datetime import datetime, timedelta
 from hashlib import sha1
+from pyramid_addons.helpers import UTC
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Binary, Boolean, Column, DateTime, Enum, ForeignKey,
                         Integer, PickleType, String, Table, Unicode,
@@ -296,6 +298,8 @@ class Project(BasicBase, Base):
     testables = relationship('Testable', backref='project',
                              cascade='all, delete-orphan')
 
+    delay = timedelta(minutes=10)
+
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the project."""
         return self.klass.can_edit(user)
@@ -398,6 +402,23 @@ class Project(BasicBase, Base):
                                        reverse=True)
 
 
+class ProjectView(Base):
+    __tablename__ = 'projectview'
+    created_at = Column(DateTime(timezone=True), default=func.now(),
+                        nullable=False)
+    project_id = Column(Integer, ForeignKey('project.id'), primary_key=True,
+                        nullable=False)
+    project = relationship(Project)
+    user_id = Column(Integer, ForeignKey('user.id'), primary_key=True,
+                     nullable=False)
+    user = relationship('User')
+
+    @classmethod
+    def fetch_by(cls, **kwargs):
+        session = Session()
+        return session.query(cls).filter_by(**kwargs).first()
+
+
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submission')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
@@ -412,6 +433,37 @@ class Submission(BasicBase, Base):
     def can_view(self, user):
         """Return whether or not `user` can view the submission."""
         return user == self.user or self.project.can_edit(user)
+
+    def get_delay(self, update):
+        """Return the minutes to delay the viewing of submission results.
+
+        Only store information into the datebase when `update` is set.
+
+        """
+        now = datetime.now(UTC())
+        zero = timedelta(0)
+        delay = self.project.delay - (now - self.created_at)
+        if delay <= zero:
+            # Never delay longer than the project's delay time
+            return None
+        session = Session()
+        pv = ProjectView.fetch_by(project=self.project, user=self.user)
+        if not pv:  # Don't delay
+            if update:
+                pv = ProjectView(project=self.project, user=self.user)
+                session.add(pv)
+                session.flush()  # What if this fails?
+            return None
+        elif self.created_at <= pv.created_at:  # Always show older results
+            return None
+        pv_delay = self.project.delay - (now - pv.created_at)
+        if pv_delay <= zero:
+            if update:  # Update the counter
+                pv.created_at = func.now()
+                session.add(pv)
+                session.flush()  # What if this fails?
+            return None
+        return min(delay, pv_delay).total_seconds() / 60
 
     def testable_to_testable_results(self):
         retval = {}

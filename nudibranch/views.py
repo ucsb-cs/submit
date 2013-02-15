@@ -3,9 +3,8 @@ import codecs
 import pickle
 import transaction
 from base64 import b64decode
-from datetime import datetime
 from hashlib import sha1
-from pyramid_addons.helpers import (UTC, http_bad_request, http_conflict,
+from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
 from pyramid_addons.validation import (List, String, RegexString, TextNumber,
@@ -37,8 +36,6 @@ SHA1_VALIDATOR = String('sha1sum', min_length=40, max_length=40,
                         source=MATCHDICT)
 UUID_VALIDATOR = String('token', min_length=36, max_length=36,
                         source=MATCHDICT)
-
-SUBMISSION_RESULTS_DELAY = 10  # Minutes
 
 
 @notfound_view_config()
@@ -738,15 +735,14 @@ def submission_requeue(request):
 @validate(submission=ViewableDBThing('submission_id', Submission,
                                      source=MATCHDICT),
           as_user=TextNumber('as_user', min_value=0, max_value=1,
-                              optional=True, source=SOURCE_GET))
+                             optional=True, source=SOURCE_GET))
 @site_layout('nudibranch:templates/layout.pt')
 def submission_view(request, submission, as_user):
     submission_admin = (not bool(as_user) and
                         submission.project.can_edit(request.user))
-    if not submission_admin:  # See if we need to delay the results
-        diff = datetime.now(UTC()) - submission.created_at
-        delay = SUBMISSION_RESULTS_DELAY - diff.total_seconds() / 60
-        if delay > 0:
+    if not submission_admin:  # Only check delay for user view
+        delay = submission.get_delay(update=submission.user == request.user)
+        if delay:
             request.override_renderer = 'templates/submission_delay.pt'
             return {'_pd': pretty_date,
                     'delay': '{0:.1f} minutes'.format(delay),
