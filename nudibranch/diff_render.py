@@ -223,10 +223,6 @@ class HTMLDiff(difflib.HtmlDiff):
             table = '{0}{1}{0}'.format(show_hide, table)
         return table
 
-    def _ordered_diffs(self, should_include):
-        return sorted([diff for diff in self._all_diffs()
-                       if should_include(diff)])
-
     def _make_test_summary(self):
         """Return html tables for failed and passed tests."""
         template = ('<h3 style="color:{2}">{0} Tests</h3>'
@@ -248,8 +244,7 @@ class HTMLDiff(difflib.HtmlDiff):
         return output
 
     def _has_diff(self, diff):
-        return diff in self._diff_html and \
-            self._diff_html[diff] is not None
+        return self._diff_html.get(diff, None) is not None
 
     def _all_diffs(self):
         return self._diff_html.keys()

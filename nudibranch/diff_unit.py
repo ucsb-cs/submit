@@ -177,11 +177,11 @@ class Diff(object):
     def wrong_things(self):
         retval = []
         if self.is_correct_empty() and not self.is_given_empty():
-            retval.append(
-                "You produced output, but the correct solution did not")
+            retval.append('Your program should not have produced output')
         elif self.is_given_empty() and not self.is_correct_empty():
-            retval.append(
-                "You produced no output")
+            retval.append('Your program should have produced output')
+        if not self.outputs_match():
+            retval.append('Your program produced unexpected output')
         return retval
 
     def _make_diff(self, correct, given):
