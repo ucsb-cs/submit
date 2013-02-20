@@ -227,38 +227,29 @@ class HTMLDiff(difflib.HtmlDiff):
         return sorted([diff for diff in self._all_diffs()
                        if should_include(diff)])
 
-    def _make_some_summary(self, should_include):
-        """Returns html and the number of rows in the table"""
+    def _make_test_summary(self):
+        """Return html tables for failed and passed tests."""
+        template = ('<h3 style="color:{2}">{0} Tests</h3>'
+                    '<table border="1">\n  <tr><th>Test Group</th>'
+                    '<th>Test Name</th><th>Value</th></tr>{1}</table>')
+        failed = passed = ''
+        for diff in sorted(self._all_diffs()):
+            output = diff.html_header_row()
+            if self._has_diff(diff):
+                failed += output
+            else:
+                passed += output
 
-        retval = '<table border="1">\n  <tr>\
-<th>Test Group</th><th>Test Name</th><th>Value</th></tr>'
-        num_rows = 0
-        for diff in self._ordered_diffs(should_include):
-            retval += diff.html_header_row()
-            num_rows += 1
-        retval += '</table>'
-        return (retval, num_rows)
-
-    def _make_header_summary(self, header, should_include):
-        (html, num_rows) = self._make_some_summary(should_include)
-        if num_rows > 0:
-            return header + html
-        else:
-            return ''
+        output = ''
+        if failed:
+            output += template.format('Failed', failed, 'red')
+        if passed:
+            output += template.format('Passed', passed, 'green')
+        return output
 
     def _has_diff(self, diff):
         return diff in self._diff_html and \
             self._diff_html[diff] is not None
-
-    def _make_failed_summary(self):
-        return self._make_header_summary(
-            '<h3 style="color:red">Failed Tests</h3>',
-            lambda diff: self._has_diff(diff))
-
-    def _make_success_summary(self):
-        return self._make_header_summary(
-            '<h3 style="color:green">Passed Tests</h3>',
-            lambda diff: not self._has_diff(diff))
 
     def _all_diffs(self):
         return self._diff_html.keys()
@@ -274,7 +265,7 @@ class HTMLDiff(difflib.HtmlDiff):
         return total, self._points_possible, percent
 
     def make_summary(self):
-        retval = self._make_failed_summary() + self._make_success_summary()
+        retval = self._make_test_summary()
         retval += self.TENTATIVE_SCORE_BLOCK.format(*self.tentative_score())
         return retval
 

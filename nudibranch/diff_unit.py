@@ -47,15 +47,15 @@ class DiffRenderable(object):
         self.test_points = test_points
 
     def is_correct(self):
-        pass
+        raise NotImplemented
 
     def should_show_table(self):
         '''Whether or not we should show the diff table with diff results'''
-        pass
+        raise NotImplemented
 
     def wrong_things(self):
         '''Returns a list of strings describing everything that's wrong'''
-        pass
+        raise NotImplemented
 
     def wrong_things_html_list(self):
         '''Returns all the things that were wrong in an html list, or None if
