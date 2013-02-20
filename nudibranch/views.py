@@ -17,7 +17,7 @@ from pyramid.view import notfound_view_config, view_config
 from pyramid_mailer import get_mailer
 from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
-from .diff_render import HTMLDiff, ScoreWithSetTotal
+from .diff_render import HTMLDiff
 from .diff_unit import DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
@@ -748,18 +748,18 @@ def submission_view(request, submission, as_user):
                     'delay': '{0:.1f} minutes'.format(delay),
                     'submission': submission}
     prev_next_html = None
-    calc_score = ScoreWithSetTotal(
-        submission.project.total_available_points())
+    points_possible = submission.project.points_possible()
+
     diff_renderer = None
     if submission_admin:
         try:
             prev_next_html = PrevNextFull(request, submission).to_html()
-            diff_renderer = HTMLDiff(calc_score=calc_score,
-                                     num_reveal_limit=None)
+            diff_renderer = HTMLDiff(num_reveal_limit=None,
+                                     points_possible=points_possible)
         except (NoSuchUserException, NoSuchProjectException):
             return HTTPNotFound()
     else:
-        diff_renderer = HTMLDiff(calc_score=calc_score)
+        diff_renderer = HTMLDiff(points_possible=points_possible)
 
     for test_case_result in submission.test_case_results:
         full_diff = to_full_diff(request, test_case_result)

@@ -318,8 +318,8 @@ class Project(BasicBase, Base):
                           for file_verifier in self.file_verifiers
                           if file_verifier.optional])
 
-    def total_available_points(self):
-        """Returns the total points available in this project"""
+    def points_possible(self):
+        """Return the total points possible for this project."""
         return sum([test_case.points
                     for testable in self.testables
                     for test_case in testable.test_cases])

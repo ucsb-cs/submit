@@ -78,53 +78,6 @@ def change_same_starting_points(flaglist):
     return (change_points, same_points)
 
 
-class ScoreMaker(object):
-    '''Base class for something that scores diffs.
-    Defaults to a basic totaling of the score.'''
-
-    def points_for_diff(self, diff):
-        '''Gets the number of points a given diff with metadata should
-        be worth.  Defaults to ```diff.test_points```'''
-        return diff.test_points
-
-    def total_score_available(self, diffs):
-        return sum([self.points_for_diff(diff) for diff in diffs])
-
-    def total_score_achieved(self, diffs):
-        return sum([self.points_for_diff(diff) for diff in diffs
-                    if diff.is_correct()])
-
-    def percentage_score_achieved(self, diffs):
-        available = self.total_score_available(diffs)
-        if available == 0:
-            return 0
-        else:
-            return float(self.total_score_achieved(diffs)) / available * 100
-
-
-class ScoreWithExtraMissing(ScoreMaker):
-    '''Special ScoreMaker that records extra non-diff
-    points that were missed'''
-    def __init__(self, points_missing):
-        super(ScoreWithExtraMissing, self).__init__()
-        self.points_missing = points_missing
-
-    def total_score_available(self, diffs):
-        from_diffs = super(
-            ScoreWithExtraMissing, self).total_score_available(diffs)
-        return from_diffs + self.points_missing
-
-
-class ScoreWithSetTotal(ScoreMaker):
-    """Has a set total that it will use"""
-    def __init__(self, total_score):
-        super(ScoreWithSetTotal, self).__init__()
-        self.total_score = total_score
-
-    def total_score_available(self, diffs):
-        return self.total_score
-
-
 class HTMLDiff(difflib.HtmlDiff):
     FROM_DESC = 'Correct Output'
     TO_DESC = 'Your Output'
@@ -137,8 +90,8 @@ class HTMLDiff(difflib.HtmlDiff):
         """'difflib_chg_{0}_top');">Hide All</a>\n""" + \
         "</p>"
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
-    TENTATIVE_SCORE_BLOCK = '<ul><li>Tentative execution score: {0} / {1}</li>\
-<li>Tentative percentage score: {2:.2f}</li></ul>\n'
+    TENTATIVE_SCORE_BLOCK = ('<p>Tentative execution score: {0} / {1} '
+                             '({2:.2f}%)</p>\n')
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
     NEXT_HREF_TOP = '<a href="#difflib_chg_{0}_top">t</a>'
@@ -149,7 +102,7 @@ class HTMLDiff(difflib.HtmlDiff):
     EMPTY_FILE = '<td></td><td>&nbsp;Empty File&nbsp;</td>'
     MAX_SAME_LINES_BEFORE_SHOW_HIDE = 5  # must be >= 4
 
-    def __init__(self, diffs=[], calc_score=ScoreMaker(),
+    def __init__(self, diffs=[], points_possible=0,
                  num_reveal_limit=MAX_NUM_REVEALS):
         """Set num_reveal_limit to None to not reveal"""
         super(HTMLDiff, self).__init__(wrapcolumn=50)
@@ -158,8 +111,8 @@ class HTMLDiff(difflib.HtmlDiff):
         self._file_template = _file_template
         self._last_collapsed = False
         self._diff_html = {}  # maps a diff to html
-        self._calc_score = calc_score
         self._num_reveal_limit = num_reveal_limit
+        self._points_possible = points_possible
         for d in diffs:
             self.add_diff(d)
 
@@ -311,21 +264,18 @@ class HTMLDiff(difflib.HtmlDiff):
         return self._diff_html.keys()
 
     def tentative_score(self):
-        """Returns:
-        - total score achieved
-        - total score available
-        - total percentage score awarded"""
-        calc = self._calc_score
-        all_diffs = self._all_diffs()
-        return (calc.total_score_achieved(all_diffs),
-                calc.total_score_available(all_diffs),
-                calc.percentage_score_achieved(all_diffs))
+        """Return the total, available, and percentage score."""
+        diffs = self._all_diffs()
+        total = sum(x.test_points for x in diffs if x.is_correct())
+        if self._points_possible > 0:
+            percent = total * 100. / self._points_possible
+        else:
+            percent = 0
+        return total, self._points_possible, percent
 
     def make_summary(self):
-        total, available, percentage = self.tentative_score()
         retval = self._make_failed_summary() + self._make_success_summary()
-        retval += self.TENTATIVE_SCORE_BLOCK.format(
-            total, available, percentage)
+        retval += self.TENTATIVE_SCORE_BLOCK.format(*self.tentative_score())
         return retval
 
     def is_legend_needed(self):
