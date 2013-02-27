@@ -1,44 +1,49 @@
 <metal:page define-macro="layout"><!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title><p tal:condition="page_title" tal:replace="page_title + ' - '">Submit</title>
-  <link rel="shortcut icon" href="${_S('nudibranch:static/favicon.ico')}" />
-  <link rel="stylesheet" href="${_S('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}"
-        type="text/css" media="screen" />
-  <link rel="stylesheet" href="${_S('nudibranch:static/style.css')}"
-        type="text/css" media="screen" />
-  <link tal:repeat="css css_files" rel="stylesheet"
-	href="${_S('nudibranch:static/' + css)}"
-        type="text/css" media="screen" />
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
-  <script src="${_S('nudibranch:static/application.js')}"></script>
-  <script src="${_S('nudibranch:static/form2js.js')}"></script>
-  <script src="${_S('nudibranch:static/json2.js')}"></script>
-  <script src="${_S('nudibranch:static/sha1.js')}"></script>
-  <script tal:repeat="js javascripts" src="${_S('nudibranch:static/' + js)}"></script>
-</head>
-<body>
-  <div tal:condition="request.user and request.user.is_admin" style="background: #CCC">
-    ADMIN BAR: 
-    <a href="${_R('user')}">Users</a>
-    <span>|</span>
-    <a href="${_R('admin_utils')}">Admin Utilities</a>
-  </div>
-  <div tal:condition="request.user and not request.user.is_admin and request.user.is_admin_for_any_class()" style="background: #CCC">
-    CLASS ADMIN BAR:
-    <a href="${_R('class_admin_utils')}">Class Admin Utilities</a>
-  </div>
-  <div tal:condition="request.user" style="background: #0C0">
-    <form name="logout" action="${_R('session')}"
-          onsubmit="return form_request(this, 'delete');">
-      Hello <a href="${_R('user_item', username=request.user.username)}">
-        ${request.user.username}</a>! | <a href="${_R('class_join_list')}">Join Classes</a>
-      <input type="submit" name="submit" value="Logout" />
-    </form>
-  </div>
-  <div metal:define-slot="content">
-  </div>
-</body>
-</html></metal:page>
+<meta charset="UTF-8" />
+<title><p tal:condition="page_title" tal:replace="page_title + ' - '">Submit</title>
+<link rel="shortcut icon" href="${_S('nudibranch:static/favicon.ico')}" />
+<link rel="stylesheet" href="${_S('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}"
+      type="text/css" media="screen" />
+<link rel="stylesheet" href="${_S('nudibranch:static/style.css')}"
+      type="text/css" media="screen" />
+<link tal:repeat="css css_files" rel="stylesheet"
+      href="${_S('nudibranch:static/' + css)}"
+      type="text/css" media="screen" />
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
+<script src="${_S('nudibranch:static/application.js')}"></script>
+<script src="${_S('nudibranch:static/form2js.js')}"></script>
+<script src="${_S('nudibranch:static/json2.js')}"></script>
+<script src="${_S('nudibranch:static/sha1.js')}"></script>
+<script tal:repeat="js javascripts" src="${_S('nudibranch:static/' + js)}"></script>
+<div tal:condition="request.user and request.user.is_admin" style="background: #CCC">
+  ADMIN BAR:
+  <a href="${_R('user')}">Users</a>
+  <span>|</span>
+  <a href="${_R('admin_utils')}">Admin Utilities</a>
+</div>
+<div tal:condition="request.user and not request.user.is_admin and request.user.is_admin_for_any_class()" style="background: #CCC">
+  CLASS ADMIN BAR:
+  <a href="${_R('class_admin_utils')}">Class Admin Utilities</a>
+</div>
+<div tal:condition="request.user" style="background: #0C0">
+  <form name="logout" action="${_R('session')}"
+        onsubmit="return form_request(this, 'delete');">
+    Hello <a href="${_R('user_item', username=request.user.username)}">
+      ${request.user.username}</a>! | <a href="${_R('class_join_list')}">Join Classes</a>
+    <input type="submit" name="submit" value="Logout" />
+  </form>
+</div>
+<div metal:define-slot="content">
+</div>
+<script tal:define="ga_id request.registry.settings.get('google_analytics_id', False)"
+        tal:condition="ga_id" type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', '${ga_id}']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script></metal:page>
