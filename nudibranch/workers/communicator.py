@@ -173,6 +173,13 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
                 source = File.file_path(BASE_FILE_PATH, test_case.stdin.sha1)
                 os.symlink(source, destination)
 
+    # Copy execution files
+    os.mkdir('execution_files')
+    for execution_file in testable.execution_files:
+        destination = os.path.join('execution_files', execution_file.filename)
+        source = File.file_path(BASE_FILE_PATH, execution_file.file.sha1)
+        os.symlink(source, destination)
+
     # Generate data dictionary
     data = {'executable': testable.executable,
             'make_target': testable.make_target,

@@ -18,6 +18,7 @@ from subprocess import Popen, PIPE, STDOUT
 SRC_PATH = 'src'
 INPUT_PATH = 'inputs'
 RESULTS_PATH = 'results'
+EXECUTION_FILES_PATH = 'execution_files'
 
 MAX_FILE_SIZE = 65536
 
@@ -58,8 +59,12 @@ class SubmissionHandler(object):
         if not os.path.isfile(args[0]):
             raise NonexistentExecutable()
 
-        # Run command with a timelimit
+        # Create temporary directory and copy execution files
         tmp_dir = tempfile.mkdtemp()
+        for filename in os.listdir(EXECUTION_FILES_PATH):
+            shutil.copy(os.path.join(EXECUTION_FILES_PATH, filename),
+                        os.path.join(tmp_dir, filename))
+        # Run command with a timelimit
         try:
             poll = select.epoll()
             main_pipe = Popen(args, stdin=stdin, stdout=PIPE, stderr=stderr,
