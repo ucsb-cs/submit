@@ -703,7 +703,8 @@ class TestCase(BasicBase, Base):
                          backref='stdin_for')
     stdin_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
-    test_case_for = relationship('TestCaseResult', backref='test_case')
+    test_case_for = relationship('TestCaseResult', backref='test_case',
+                                 cascade='all, delete-orphan')
 
     def __cmp__(self, other):
         return cmp(self.name, other.name)
