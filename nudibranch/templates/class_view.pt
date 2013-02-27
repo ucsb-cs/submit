@@ -8,7 +8,7 @@
 
   <p>Projects</p>
   <ul>
-    <div tal:repeat="project klass.projects" omit-tag="">
+    <div tal:repeat="project sorted(klass.projects, key=lambda x: x.name)" omit-tag="">
     <li tal:condition="project.can_view(request.user)">
       <a tal:condition="class_admin"
 	 href="${_R('project_item_summary', class_name=project.klass.name, project_id=project.id)}">
