@@ -285,6 +285,7 @@ class Project(BasicBase, Base):
     build_files = relationship(BuildFile, backref='project',
                                cascade='all, delete-orphan')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
+    delay_minutes = Column(Integer, nullable=False, default=0)
     execution_files = relationship(ExecutionFile, backref='project',
                                    cascade='all, delete-orphan')
     file_verifiers = relationship('FileVerifier', backref='project',
@@ -298,7 +299,9 @@ class Project(BasicBase, Base):
     testables = relationship('Testable', backref='project',
                              cascade='all, delete-orphan')
 
-    delay = timedelta(minutes=5)
+    @property
+    def delay(self):
+        return timedelta(minutes=self.delay_minutes)
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the project."""

@@ -30,6 +30,10 @@
       <br/>
       <input type="text" name="name" id="name" value="${project.name}" />
       <br/>
+      <label for="delay_minutes">Submission Results Delay (in minutes)</label>
+      <br/>
+      <input type="text" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}" />
+      <br/>
       <label for="is_ready_new">Ready for Submission</label>
       <input type="checkbox" name="is_ready" id="is_ready_new" value="1" tal:attributes="checked 'checked' if project.is_ready else None"/>
       <br/>

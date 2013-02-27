@@ -464,11 +464,15 @@ def project_new(request, class_):
           is_ready=TextNumber('is_ready', min_value=0, max_value=1,
                               optional=True),
           class_name=String('class_name', source=MATCHDICT),
+          delay_minutes=TextNumber('delay_minutes', min_value=0,
+                                   optional=True, default=0),
           project=EditableDBThing('project_id', Project, source=MATCHDICT))
-def project_update(request, name, makefile, is_ready, class_name, project):
+def project_update(request, name, makefile, is_ready, class_name,
+                   delay_minutes, project):
     if project.klass.name != class_name:
         raise HTTPNotFound()
     if not project.update(name=name, makefile=makefile,
+                          delay_minutes=delay_minutes,
                           is_ready=bool(is_ready)):
         return http_ok(request, message='Nothing to change')
     project_id = project.id
