@@ -658,23 +658,16 @@ def submission_create(request, project_id, file_ids, filenames):
 
 @view_config(route_name='zipfile_download', request_method='GET',
              permission='authenticated')
-def zipfile_download(request):
-    submission = Submission.fetch_by_id(request.matchdict['submission_id'])
-    if not submission:
-        return HTTPNotFound()
-    if not submission.project.can_edit(request.user):
-        return HTTPForbidden()
+@validate(submission=ViewableDBThing('submission_id', Submission,
+                                     source=MATCHDICT))
+def zipfile_download(request, submission):
     with ZipSubmission(submission, request) as zipfile:
-        # The str() part is needed, or else these will be converted
-        # to unicode due to the text_type import in tests.py.
-        # Non-string (including unicode) content headers cause
-        # assertion failures in waitress
         response = FileResponse(
             zipfile.actual_filename(),
             content_type=str('application/zip'))
-        pretty = zipfile.pretty_filename()
-        disposition = 'application/zip; filename="{0}"'.format(pretty)
-        response.headers[str('Content-disposition')] = str(disposition)
+        disposition = str('attachment; filename="{0}"'
+                          .format(zipfile.pretty_filename()))
+        response.headers[str('Content-disposition')] = disposition
         return response
 
 
