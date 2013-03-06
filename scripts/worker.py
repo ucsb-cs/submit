@@ -52,12 +52,11 @@ class SubmissionHandler(object):
         else:
             stderr = STDOUT
 
-        # Prefix path to command
-        command = os.path.join(os.getcwd(), SRC_PATH, command)
         args = command.split()
-
-        if not os.path.isfile(args[0]):
-            raise NonexistentExecutable()
+        if args[0] not in ('bash', 'sh', 'python'):  # allow some programs
+            args[0] = os.path.join(os.getcwd(), SRC_PATH, args[0])
+            if not os.path.isfile(args[0]):
+                raise NonexistentExecutable()
 
         # Create temporary directory and copy execution files
         tmp_dir = tempfile.mkdtemp()
