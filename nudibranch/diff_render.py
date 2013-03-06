@@ -44,16 +44,22 @@ MAX_NUM_REVEALS = 3
 
 
 def limit_revealed_lines_to(diffs, limit):
+    def truncate_line(todata):
+        if len(todata[1]) > 1024:
+            return todata[0], todata[1][:1024] + '...truncated'
+        else:
+            return todata
+
     num_reveals = 0
     retval = []
     for fromdata, todata, flag in diffs:
         if flag and ('\0-' in fromdata[1] or '\0^' in fromdata[1]):
             num_reveals += 1
-        if num_reveals > limit:
+        if limit and num_reveals > limit:
             trun = ('...', '<<OUTPUT TRUNCATED>>')
             retval.append((trun, trun, False))
             break
-        retval.append((fromdata, todata, flag))
+        retval.append((fromdata, truncate_line(todata), flag))
     return retval
 
 
@@ -286,8 +292,7 @@ class HTMLDiff(difflib.HtmlDiff):
             table='<hr>\n'.join(tables))
 
     def _line_wrapper(self, diffs):
-        if self._num_reveal_limit:
-            diffs = limit_revealed_lines_to(diffs, self._num_reveal_limit)
+        diffs = limit_revealed_lines_to(diffs, self._num_reveal_limit)
         return super(HTMLDiff, self)._line_wrapper(diffs)
 
     def _make_prefix(self):
