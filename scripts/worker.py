@@ -52,17 +52,24 @@ class SubmissionHandler(object):
         else:
             stderr = STDOUT
 
-        args = command.split()
-        if args[0] not in ('bash', 'sh', 'python'):  # allow some programs
-            args[0] = os.path.join(os.getcwd(), SRC_PATH, args[0])
-            if not os.path.isfile(args[0]):
-                raise NonexistentExecutable()
-
         # Create temporary directory and copy execution files
         tmp_dir = tempfile.mkdtemp()
         for filename in os.listdir(EXECUTION_FILES_PATH):
             shutil.copy(os.path.join(EXECUTION_FILES_PATH, filename),
                         os.path.join(tmp_dir, filename))
+
+        args = command.split()
+        if args[0] not in ('bash', 'sh', 'python'):  # allow some programs
+            args[0] = os.path.join(os.getcwd(), SRC_PATH, args[0])
+            if not os.path.isfile(args[0]):
+                raise NonexistentExecutable()
+        else:
+            # Need to copy the binary
+            for arg in args:
+                src = os.path.join(SRC_PATH, arg)
+                if os.path.isfile(src):
+                    shutil.copy(src, os.path.join(tmp_dir, arg))
+
         # Run command with a timelimit
         try:
             poll = select.epoll()
