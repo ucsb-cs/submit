@@ -7,8 +7,9 @@ function form_request(form, method, skip_empty) {
         /* Find any file input fields and add them to the files array */
         if (!node.nodeName.match(/INPUT/i) || !node.type.match(/file/i))
             return false;
-        if (node.files.length > 0)
+        if (node.files.length > 0 && !node.hasAttribute("disabled")) {
             files_to_upload.push({name: node.name, files: node.files});
+        }
         return false;
     });
 

@@ -7,8 +7,9 @@ from hashlib import sha1
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
-from pyramid_addons.validation import (List, String, RegexString, TextNumber,
-                                       WhiteSpaceString, validate, SOURCE_GET,
+from pyramid_addons.validation import (Enum, List, String, RegexString,
+                                       TextNumber, WhiteSpaceString, validate,
+                                       SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
 from pyramid.response import FileResponse, Response
@@ -32,6 +33,8 @@ from .zipper import ZipSubmission
 
 
 # A few reoccuring validators
+OUTPUT_SOURCE = Enum('output_source', 'stdout', 'stderr', 'file')
+OUTPUT_TYPE = Enum('output_type', 'diff', 'image', 'text')
 SHA1_VALIDATOR = String('sha1sum', min_length=40, max_length=40,
                         source=MATCHDICT)
 UUID_VALIDATOR = String('token', min_length=36, max_length=36,
@@ -77,6 +80,29 @@ def project_file_delete(request, project_file):
     session.delete(project_file)
     transaction.commit()
     return http_ok(request, redir_location=redir_location)
+
+
+def test_case_verification(function):
+    def wrapped(request, expected, output_filename, output_source, output_type,
+                *args, **kwargs):
+        msgs = []
+        if output_filename and output_source != 'file':
+            msgs.append('output_filename can only be set when the source '
+                        'is a named file')
+        elif not output_filename and output_source == 'file':
+            msgs.append('output_filename must be set when the source is a '
+                        'named file')
+        if expected and output_type != 'diff':
+            msgs.append('expected_id can only be set when the type is diff')
+        elif not expected and output_type == 'diff':
+            msgs.append('expected_id must be set when the type is diff')
+        if msgs:
+            return http_bad_request(request, messages=msgs)
+        return function(request, *args, expected=expected,
+                        output_filename=output_filename,
+                        output_source=output_source, output_type=output_type,
+                        **kwargs)
+    return wrapped
 
 
 @view_config(route_name='build_file', request_method='PUT',
@@ -791,13 +817,20 @@ def submission_view(request, submission, as_user):
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
           args=String('args', min_length=1),
-          expected=ViewableDBThing('expected_id', File),
+          expected=ViewableDBThing('expected_id', File, optional=True),
+          output_filename=String('output_filename', min_length=1,
+                                 optional=True),
+          output_source=OUTPUT_SOURCE, output_type=OUTPUT_TYPE,
           points=TextNumber('points'),
           stdin=ViewableDBThing('stdin_id', File, optional=True),
           testable=EditableDBThing('testable_id', Testable))
-def test_case_create(request, name, args, expected, points, stdin, testable):
+@test_case_verification
+def test_case_create(request, name, args, expected, output_filename,
+                     output_source, output_type, points, stdin, testable):
     test_case = TestCase(name=name, args=args, expected=expected,
-                         points=points, stdin=stdin, testable=testable)
+                         output_filename=output_filename,
+                         output_type=output_type, points=points,
+                         source=output_source, stdin=stdin, testable=testable)
     session = Session()
     session.add(test_case)
     try:
@@ -816,14 +849,21 @@ def test_case_create(request, name, args, expected, points, stdin, testable):
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
           args=String('args', min_length=1),
-          expected=ViewableDBThing('expected_id', File),
+          expected=ViewableDBThing('expected_id', File, optional=True),
+          output_filename=String('output_filename', min_length=1,
+                                 optional=True),
+          output_source=OUTPUT_SOURCE, output_type=OUTPUT_TYPE,
           points=TextNumber('points'),
           stdin=ViewableDBThing('stdin_id', File, optional=True),
           test_case=EditableDBThing('test_case_id', TestCase,
                                     source=MATCHDICT))
-def test_case_update(request, name, args, expected, points, stdin, test_case):
+@test_case_verification
+def test_case_update(request, name, args, expected, output_filename,
+                     output_source, output_type, points, stdin, test_case):
     if not test_case.update(name=name, args=args, expected=expected,
-                            points=points, stdin=stdin):
+                            output_filename=output_filename,
+                            output_type=output_type, points=points,
+                            source=output_source, stdin=stdin):
         return http_ok(request, message='Nothing to change')
     session = Session()
     session.add(test_case)

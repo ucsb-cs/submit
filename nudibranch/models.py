@@ -699,9 +699,14 @@ class TestCase(BasicBase, Base):
     args = Column(Unicode, nullable=False)
     expected = relationship(File, primaryjoin='File.id==TestCase.expected_id',
                             backref='expected_for')
-    expected_id = Column(Integer, ForeignKey('file.id'), nullable=False)
+    expected_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     name = Column(Unicode, nullable=False)
+    output_filename = Column(Unicode, nullable=True)
+    output_type = Column(Enum('diff', 'image', 'text', name='output_type'),
+                         nullable=False)
     points = Column(Integer, nullable=False)
+    source = Column(Enum('file', 'stderr', 'stdout', name='source'),
+                    nullable=False)
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id',
                          backref='stdin_for')
     stdin_id = Column(Integer, ForeignKey('file.id'), nullable=True)
