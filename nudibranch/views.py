@@ -727,8 +727,7 @@ def to_full_diff(request, test_case_result):
                                    test_case_result.diff.sha1)
         diff = pickle.load(open(diff_file))
     except (AttributeError, EOFError):
-        diff = Diff(['submit system mismatch -- requeue submission\n'],
-                    ['\n'])
+        diff = Diff(['submit system mismatch -- requeue submission\n'], [])
     test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
     if not test_case:
         return None
