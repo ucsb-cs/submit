@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import codecs
+import os
 import pickle
 import transaction
 from base64 import b64decode
@@ -19,7 +20,7 @@ from pyramid_mailer import get_mailer
 from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
-from .diff_unit import DiffWithMetadata, DiffExtraInfo
+from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
                       EditableDBThing, ViewableDBThing, get_submission_stats,
@@ -721,9 +722,13 @@ def to_full_diff(request, test_case_result):
     '''Given a test case result, it will return a complete DiffWithMetadata
     object, or None if we couldn't get the test case'''
 
-    diff_file = File.file_path(request.registry.settings['file_directory'],
-                               test_case_result.diff.sha1)
-    diff = pickle.load(open(diff_file))
+    try:
+        diff_file = File.file_path(request.registry.settings['file_directory'],
+                                   test_case_result.diff.sha1)
+        diff = pickle.load(open(diff_file))
+    except (AttributeError, EOFError):
+        diff = Diff(['submit system mismatch -- requeue submission\n'],
+                    ['\n'])
     test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
     if not test_case:
         return None
@@ -785,10 +790,21 @@ def submission_view(request, submission, as_user):
         diff_renderer = HTMLDiff(points_possible=points_possible)
 
     for test_case_result in submission.test_case_results:
-        full_diff = to_full_diff(request, test_case_result)
-        if not full_diff:
-            return HTTPNotFound()
-        diff_renderer.add_diff(full_diff)
+        if test_case_result.test_case.output_type == 'diff':
+            full_diff = to_full_diff(request, test_case_result)
+            if not full_diff:
+                return HTTPNotFound()
+            diff_renderer.add_diff(full_diff)
+        else:  # Handle text or image output
+            print('Other output type: {0}'
+                  .format(test_case_result.test_case.source))
+            if test_case_result.diff:
+                output_file = File.file_path(
+                    request.registry.settings['file_directory'],
+                    test_case_result.diff.sha1)
+                print(open(output_file).read())
+            else:
+                print('No output file captured.')
 
     verification_info = submission.verification_warnings_errors()
     waiting_to_run = submission.testables_waiting_to_run()

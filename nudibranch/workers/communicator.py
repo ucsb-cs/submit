@@ -90,7 +90,13 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
                 results[test_case.id]['submission_id'] = submission_id
                 results[test_case.id]['test_case_id'] = test_case.id
                 test_case_result = TestCaseResult(**results[test_case.id])
-            compute_diff(test_case, test_case_result)
+            if test_case.output_type == 'diff':
+                compute_diff(test_case, test_case_result)
+            else:
+                output_file = 'tc_{0}'.format(test_case.id)
+                if os.path.isfile(output_file):  # Store the file as the diff
+                    test_case_result.diff = File.fetch_or_create(
+                        open(output_file).read(), BASE_FILE_PATH)
             session.add(test_case_result)
     try:
         transaction.commit()

@@ -45,12 +45,12 @@ class SubmissionHandler(object):
             time.sleep(0.1)
 
     @staticmethod
-    def execute(command, stdout, stdin=None, time_limit=3, files=None,
-                capture_stderr=False):
-        if not capture_stderr:
+    def execute(command, stderr=None, stdin=None, stdout=None, time_limit=3,
+                files=None, save=None):
+        if not stderr:
             stderr = open('/dev/null', 'w')
-        else:
-            stderr = STDOUT
+        if not stdout:
+            stdout = open('/dev/null', 'w')
 
         # Create temporary directory and copy execution files
         tmp_dir = tempfile.mkdtemp()
@@ -71,6 +71,7 @@ class SubmissionHandler(object):
                     shutil.copy(src, os.path.join(tmp_dir, arg))
 
         # Run command with a timelimit
+        # TODO: Do we only get partial output with stdout?
         try:
             poll = select.epoll()
             main_pipe = Popen(args, stdin=stdin, stdout=PIPE, stderr=stderr,
@@ -99,6 +100,10 @@ class SubmissionHandler(object):
             else:
                 raise
         finally:
+            if save:  # Attempt to copy files requiring saving
+                src = os.path.join(tmp_dir, save[0])
+                if os.path.isfile(src):
+                    shutil.copy(src, save[1])
             shutil.rmtree(tmp_dir)
 
     def __init__(self, settings, is_daemon):
@@ -155,6 +160,18 @@ class SubmissionHandler(object):
             return True
 
     def run_tests(self, test_cases):
+        def execute(*args, **kwargs):
+            try:
+                result['extra'] = self.execute(*args, **kwargs)
+                result['status'] = 'success'
+            except NonexistentExecutable:
+                result['status'] = 'nonexistent_executable'
+            except SignalException as exc:
+                result['extra'] = exc.signum
+                result['status'] = 'signal'
+            except TimeoutException:
+                result['status'] = 'timed_out'
+
         results = {}
         for tc in test_cases:
             output_file = os.path.join(RESULTS_PATH, 'tc_{0}'.format(tc['id']))
@@ -164,21 +181,26 @@ class SubmissionHandler(object):
             else:
                 stdin = None
             result = {'extra': None}
-            with open(output_file, 'wb') as stdout:
-                try:
-                    result['extra'] = self.execute(tc['args'], stdout=stdout,
-                                                   stdin=stdin)
-                    result['status'] = 'success'
-                except NonexistentExecutable:
-                    result['status'] = 'nonexistent_executable'
-                except SignalException as exc:
-                    result['extra'] = exc.signum
-                    result['status'] = 'signal'
-                except TimeoutException:
-                    result['status'] = 'timed_out'
-            if os.path.getsize(output_file) > MAX_FILE_SIZE:
+
+            # Mange output file
+            if tc['source'] != 'file':
+                with open(output_file, 'wb') as output:
+                    if tc['source'] == 'stdout':
+                        stdout = output
+                        stderr = None
+                    else:
+                        stdout = None
+                        stderr = output
+                    execute(tc['args'], stderr=stderr, stdin=stdin,
+                            stdout=stdout)
+            else:
+                execute(tc['args'], save=(tc['output_filename'], output_file))
+            if not os.path.isfile(output_file):
+                # Hack on this status until we update the ENUM
+                result['status'] = 'output_limit_exceeded'
+            elif os.path.getsize(output_file) > MAX_FILE_SIZE:
                 # Truncate output file size
-                print 'Truncating outputfile', os.path.getsize(output_file)
+                print('Truncating outputfile', os.path.getsize(output_file))
                 fd = os.open(output_file, os.O_WRONLY)
                 os.ftruncate(fd, MAX_FILE_SIZE)
                 os.close(fd)

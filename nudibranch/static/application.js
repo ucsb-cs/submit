@@ -110,7 +110,7 @@ function process_file(handler) {
             var url = '/file/info/' + sha1;
             console.log('Checking if ' + sha1 + ' exists');
             $.ajax({url: url, complete: function(xhr) {  // Test if file exists
-                if (xhr.status == 404) {
+                if (xhr.status == 403 || xhr.status == 404) {
                     console.log('Uploading file for ' + sha1);
                     var form_json = JSON.stringify({b64data: base64});
                     var url = '/file/' + sha1 + '/_';

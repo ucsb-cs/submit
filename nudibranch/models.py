@@ -722,7 +722,8 @@ class TestCase(BasicBase, Base):
         return self.testable.project.can_edit(user)
 
     def serialize(self):
-        data = dict([(x, getattr(self, x)) for x in ('id', 'args')])
+        data = dict([(x, getattr(self, x)) for x in ('args', 'id', 'source',
+                                                     'output_filename')])
         if self.stdin:
             data['stdin'] = self.stdin.sha1
         else:
@@ -731,10 +732,14 @@ class TestCase(BasicBase, Base):
 
 
 class TestCaseResult(Base):
-    """Stores information about a test case.
+    """Stores information about a single run of a test case.
 
     The extra field stores the exit status when the status is `success`, and
     stores the signal number when the status is `signal`.
+
+    When the TestCase output_type is not `diff` the diff file is actually
+    the raw output file.
+
     """
     __tablename__ = 'testcaseresult'
     diff = relationship(File)
