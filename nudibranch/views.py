@@ -484,6 +484,21 @@ def project_new(request, class_):
     return {'page_title': 'Create Project', 'project': dummy_project}
 
 
+@view_config(route_name='project_edit', renderer='json',
+             request_method='PUT', permission='authenticated')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
+def project_requeue(request, project):
+    items = 0
+    for user in project.klass.users:
+        submission = Submission.most_recent_submission(project.id, user.id)
+        if submission:
+            request.queue(submission_id=submission.id)
+            items += 1
+    request.session.flash('Requeued the most recent submissions ({0} items).'
+                          .format(items))
+    return http_ok(request, redir_location=request.url)
+
+
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=2),
@@ -593,12 +608,8 @@ def project_view_summary(request):
     submissions = {}
     user_truncated = set()
     for user in project.klass.users:
-        # more SQLite sadness
-        newest = Submission.sorted_submissions(
-            Submission.query_by(project_id=project.id, user_id=user.id).all(),
-            reverse=True)[0:4]
-        # Grab four submissions to see if there are more than 3 even though
-        # only three are displayed
+        newest = (Submission.query_by(project=project, user=user)
+                  .order_by(Submission.created_at.desc()).limit(4).all())
         if len(newest) == 4:
             user_truncated.add(user)
         submissions[user] = newest[:3]
@@ -745,12 +756,9 @@ def to_full_diff(request, test_case_result):
 
 @view_config(route_name='submission_item', renderer='json',
              request_method='PUT', permission='authenticated')
-def submission_requeue(request):
-    submission = Submission.fetch_by_id(request.matchdict['submission_id'])
-    if not submission:
-        return HTTPNotFound()
-    if not submission.project.can_edit(request.user):
-        return HTTPForbidden()
+@validate(submission=EditableDBThing('submission_id', Submission,
+                                     source=MATCHDICT))
+def submission_requeue(request, submission):
     request.queue(submission_id=submission.id)
     request.session.flash('Requeued the submission')
     return http_ok(request, redir_location=request.url)

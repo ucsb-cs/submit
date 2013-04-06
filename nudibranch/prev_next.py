@@ -117,11 +117,9 @@ class PrevNextSubmission(object):
         self._project = self._make_project()
         self._user = self._make_user()
         self._next_submission = \
-            Submission.earlier_submission_for_user(submission)
-        self._prev_submission = \
             Submission.later_submission_for_user(submission)
-        self._prev_submission = self._make_prev_submission()
-        self._next_submission = self._make_next_submission()
+        self._prev_submission = \
+            Submission.earlier_submission_for_user(submission)
 
     def _make_project(self):
         retval = Project.fetch_by_id(self._submission.project_id)
@@ -138,12 +136,6 @@ class PrevNextSubmission(object):
                 "No such user with id {0}".format(
                     self._submission.user_id))
         return retval
-
-    def _make_prev_submission(self):
-        return Submission.later_submission_for_user(self._submission)
-
-    def _make_next_submission(self):
-        return Submission.earlier_submission_for_user(self._submission)
 
     def _submission_route(self, submission):
         if submission:
@@ -164,7 +156,7 @@ class PrevNextSubmission(object):
                 self._prev_submission_route(),
                 self._user.name)
         else:
-            inner = 'No previous submissions for {0}'.format(
+            inner = 'No older submissions for {0}'.format(
                 self._user.name)
         return left_align(inner)
 
@@ -175,7 +167,7 @@ class PrevNextSubmission(object):
                 self._next_submission_route(),
                 self._user.name)
         else:
-            inner = 'No more submissions for {0}'.format(
+            inner = 'No newer submissions for {0}'.format(
                 self._user.name)
         return right_align(inner)
 

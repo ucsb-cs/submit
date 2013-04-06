@@ -433,6 +433,10 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
+    def can_edit(self, user):
+        """Return whether or not `user` can edit the submission."""
+        return self.project.can_edit(user)
+
     def can_view(self, user):
         """Return whether or not `user` can view the submission."""
         return user == self.user or self.project.can_edit(user)
@@ -600,78 +604,25 @@ class Submission(BasicBase, Base):
 
     @staticmethod
     def most_recent_submission(project_id, user_id):
-        '''Given the project id and a user id, gets the most recent
-        submission for the given user, or None if the user has no
-        submissions'''
-        submissions = Submission.sorted_submissions(
-            Submission.query_by(user_id=user_id,
-                                project_id=project_id).all(),
-            reverse=True)
-        if submissions:
-            return submissions[0]
+        """Return the most recent submission for the user and project id."""
+        return (Submission.query_by(project_id=project_id, user_id=user_id)
+                .order_by(Submission.created_at.desc()).first())
 
     @staticmethod
-    def next_user_with_submissions_submission(user, project):
-        '''Gets the first submission available for the next user,
-        skipping any users who have no submissions.  Returns None if
-        we are at the end.
-        NOTE: as written, this will only deterministically work correctly
-        with a non-SQLite backend'''
-        while True:
-            next_user = project.next_user(user)
-            if not next_user:
-                return None
-            next_submission = (Submission
-                               .query_by(project=project, user=next_user)
-                               .order_by(Submission.created_at.desc()).first())
-            if next_submission:
-                return next_submission
-            user = next_user
+    def later_submission_for_user(submission):
+        """Return the submission immediately prior to the given submission."""
+        return (Submission
+                .query_by(project=submission.project, user=submission.user)
+                .filter(Submission.created_at > submission.created_at)
+                .order_by(Submission.created_at).first())
 
     @staticmethod
-    def later_submission_for_user(earlier_sub):
-        return next_in_sorted(
-            earlier_sub,
-            Submission.sorted_submissions_for_submission(earlier_sub))
-
-    @staticmethod
-    def earlier_submission_for_user(later_sub):
-        '''Returns the next submission for the user behind the submission, or
-        None if this is the last user's submission.  The submissions returned
-        will be in order of the submission created_at time'''
-
-        # the below code is if we have proper datetime support at the
-        # database level (i.e. not SQLite)
-        # return Session().query(Submission).\
-        #     filter(Submission.project_id == later_sub.project_id,
-        #            Submission.user_id == later_sub.user_id,
-        #            Submission.created_at < later_sub.created_at).\
-        #     order_by(Submission.created_at.desc()).\
-        #     first()
-
-        # the below code is needed for SQLite
-        return prev_in_sorted(
-            later_sub,
-            Submission.sorted_submissions_for_submission(later_sub))
-
-    @staticmethod
-    def query_submissions_for_same(submission):
-        '''Gets all submissions for the same project and user
-        as the given submission'''
-        return Submission.query_by(user=submission.user,
-                                   project=submission.project)
-
-    @staticmethod
-    def sorted_submissions_for_submission(submission, reverse=False):
-        return Submission.sorted_submissions(
-            Submission.query_submissions_for_same(submission).all(),
-            reverse)
-
-    @staticmethod
-    def sorted_submissions(submissions, reverse=False):
-        return sorted(submissions,
-                      key=lambda s: s.created_at,
-                      reverse=reverse)
+    def earlier_submission_for_user(submission):
+        """Return the submission immediately prior to the given submission."""
+        return (Submission
+                .query_by(project=submission.project, user=submission.user)
+                .filter(Submission.created_at < submission.created_at)
+                .order_by(Submission.created_at.desc()).first())
 
     def verify(self, base_path):
         return self.project.verify_submission(base_path, self)
@@ -982,7 +933,3 @@ def populate_database():
         print('Admin user created')
     except IntegrityError:
         transaction.abort()
-
-
-# Prevent circular import
-from .helpers import next_in_sorted, prev_in_sorted
