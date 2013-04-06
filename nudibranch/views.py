@@ -492,7 +492,7 @@ def project_requeue(request, project):
     for user in project.klass.users:
         submission = Submission.most_recent_submission(project.id, user.id)
         if submission:
-            request.queue(submission_id=submission.id)
+            request.queue(submission_id=submission.id, _priority=2)
             items += 1
     request.session.flash('Requeued the most recent submissions ({0} items).'
                           .format(items))
@@ -759,7 +759,7 @@ def to_full_diff(request, test_case_result):
 @validate(submission=EditableDBThing('submission_id', Submission,
                                      source=MATCHDICT))
 def submission_requeue(request, submission):
-    request.queue(submission_id=submission.id)
+    request.queue(submission_id=submission.id, _priority=0)
     request.session.flash('Requeued the submission')
     return http_ok(request, redir_location=request.url)
 
