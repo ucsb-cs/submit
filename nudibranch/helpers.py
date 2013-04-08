@@ -1,14 +1,19 @@
 import json
+import pickle
 import pika
-import xml.sax.saxutils
-from pyramid_addons.helpers import http_forbidden
+import transaction
+from pyramid_addons.helpers import (http_bad_request, http_conflict,
+                                    http_created, http_forbidden, http_ok)
 from pyramid_addons.validation import (SOURCE_MATCHDICT, TextNumber,
                                        ValidateAbort, Validator)
 from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
+from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
 from zipfile import ZipFile
+from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
-from .models import File, Submission, SubmissionToFile
+from .models import (BuildFile, File, FileVerifier, Session, Submission,
+                     SubmissionToFile)
 
 
 class DummyTemplateAttr(object):
@@ -159,6 +164,36 @@ class ZipSubmission(object):
                        "{0}/{1}".format(self.dirname, archive_filename))
 
 
+def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
+    """Return a list of cls instances for all the ids provided in item_ids.
+
+    :param item_ids: The list of ids to fetch objects for
+    :param cls: The class to fetch the ids from
+    :param attr_name: The name of the attribute for exception purposes
+    :param verification_list: If provided, a list of acceptable instances
+
+    Raise InvalidId exception using attr_name if any do not
+        exist, or are not present in the verification_list.
+
+    """
+    if not item_ids:
+        return []
+    items = []
+    for item_id in item_ids:
+        item = cls.fetch_by_id(item_id)
+        if not item or (verification_list is not None and
+                        item not in verification_list):
+            raise InvalidId(attr_name)
+        items.append(item)
+    return items
+
+
+def format_points(points):
+    return "({0} {1})".format(
+        points,
+        "point" if points == 1 else "points")
+
+
 def get_queue_func(request):
     """Establish the connection to rabbitmq."""
     def cleanup(request):
@@ -205,40 +240,6 @@ def get_submission_stats(cls, project):
             'end': submission.created_at, 'by_hour': by_hour}
 
 
-def readlines(path):
-    with open(path, 'r') as fh:
-        return fh.read().splitlines()
-
-
-def escape(string):
-    return xml.sax.saxutils.escape(string, {'"': "&quot;",
-                                            "'": "&apos;"})
-
-
-def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
-    """Return a list of cls instances for all the ids provided in item_ids.
-
-    :param item_ids: The list of ids to fetch objects for
-    :param cls: The class to fetch the ids from
-    :param attr_name: The name of the attribute for exception purposes
-    :param verification_list: If provided, a list of acceptable instances
-
-    Raise InvalidId exception using attr_name if any do not
-        exist, or are not present in the verification_list.
-
-    """
-    if not item_ids:
-        return []
-    items = []
-    for item_id in item_ids:
-        item = cls.fetch_by_id(item_id)
-        if not item or (verification_list is not None and
-                        item not in verification_list):
-            raise InvalidId(attr_name)
-        items.append(item)
-    return items
-
-
 def prev_next_submission(submission):
     """Return adjacent sumbission objects for the given submission."""
     return (Submission.earlier_submission_for_user(submission),
@@ -258,3 +259,84 @@ def prev_next_user(project, user):
     prev_user = users[index - 1] if index > 0 else None
     next_user = users[index + 1] if index + 1 < len(users) else None
     return prev_user, next_user
+
+
+def project_file_create(request, file_, filename, project, cls):
+    # Check for BuildFile and FileVerifier conflict
+    if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
+                                                  filename=filename,
+                                                  optional=False):
+        return http_bad_request(request, messages=('A required expected file '
+                                                   'already exists with that '
+                                                   'name.'))
+    cls_file = cls(file=file_, filename=filename, project=project)
+    session = Session()
+    session.add(cls_file)
+    try:
+        session.flush()  # Cannot commit the transaction here
+    except IntegrityError:
+        transaction.abort()
+        return http_conflict(request, message=('That filename already exists '
+                                               'for the project'))
+    redir_location = request.route_path('project_edit', project_id=project.id)
+    transaction.commit()
+    request.session.flash('Added {0} {1}.'.format(cls.__name__, filename))
+    return http_created(request, redir_location=redir_location)
+
+
+def project_file_delete(request, project_file):
+    redir_location = request.route_path('project_edit',
+                                        project_id=project_file.project.id)
+    request.session.flash('Deleted {0} {1}.'
+                          .format(project_file.__class__.__name__,
+                                  project_file.filename))
+    # Delete the file
+    session = Session()
+    session.delete(project_file)
+    transaction.commit()
+    return http_ok(request, redir_location=redir_location)
+
+
+def readlines(path):
+    with open(path, 'r') as fh:
+        return fh.read().splitlines()
+
+
+def test_case_verification(function):
+    def wrapped(request, expected, output_filename, output_source, output_type,
+                *args, **kwargs):
+        msgs = []
+        if output_filename and output_source != 'file':
+            msgs.append('output_filename can only be set when the source '
+                        'is a named file')
+        elif not output_filename and output_source == 'file':
+            msgs.append('output_filename must be set when the source is a '
+                        'named file')
+        if expected and output_type != 'diff':
+            msgs.append('expected_id can only be set when the type is diff')
+        elif not expected and output_type == 'diff':
+            msgs.append('expected_id must be set when the type is diff')
+        if msgs:
+            return http_bad_request(request, messages=msgs)
+        return function(request, *args, expected=expected,
+                        output_filename=output_filename,
+                        output_source=output_source, output_type=output_type,
+                        **kwargs)
+    return wrapped
+
+
+def to_full_diff(request, test_case_result):
+    '''Given a test case result, it will return a complete DiffWithMetadata
+    object, or None if we couldn't get the test case'''
+
+    try:
+        diff_file = File.file_path(request.registry.settings['file_directory'],
+                                   test_case_result.diff.sha1)
+        diff = pickle.load(open(diff_file))
+    except (AttributeError, EOFError):
+        diff = Diff(['submit system mismatch -- requeue submission\n'], [])
+    test_case = test_case_result.test_case
+    return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
+                            test_case.name, test_case.points,
+                            DiffExtraInfo(test_case_result.status,
+                                          test_case_result.extra))

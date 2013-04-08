@@ -1,5 +1,5 @@
 import difflib
-from .helpers import escape
+import xml.sax.saxutils
 
 
 class DiffExtraInfo(object):
@@ -214,3 +214,8 @@ class Diff(object):
         fromlines = [expand_tabs(line) for line in fromlines]
         tolines = [expand_tabs(line) for line in tolines]
         return fromlines, tolines
+
+
+def escape(string):
+    return xml.sax.saxutils.escape(string, {'"': "&quot;",
+                                            "'": "&apos;"})

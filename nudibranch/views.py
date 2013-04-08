@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 import codecs
-import pickle
 import transaction
 from base64 import b64decode
 from hashlib import sha1
@@ -19,12 +18,13 @@ from pyramid_mailer import get_mailer
 from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
-from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
-                      EditableDBThing, ViewableDBThing, get_submission_stats,
-                      fetch_request_ids, prev_next_submission, prev_next_user,
-                      ZipSubmission)
+                      EditableDBThing, ViewableDBThing, ZipSubmission,
+                      fetch_request_ids, format_points, get_submission_stats,
+                      prev_next_submission, prev_next_user,
+                      project_file_create, project_file_delete,
+                      test_case_verification, to_full_diff)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -44,63 +44,12 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
-def project_file_create(request, file_, filename, project, cls):
-    # Check for BuildFile and FileVerifier conflict
-    if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
-                                                  filename=filename,
-                                                  optional=False):
-        return http_bad_request(request, messages=('A required expected file '
-                                                   'already exists with that '
-                                                   'name.'))
-    cls_file = cls(file=file_, filename=filename, project=project)
-    session = Session()
-    session.add(cls_file)
-    try:
-        session.flush()  # Cannot commit the transaction here
-    except IntegrityError:
-        transaction.abort()
-        return http_conflict(request, message=('That filename already exists '
-                                               'for the project'))
-    redir_location = request.route_path('project_edit', project_id=project.id)
-    transaction.commit()
-    request.session.flash('Added {0} {1}.'.format(cls.__name__, filename))
-    return http_created(request, redir_location=redir_location)
-
-
-def project_file_delete(request, project_file):
-    redir_location = request.route_path('project_edit',
-                                        project_id=project_file.project.id)
-    request.session.flash('Deleted {0} {1}.'
-                          .format(project_file.__class__.__name__,
-                                  project_file.filename))
-    # Delete the file
-    session = Session()
-    session.delete(project_file)
-    transaction.commit()
-    return http_ok(request, redir_location=redir_location)
-
-
-def test_case_verification(function):
-    def wrapped(request, expected, output_filename, output_source, output_type,
-                *args, **kwargs):
-        msgs = []
-        if output_filename and output_source != 'file':
-            msgs.append('output_filename can only be set when the source '
-                        'is a named file')
-        elif not output_filename and output_source == 'file':
-            msgs.append('output_filename must be set when the source is a '
-                        'named file')
-        if expected and output_type != 'diff':
-            msgs.append('expected_id can only be set when the type is diff')
-        elif not expected and output_type == 'diff':
-            msgs.append('expected_id must be set when the type is diff')
-        if msgs:
-            return http_bad_request(request, messages=msgs)
-        return function(request, *args, expected=expected,
-                        output_filename=output_filename,
-                        output_source=output_source, output_type=output_type,
-                        **kwargs)
-    return wrapped
+@view_config(route_name='admin_utils', request_method='GET',
+             permission='admin',
+             renderer='templates/admin_utils.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def admin_view(request):
+    return {'page_title': 'Administrator Utilities'}
 
 
 @view_config(route_name='build_file', request_method='PUT',
@@ -118,6 +67,16 @@ def build_file_create(request, file_, filename, project):
                                      source=MATCHDICT))
 def build_file_delete(request, build_file):
     return project_file_delete(request, build_file)
+
+
+@view_config(route_name='class_admin_utils', request_method='GET',
+             permission='authenticated',
+             renderer='templates/class_admin_utils.pt')
+@site_layout('nudibranch:templates/layout.pt')
+def class_admin_view(request):
+    if not request.user.is_admin_for_any_class():
+        return HTTPForbidden()
+    return {'page_title': 'Class Administrator Utilities'}
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',
@@ -218,6 +177,14 @@ def file_create(request, b64data, sha1sum):
     return {'file_id': file_id}
 
 
+@view_config(route_name='file_item_info', request_method='GET',
+             permission='authenticated', renderer='json')
+@validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
+                                validator=SHA1_VALIDATOR, source=MATCHDICT))
+def file_item_info(request, file_):
+    return {'file_id': file_.id}
+
+
 @view_config(route_name='file_item', request_method='GET',
              permission='authenticated', renderer='templates/file_view.pt')
 @validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
@@ -233,14 +200,6 @@ def file_item_view(request, file_, filename):
             'filename': filename,
             'css_files': ['highlight_github.css'],
             'javascripts': ['highlight.pack.js']}
-
-
-@view_config(route_name='file_item_info', request_method='GET',
-             permission='authenticated', renderer='json')
-@validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
-                                validator=SHA1_VALIDATOR, source=MATCHDICT))
-def file_item_info(request, file_):
-    return {'file_id': file_.id}
 
 
 @view_config(route_name='file_verifier', request_method='PUT',
@@ -405,6 +364,17 @@ def password_reset_edit(request):
     return {'page_title': 'Password Reset'}
 
 
+@view_config(route_name='password_reset_item',
+             renderer='templates/password_reset_item.pt',
+             request_method='GET')
+@validate(reset=AnyDBThing('token', PasswordReset, fetch_by='reset_token',
+                           validator=UUID_VALIDATOR, source=MATCHDICT))
+@site_layout('nudibranch:templates/layout.pt')
+def password_reset_edit_item(request, reset):
+    return {'page_title': 'Password Reset',
+            'token': reset.get_token()}
+
+
 @view_config(route_name='password_reset_item', renderer='json',
              request_method='PUT')
 @validate(username=String('email'),
@@ -421,17 +391,6 @@ def password_reset_item(request, username, password, reset):
     session.delete(reset)
     transaction.commit()
     return http_ok(request, message='Your password was changed successfully.')
-
-
-@view_config(route_name='password_reset_item',
-             renderer='templates/password_reset_item.pt',
-             request_method='GET')
-@validate(reset=AnyDBThing('token', PasswordReset, fetch_by='reset_token',
-                           validator=UUID_VALIDATOR, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
-def password_reset_edit_item(request, reset):
-    return {'page_title': 'Password Reset',
-            'token': reset.get_token()}
 
 
 @view_config(route_name='project', request_method='PUT',
@@ -529,20 +488,6 @@ def project_update(request, name, makefile, is_ready, class_name,
     return http_ok(request, redir_location=redir_location)
 
 
-@view_config(route_name='project_item_stats',
-             renderer='templates/project_stats.pt', permission='authenticated')
-@validate(class_name=String('class_name', source=MATCHDICT),
-          project=EditableDBThing('project_id', Project, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
-def project_view_stats(request, class_name, project):
-    # Additional verification
-    if project.klass.name != class_name:
-        raise HTTPNotFound()
-    retval = get_submission_stats(Submission, project)
-    retval['project'] = project
-    return retval
-
-
 @view_config(route_name='project_item_detailed',
              renderer='templates/project_view_detailed.pt',
              request_method=('GET', 'HEAD'),
@@ -587,6 +532,20 @@ def project_view_detailed(request, class_name, project, user):
                                   key=lambda s: s.created_at,
                                   reverse=True),
             'submit_string': submit_string}
+
+
+@view_config(route_name='project_item_stats',
+             renderer='templates/project_stats.pt', permission='authenticated')
+@validate(class_name=String('class_name', source=MATCHDICT),
+          project=EditableDBThing('project_id', Project, source=MATCHDICT))
+@site_layout('nudibranch:templates/layout.pt')
+def project_view_stats(request, class_name, project):
+    # Additional verification
+    if project.klass.name != class_name:
+        raise HTTPNotFound()
+    retval = get_submission_stats(Submission, project)
+    retval['project'] = project
+    return retval
 
 
 @view_config(route_name='project_item_summary',
@@ -692,66 +651,6 @@ def submission_create(request, project_id, file_ids, filenames):
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='zipfile_download', request_method='GET',
-             permission='authenticated')
-@validate(submission=ViewableDBThing('submission_id', Submission,
-                                     source=MATCHDICT))
-def zipfile_download(request, submission):
-    with ZipSubmission(submission, request) as zipfile:
-        response = FileResponse(
-            zipfile.actual_filename(),
-            content_type=str('application/zip'))
-        disposition = str('attachment; filename="{0}"'
-                          .format(zipfile.pretty_filename()))
-        response.headers[str('Content-disposition')] = disposition
-        return response
-
-
-def format_points(points):
-    return "({0} {1})".format(
-        points,
-        "point" if points == 1 else "points")
-
-
-def problem_files_header(files, test_cases):
-    from .helpers import escape
-    formatted = ", ".join(
-        ["'<code>{0}</code>'".format(escape(file))
-         for file in files])
-    score = sum([test.points for test in test_cases])
-    template = "<h3 style=\"color:red\">{0} {1}: {2} {3}</h3>"
-    return template.format(
-        "Failed tests due to problems with",
-        "this file" if len(files) == 1 else "these files",
-        formatted,
-        format_points(score))
-
-
-def to_full_diff(request, test_case_result):
-    '''Given a test case result, it will return a complete DiffWithMetadata
-    object, or None if we couldn't get the test case'''
-
-    try:
-        diff_file = File.file_path(request.registry.settings['file_directory'],
-                                   test_case_result.diff.sha1)
-        diff = pickle.load(open(diff_file))
-    except (AttributeError, EOFError):
-        diff = Diff(['submit system mismatch -- requeue submission\n'], [])
-    test_case = TestCase.fetch_by_id(test_case_result.test_case_id)
-    if not test_case:
-        return None
-    testable = Testable.fetch_by_id(test_case.testable_id)
-    if not testable:
-        return None
-    return DiffWithMetadata(diff,
-                            test_case.id,
-                            testable.name,
-                            test_case.name,
-                            test_case.points,
-                            DiffExtraInfo(test_case_result.status,
-                                          test_case_result.extra))
-
-
 @view_config(route_name='submission_item', renderer='json',
              request_method='PUT', permission='authenticated')
 @validate(submission=EditableDBThing('submission_id', Submission,
@@ -786,11 +685,8 @@ def submission_view(request, submission, as_user):
         prev_sub, next_sub = prev_next_submission(submission)
         prev_user, next_user = prev_next_user(submission.project,
                                               submission.user)
-        try:
-            diff_renderer = HTMLDiff(num_reveal_limit=None,
-                                     points_possible=points_possible)
-        except InvalidId:
-            return HTTPNotFound()
+        diff_renderer = HTMLDiff(num_reveal_limit=None,
+                                 points_possible=points_possible)
     else:
         diff_renderer = HTMLDiff(points_possible=points_possible)
         prev_sub = next_sub = prev_user = next_user = None
@@ -1131,19 +1027,16 @@ def user_view(request):
             'classes_admining': user.classes_can_admin()}
 
 
-@view_config(route_name='admin_utils', request_method='GET',
-             permission='admin',
-             renderer='templates/admin_utils.pt')
-@site_layout('nudibranch:templates/layout.pt')
-def admin_view(request):
-    return {'page_title': 'Administrator Utilities'}
-
-
-@view_config(route_name='class_admin_utils', request_method='GET',
-             permission='authenticated',
-             renderer='templates/class_admin_utils.pt')
-@site_layout('nudibranch:templates/layout.pt')
-def class_admin_view(request):
-    if not request.user.is_admin_for_any_class():
-        return HTTPForbidden()
-    return {'page_title': 'Class Administrator Utilities'}
+@view_config(route_name='zipfile_download', request_method='GET',
+             permission='authenticated')
+@validate(submission=ViewableDBThing('submission_id', Submission,
+                                     source=MATCHDICT))
+def zipfile_download(request, submission):
+    with ZipSubmission(submission, request) as zipfile:
+        response = FileResponse(
+            zipfile.actual_filename(),
+            content_type=str('application/zip'))
+        disposition = str('attachment; filename="{0}"'
+                          .format(zipfile.pretty_filename()))
+        response.headers[str('Content-disposition')] = disposition
+        return response
