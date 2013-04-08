@@ -676,13 +676,23 @@ def submission_view(request, submission, as_user):
             else:
                 print('No output file captured.')
 
-    verification_info = submission.verification_warnings_errors()
-    waiting_to_run = submission.testables_waiting_to_run()
-    testable_statuses = submission.testable_statuses()
-    extra_files = submission.extra_filenames()
+    if submission.verification_results:
+        extra_files = submission.extra_filenames
+        verification_issues = submission.verification_results.issues()
+        pending = submission.testables_pending()
+    else:
+        extra_files = None
+        verification_issues = None
+        pending = None
 
-    # Decode utf-8 and ignore errors until the data is diffed in unicode.
-    diff_table = diff_renderer.make_whole_file().decode('utf-8', 'ignore')
+    if submission.testables_completed() \
+            - submission.testables_with_build_errors():
+        # Decode utf-8 and ignore errors until the data is diffed in unicode.
+        diff_table = diff_renderer.make_whole_file().decode('utf-8', 'ignore')
+    else:
+        diff_table = None
+    testable_statuses = submission.testable_statuses()
+
     return {'page_title': 'Submission Page',
             '_pd': pretty_date,
             '_fp': format_points,
@@ -693,13 +703,13 @@ def submission_view(request, submission, as_user):
             'javascripts': ['diff.js'],
             'next_sub': next_sub,
             'next_user': next_user,
+            'pending': pending,
             'prev_sub': prev_sub,
             'prev_user': prev_user,
             'submission': submission,
             'submission_admin': submission_admin,
             'testable_statuses': testable_statuses,
-            'verification': verification_info,
-            'waiting_to_run': waiting_to_run}
+            'verification_issues': verification_issues}
 
 
 @view_config(route_name='test_case', request_method='PUT',
@@ -946,12 +956,9 @@ def user_create(request, name, username, password, admin_for):
              request_method='GET')
 @site_layout('nudibranch:templates/layout.pt')
 def user_edit(request):
-    can_add_admin_for = None
-    if request.user:
-        can_add_admin_for = request.user.classes_can_admin()
-
+    admin_classes = request.user.classes_can_admin() if request.user else None
     return {'page_title': 'Create User',
-            'admin_classes': can_add_admin_for}
+            'admin_classes': admin_classes}
 
 
 @view_config(route_name='user', request_method='GET', permission='admin',
@@ -972,7 +979,7 @@ def user_view(request, user):
     return {'page_title': 'User Page',
             'name': user.name,
             'classes_taking': user.classes,
-            'classes_admining': user.classes_can_admin()}
+            'admin_classes': user.classes_can_admin()}
 
 
 @view_config(route_name='zipfile_download', request_method='GET',

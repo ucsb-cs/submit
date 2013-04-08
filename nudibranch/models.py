@@ -91,10 +91,6 @@ class Class(BasicBase, Base):
     def __cmp__(self, other):
         return cmp(self.name, other.name)
 
-    @staticmethod
-    def all_classes_by_name():
-        return Session().query(Class).order_by(Class.name).all()
-
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the class."""
         return user.is_admin or self in user.admin_for
@@ -227,28 +223,53 @@ class FileVerifier(BasicBase, Base):
 
 
 class VerificationResults(object):
+
+    """Stores verification information about a single submission.
+
+    WARNING: The attributes of this class cannot easily be changed as this
+    class is pickled in the database.
+
+    """
+
     def __init__(self):
         self._errors_by_filename = {}
-        self._warnings_by_filename = {}
-        self._extra_filenames = frozenset()
+        self._extra_filenames = None
         self._missing_to_testable_ids = {}
+        self._warnings_by_filename = {}
 
     def __str__(self):
         import pprint
         return pprint.pformat(vars(self))
 
+    def add_testable_id_for_missing_files(self, testable_id, missing_files):
+        self._missing_to_testable_ids.setdefault(
+            missing_files, set()).add(testable_id)
+
+    def issues(self):
+        """Return a mapping of filename to (warnings, errors) pairs"""
+        errors = self._errors_by_filename
+        warnings = self._warnings_by_filename
+        retval = {}
+        for filename in frozenset(errors.keys() + warnings.keys()):
+            retval[filename] = (warnings.get(filename, []),
+                                errors.get(filename, []))
+        return retval
+
+    def missing_testables(self):
+        """Return a set of testables that have files missing."""
+        ids = set()
+        for id_set in self._missing_to_testable_ids.values():
+            ids |= id_set
+        return set(x for x in (Testable.fetch_by_id(y) for y in ids) if x)
+
     def set_errors_for_filename(self, errors, filename):
         self._errors_by_filename[filename] = errors
-
-    def set_warnings_for_filename(self, warnings, filename):
-        self._warnings_by_filename[filename] = warnings
 
     def set_extra_filenames(self, filenames):
         self._extra_filenames = filenames
 
-    def add_testable_id_for_missing_files(self, testable_id, missing_files):
-        self._missing_to_testable_ids.setdefault(
-            missing_files, set()).add(testable_id)
+    def set_warnings_for_filename(self, warnings, filename):
+        self._warnings_by_filename[filename] = warnings
 
 
 class PasswordReset(Base):
@@ -316,11 +337,6 @@ class Project(BasicBase, Base):
         return self.class_.can_edit(user) or \
             self.is_ready and self.class_ in user.classes
 
-    def optional_files(self):
-        return frozenset([file_verifier.filename
-                          for file_verifier in self.file_verifiers
-                          if file_verifier.optional])
-
     def points_possible(self):
         """Return the total points possible for this project."""
         return sum([test_case.points
@@ -328,19 +344,7 @@ class Project(BasicBase, Base):
                     for test_case in testable.test_cases])
 
     def verify_submission(self, base_path, submission):
-        """Return list of testables that can be built.
-
-        Store into submission.results a dictionary with possible keys:
-          :key errors: a mapping of filenames to reason(s) why that file is
-              not valid
-          :key warnings: a mapping of filesnames to lines that may contain
-              invalid content (from warning_regex)
-          :key extra: a list of filenames that aren't needed
-          :key map: a mapping of set of filenames that are invalid to a list of
-              testgroups that won't build because of those files
-
-        """
-
+        """Return list of testables that can be built."""
         results = VerificationResults()
         valid_files = set()
         file_mapping = dict([(x.filename, x) for x in submission.files])
@@ -350,30 +354,28 @@ class Project(BasicBase, Base):
                              for fv in testable.file_verifiers)
 
         for fv in file_verifiers:
-            name = fv.filename
-            if name in file_mapping:
+            if fv.filename in file_mapping:
                 errors, warnings = fv.verify(base_path,
-                                             file_mapping[name].file)
+                                             file_mapping[fv.filename].file)
                 if errors:
-                    results.set_errors_for_filename(errors, name)
+                    results.set_errors_for_filename(errors, fv.filename)
                 else:
-                    valid_files.add(name)
+                    valid_files.add(fv.filename)
                 if warnings:
-                    results.set_warnings_for_filename(warnings, name)
-                del file_mapping[name]
+                    results.set_warnings_for_filename(warnings, fv.filename)
+                del file_mapping[fv.filename]
             elif not fv.optional:
-                results.set_errors_for_filename(['file missing'], name)
+                results.set_errors_for_filename(['file missing'], fv.filename)
         if file_mapping:
             results.set_extra_filenames(frozenset(file_mapping.keys()))
 
         # Determine valid testables
         retval = []
         for testable in self.testables:
-            missing = frozenset(set(x.filename for x in testable.file_verifiers
-                                    if not x.optional) - valid_files)
+            missing = frozenset(x.filename for x in testable.file_verifiers
+                                if not x.optional) - valid_files
             if missing:
-                results.add_testable_id_for_missing_files(
-                    testable.id, missing)
+                results.add_testable_id_for_missing_files(testable.id, missing)
             elif testable.file_verifiers:
                 retval.append(testable)
 
@@ -414,6 +416,45 @@ class Submission(BasicBase, Base):
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
+    @property
+    def extra_filenames(self):
+        return self.verification_results._extra_filenames
+
+    @staticmethod
+    def earlier_submission_for_user(submission):
+        """Return the submission immediately prior to the given submission."""
+        return (Submission
+                .query_by(project=submission.project, user=submission.user)
+                .filter(Submission.created_at < submission.created_at)
+                .order_by(Submission.created_at.desc()).first())
+
+    @staticmethod
+    def later_submission_for_user(submission):
+        """Return the submission immediately prior to the given submission."""
+        return (Submission
+                .query_by(project=submission.project, user=submission.user)
+                .filter(Submission.created_at > submission.created_at)
+                .order_by(Submission.created_at).first())
+
+    @staticmethod
+    def merge_dict(d1, d2, on_collision):
+        retval = {}
+        for key in d1.keys():
+            if key in d2:
+                retval[key] = on_collision(d1[key], d2[key])
+            else:
+                retval[key] = d1[key]
+        for key in d2.keys():
+            if key not in retval:
+                retval[key] = d2[key]
+        return retval
+
+    @staticmethod
+    def most_recent_submission(project_id, user_id):
+        """Return the most recent submission for the user and project id."""
+        return (Submission.query_by(project_id=project_id, user_id=user_id)
+                .order_by(Submission.created_at.desc()).first())
+
     def can_edit(self, user):
         """Return whether or not `user` can edit the submission."""
         return self.project.can_edit(user)
@@ -453,159 +494,43 @@ class Submission(BasicBase, Base):
             return None
         return min(delay, pv_delay).total_seconds() / 60
 
-    def testable_to_testable_results(self):
-        retval = {}
-        for testable_result in self.testable_results:
-            testable = Testable.fetch_by_id(testable_result.testable_id)
-            if testable:
-                retval[testable] = testable_result
-        return retval
-
-    def testables_with_statuses(self):
-        return self.all_testables() - self.testables_waiting_to_run()
-
     def testable_statuses(self):
-        warn_err = self.verification_warnings_errors()
+        """Return Status objects for non-pending Testables."""
+        issues = self.verification_results.issues()
         with_build_errors = self.testables_with_build_errors()
-        to_testable_result = self.testable_to_testable_results()
-        return [TestableStatus(testable,
-                               to_testable_result.get(testable),
-                               warn_err,
-                               testable in with_build_errors)
-                for testable in self.testables_with_statuses()]
+        by_testable = {x.testable: x for x in self.testable_results}
+        return [TestableStatus(testable, by_testable.get(testable),
+                               issues, testable in with_build_errors)
+                for testable in (set(self.project.testables)
+                                 - self.testables_pending())]
 
-    @staticmethod
-    def get_or_empty(item, if_not_none, empty={}):
-        return if_not_none(item) if item is not None else empty
+    def testables_completed(self):
+        """Return the set of testables that are done processing."""
+        return set(x.testable for x in self.testable_results)
 
-    def vr_get_or_empty(self, if_not_none, empty={}):
-        """Verification results get or empty"""
-        return self.get_or_empty(self.verification_results,
-                                 if_not_none,
-                                 empty=empty)
-
-    def extra_filenames(self):
-        return self.vr_get_or_empty(lambda vr: vr._extra_filenames,
-                                    empty=frozenset())
-
-    @staticmethod
-    def testable_ids_to_testables(testable_ids):
-        retval = set()
-        for testable_id in testable_ids:
-            testable = Testable.fetch_by_id(testable_id)
-            if testable:
-                retval.add(testable)
-        return retval
-
-    def testables_with_verification_errors(self):
-        retval = set()
-        for testable_ids in self.missing_to_testable_ids().values():
-            retval.update(self.testable_ids_to_testables(testable_ids))
-        return retval
-
-    def all_testables(self):
-        project = Project.fetch_by_id(self.project_id)
-        return frozenset(project.testables) if project else frozenset()
-
-    def testables_ran(self):
-        """Note that this includes testables for which the build failed"""
-        retval = self.testable_ids_to_testables(
-            [testable_result.testable_id
-             for testable_result in self.testable_results])
-        return retval
+    def testables_pending(self):
+        """Return the set of testables that _can_ execute and have yet to."""
+        missing_testables = self.verification_results.missing_testables()
+        return (set(self.project.testables) - missing_testables
+                - self.testables_completed())
 
     def testables_succeeded(self):
-        return self.testables_ran() - self.testables_with_build_errors()
-
-    def testables_with_test_cases(self):
-        return self.testable_ids_to_testables(
-            [test_case.testable_id
-             for test_case in self.tests_that_ran()])
-
-    def testables_waiting_to_run(self):
-        # with verification errors
-        wve = self.all_testables() - self.testables_with_verification_errors()
-        return wve - self.testables_ran()
+        """Return the testables which have successfully executed."""
+        return self.testables_completed() - self.testables_with_build_errors()
 
     def testables_with_build_errors(self):
-        return self.testables_ran() - self.testables_with_test_cases()
+        """Return the testables that had build errors.
 
-    def had_verification_errors(self):
-        return len(self.file_errors_from_verification()) > 0
+        Build errors are indicated by testables which have TestableResult
+        objects set (stores the Make output) and do not have TestCaseResults
+        since these associations are updated at the same time.
 
-    def had_verification_warnings(self):
-        return len(self.file_warnings()) > 0
-
-    def had_verification_problems(self):
-        return (self.had_verification_errors() or
-                self.had_verification_warnings())
-
-    def file_warnings(self):
-        '''Returns a mapping of filenames to warnings about said files'''
-        return self.vr_get_or_empty(
-            lambda vr: vr._warnings_by_filename)
-
-    def file_errors_from_verification(self):
-        return self.vr_get_or_empty(
-            lambda vr: vr._errors_by_filename)
-
-    def missing_to_testable_ids(self):
-        return self.vr_get_or_empty(
-            lambda vr: vr._missing_to_testable_ids)
-
-    def verification_warnings_errors(self):
-        """Returns a mapping of filename to (warnings, errors) pairs"""
-        errors = self.file_errors_from_verification()
-        warnings = self.file_warnings()
-        files = frozenset(errors.keys() + warnings.keys())
-        retval = {}
-        for file_ in files:
-            retval[file_] = (warnings.get(file_, []),
-                             errors.get(file_, []))
-        return retval
-
-    def tests_that_ran(self):
-        test_cases = [TestCase.fetch_by_id(test_case_result.test_case_id)
-                      for test_case_result in self.test_case_results]
-        return frozenset([test_case for test_case in test_cases
-                          if test_case is not None])
-
-    @staticmethod
-    def merge_dict(d1, d2, on_collision):
-        retval = {}
-        for key in d1.keys():
-            if key in d2:
-                retval[key] = on_collision(d1[key], d2[key])
-            else:
-                retval[key] = d1[key]
-        for key in d2.keys():
-            if key not in retval:
-                retval[key] = d2[key]
-        return retval
-
-    @staticmethod
-    def most_recent_submission(project_id, user_id):
-        """Return the most recent submission for the user and project id."""
-        return (Submission.query_by(project_id=project_id, user_id=user_id)
-                .order_by(Submission.created_at.desc()).first())
-
-    @staticmethod
-    def later_submission_for_user(submission):
-        """Return the submission immediately prior to the given submission."""
-        return (Submission
-                .query_by(project=submission.project, user=submission.user)
-                .filter(Submission.created_at > submission.created_at)
-                .order_by(Submission.created_at).first())
-
-    @staticmethod
-    def earlier_submission_for_user(submission):
-        """Return the submission immediately prior to the given submission."""
-        return (Submission
-                .query_by(project=submission.project, user=submission.user)
-                .filter(Submission.created_at < submission.created_at)
-                .order_by(Submission.created_at.desc()).first())
+        """
+        return (self.testables_completed() -
+                set(x.test_case.testable for x in self.test_case_results))
 
     def verify(self, base_path):
+        """Verify the submission and return testables that can be executed."""
         return self.project.verify_submission(base_path, self)
 
 
@@ -698,48 +623,29 @@ class TestCaseResult(Base):
 
 
 class TestableStatus(object):
-    def __init__(self, testable, testable_results,
-                 verification_warnings_errors,
-                 build_err):
-        """Use None for testable_results if it didn't run
-        or hasn't run yet."""
+    def __init__(self, testable, testable_results, verification_issues,
+                 had_build_errors):
         self.testable = testable
         self.testable_results = testable_results
-        self.warn_err = verification_warnings_errors
-        self.build_err = build_err
-        if self.had_build_errors():
-            import copy
-            self.warn_err = copy.copy(self.warn_err)
-            for file_, (warnings, errors) in self.warn_err.items():
-                new_err = ['Build failed (see make output)'] + errors
-                self.warn_err[file_] = (warnings, new_err)
-
-    def had_build_errors(self):
-        return self.build_err
+        self.issues = verification_issues
+        self.had_build_errors = had_build_errors
+        if had_build_errors:  # Add a build error message
+            self.issues = {}
+            for filename, (warnings, errors) in verification_issues.items():
+                new = ['Build failed (see make output)'] + errors
+                self.issues[filename] = (warnings, new)
 
     def has_make_output(self):
         return (self.testable_results and
                 self.testable_results.make_results)
 
-    def had_verification_errors(self):
-        for _, errors in self.warn_err.values():
+    def is_error(self):
+        if self.had_build_errors:
+            return True
+        for _, errors in self.issues.values():
             if errors:
                 return True
         return False
-
-    def is_error(self):
-        return self.had_verification_errors() or self.had_build_errors()
-
-    def has_files(self):
-        return len(self.files_to_warnings_errors()) > 0
-
-    def files_to_warnings_errors(self):
-        return self.warn_err
-
-    def sorted_files_to_warnings_errors(self):
-        unsorted = self.files_to_warnings_errors()
-        return [(file_, unsorted[file_])
-                for file_ in sorted(unsorted.keys())]
 
 
 class Testable(BasicBase, Base):
@@ -760,28 +666,15 @@ class Testable(BasicBase, Base):
     testable_results = relationship('TestableResult', backref='testable',
                                     cascade='all, delete-orphan')
 
+    def __cmp__(self, other):
+        return cmp(self.name, other.name)
+
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the testable."""
         return self.project.can_edit(user)
 
-    def filter_file_verifiers(self, predicate):
-        return frozenset([file_verifier.filename
-                          for file_verifier in self.file_verifiers
-                          if predicate(file_verifier)])
-
-    def required_files(self):
-        return self.filter_file_verifiers(
-            lambda fv: not fv.optional)
-
-    def optional_files(self):
-        return self.filter_file_verifiers(
-            lambda fv: fv.optional)
-
     def points(self):
         return sum([test_case.points for test_case in self.test_cases])
-
-    def __cmp__(self, other):
-        return cmp(self.name, other.name)
 
 
 class TestableResult(BasicBase, Base):
@@ -854,10 +747,9 @@ class User(UserMixin, BasicBase, Base):
             or set(self.classes).intersection(user.admin_for)
 
     def classes_can_admin(self):
-        '''Gets all the classes that this user can administrate.
-        Returned in order by name'''
+        """Return all the classes (sorted) that this user can admin."""
         if self.is_admin:
-            return Class.all_classes_by_name()
+            return Session().query(Class).order_by(Class.name).all()
         else:
             return sorted(self.admin_for)
 

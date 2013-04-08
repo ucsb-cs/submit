@@ -13,10 +13,10 @@
     <p>You are not a member of any classes.</p>
     <a href="${_R('class_join_list')}">Join Classes</a>
   </div>
-  <div tal:condition="classes_admining">
+  <div tal:condition="admin_classes">
     <p>Administrator for These Classes</p>
     <ul>
-      <li tal:repeat="class_ classes_admining">
+      <li tal:repeat="class_ admin_classes">
 	<a href="${_R('class_item', class_name=class_.name)}">${class_.name}</a>
       </li>
     </ul>

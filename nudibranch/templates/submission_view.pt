@@ -61,16 +61,16 @@
   </p>
 
   <!-- Verification results block -->
-  <div tal:condition="submission.verified_at and submission.had_verification_problems()">
+  <div tal:condition="submission.verified_at and verification_issues">
     <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:yellow">yellow</span> indicates warnings.</p>
     <ul>
-      <li tal:repeat="file sorted(verification.keys())">
-	<b>${file}</b>
+      <li tal:repeat="filename sorted(verification_issues)">
+	<b>${filename}</b>
 	<ul>
-	  <li tal:repeat="warning verification[file][0]">
+	  <li tal:repeat="warning verification_issues[filename][0]">
 	    <span style="color:yellow">${warning}</span>
 	  </li>
-	  <li tal:repeat="error verification[file][1]">
+	  <li tal:repeat="error verification_issues[filename][1]">
 	    <span style="color:red">${error}</span>
 	  </li>
 	</ul>
@@ -79,29 +79,29 @@
   </div>
 
   <!-- Tests that are still pending -->
-  <div tal:condition="waiting_to_run">
-    <h3><span style="color:red">Note:</span>The following test groups are still pending: ${_fp(sum([t.points() for t in waiting_to_run]))}</h3>
+  <div tal:condition="pending">
+    <h3><span style="color:red">Note:</span>The following test groups are still pending: ${_fp(sum([t.points() for t in pending]))}</h3>
     <ul>
-      <li tal:repeat="testable sorted(waiting_to_run)">
+      <li tal:repeat="testable sorted(pending)">
 	${testable.name} ${_fp(testable.points())}
       </li>
     </ul>
   </div>
 
   <!-- Test case summary block -->
-  <div tal:condition="submission.testables_succeeded()"
+  <div tal:condition="diff_table"
        tal:replace="structure diff_table"></div>
 
   <!-- For each test group, reasons for failure (if applicable) -->
-  <div tal:repeat="status sorted(submission.testable_statuses(), key=lambda x: x.testable.name)">
+  <div tal:repeat="status sorted(testable_statuses, key=lambda x: x.testable.name)">
     <div tal:condition="status.is_error()">
       <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
       <pre tal:condition="status.has_make_output()" class="make_output">${status.testable_results.make_results}</pre>
-      <p tal:condition="not status.has_files()">
+      <p tal:condition="not status.issues">
 	There are no files in this test group
       </p>
-      <ul tal:condition="status.has_files()">
-	<li tal:repeat="(file, warnerr) status.sorted_files_to_warnings_errors()">
+      <ul tal:condition="status.issues">
+	<li tal:repeat="(file, warnerr) sorted(status.issues.items())">
 	  <b>${file}</b>
 	  <ul>
 	    <li style="color:yellow" tal:repeat="warning warnerr[0]">
