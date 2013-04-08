@@ -23,11 +23,11 @@ from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
                       EditableDBThing, ViewableDBThing, get_submission_stats,
-                      fetch_request_ids, prev_next_submission, prev_next_user)
+                      fetch_request_ids, prev_next_submission, prev_next_user,
+                      ZipSubmission)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
-from .zipper import ZipSubmission
 
 
 # A few reoccuring validators
