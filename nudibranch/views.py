@@ -21,7 +21,8 @@ from .diff_render import HTMLDiff
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
                       EditableDBThing, ViewableDBThing, ZipSubmission,
-                      fetch_request_ids, format_points, get_submission_stats,
+                      fetch_request_ids, file_verifier_verification,
+                      format_points, get_submission_stats,
                       prev_next_submission, prev_next_user,
                       project_file_create, project_file_delete,
                       test_case_verification, to_full_diff)
@@ -213,27 +214,14 @@ def file_item_view(request, file_, filename):
                               optional=True),
           project=EditableDBThing('project_id', Project),
           warning_regex=RegexString('warning_regex', optional=True))
+@file_verifier_verification
 def file_verifier_create(request, filename, min_size, max_size, min_lines,
                          max_lines, optional, project, warning_regex):
-    if max_size is not None and max_size < min_size:
-        return http_bad_request(request,
-                                messages='min_size cannot be > max_size')
-    if max_lines is not None and max_lines < min_lines:
-        return http_bad_request(request,
-                                messages='min_lines cannot be > max_lines')
-    if min_size < min_lines:
-        return http_bad_request(request,
-                                messages='min_lines cannot be > min_size')
-    if max_size is not None and max_lines is not None and max_size < max_lines:
-        return http_bad_request(request,
-                                messages='max_lines cannot be > max_size')
     # Check for build-file conflict
     if not optional and BuildFile.fetch_by(project=project, filename=filename):
-        return http_bad_request(request, messages=('A build file already '
-                                                   'exists with that name. '
-                                                   'Provide a different name, '
-                                                   'or mark as optional.'))
-
+        msg = ('A build file already exists with that name. '
+               'Provide a different name, or mark as optional.')
+        return http_bad_request(request, messages=msg)
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, optional=bool(optional),
@@ -270,29 +258,15 @@ def file_verifier_delete(request):
           optional=TextNumber('optional', min_value=0, max_value=1,
                               optional=True),
           warning_regex=RegexString('warning_regex', optional=True))
+@file_verifier_verification
 def file_verifier_update(request, file_verifier, filename, min_size, max_size,
                          min_lines, max_lines, optional, warning_regex):
-    # Additional verification
-    if max_size is not None and max_size < min_size:
-        return http_bad_request(request,
-                                messages='min_size cannot be > max_size')
-    if max_lines is not None and max_lines < min_lines:
-        return http_bad_request(request,
-                                messages='min_lines cannot be > max_lines')
-    if min_size < min_lines:
-        return http_bad_request(request,
-                                messages='min_lines cannot be > min_size')
-    if max_size is not None and max_lines is not None and max_size < max_lines:
-        return http_bad_request(request,
-                                messages='max_lines cannot be > max_size')
     # Check for build-file conflict
-    if not optional and BuildFile.fetch_by(project_id=file_verifier.project_id,
+    if not optional and BuildFile.fetch_by(project=file_verifier.project,
                                            filename=filename):
-        return http_bad_request(request, messages=('A build file already '
-                                                   'exists with that name. '
-                                                   'Provide a different name, '
-                                                   'or mark as optional.'))
-
+        msg = ('A build file already exists with that name. '
+               'Provide a different name, or mark as optional.')
+        return http_bad_request(request, messages=msg)
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
                                 max_lines=max_lines, optional=bool(optional),
@@ -552,16 +526,10 @@ def project_view_stats(request, class_name, project):
              renderer='templates/project_view_summary.pt',
              request_method=('GET', 'HEAD'),
              permission='authenticated')
+@validate(class_name=String('class_name', source=MATCHDICT),
+          project=EditableDBThing('project_id', Project, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def project_view_summary(request):
-    class_name = request.matchdict['class_name']
-    project = Project.fetch_by_id(request.matchdict['project_id'])
-    if not project or project.class_.name != class_name:
-        return HTTPNotFound()
-
-    if not project.can_edit(request.user):
-        return HTTPForbidden()
-
+def project_view_summary(request, class_name, project):
     submissions = {}
     user_truncated = set()
     for user in project.class_.users:
@@ -808,14 +776,9 @@ def test_case_update(request, name, args, expected, output_filename,
                                   TextNumber('', min_value=0), optional=True),
           file_verifier_ids=List('file_verifier_ids',
                                  TextNumber('', min_value=0), optional=True),
-          project_id=TextNumber('project_id', min_value=0))
+          project=EditableDBThing('project_id', Project))
 def testable_create(request, name, make_target, executable, build_file_ids,
-                    execution_file_ids, file_verifier_ids, project_id):
-    project = Project.fetch_by_id(project_id)
-    if not project:
-        return http_bad_request(request, messages='Invalid project_id')
-    if not project.can_edit(request.user):
-        return HTTPForbidden()
+                    execution_file_ids, file_verifier_ids, project):
     if make_target and not project.makefile:
         return http_bad_request(request, messages=('make_target cannot be '
                                                    'specified without a make '
@@ -836,11 +799,11 @@ def testable_create(request, name, make_target, executable, build_file_ids,
                                 messages='Invalid {0}'.format(exc.message))
 
     testable = Testable(name=name, make_target=make_target,
-                        executable=executable, project=project)
-    map(testable.build_files.append, build_files)
-    map(testable.execution_files.append, execution_files)
-    map(testable.file_verifiers.append, file_verifiers)
-
+                        executable=executable, project=project,
+                        build_files=build_files,
+                        execution_files=execution_files,
+                        file_verifiers=file_verifiers)
+    redir_location = request.route_path('project_edit', project_id=project.id)
     session = Session()
     session.add(testable)
     try:
@@ -849,9 +812,6 @@ def testable_create(request, name, make_target, executable, build_file_ids,
         transaction.abort()
         return http_conflict(request, message=('That name already exists for '
                                                'the project'))
-
-    redir_location = request.route_path('project_edit',
-                                        project_id=project_id)
     return http_created(request, redir_location=redir_location)
 
 
@@ -865,15 +825,10 @@ def testable_create(request, name, make_target, executable, build_file_ids,
           execution_file_ids=List('execution_file_ids',
                                   TextNumber('', min_value=0), optional=True),
           file_verifier_ids=List('file_verifier_ids',
-                                 TextNumber('', min_value=0), optional=True))
+                                 TextNumber('', min_value=0), optional=True),
+          testable=EditableDBThing('testable_id', Testable, source=MATCHDICT))
 def testable_edit(request, name, make_target, executable, build_file_ids,
-                  execution_file_ids, file_verifier_ids):
-    testable_id = request.matchdict['testable_id']
-    testable = Testable.fetch_by_id(testable_id)
-    if not testable:
-        return http_bad_request(request, messages='Invalid testable_id')
-    if not testable.project.can_edit(request.user):
-        return HTTPForbidden()
+                  execution_file_ids, file_verifier_ids, testable):
     if make_target and not testable.project.makefile:
         return http_bad_request(request, messages=('make_target cannot be '
                                                    'specified without a make '
@@ -914,13 +869,8 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
 
 @view_config(route_name='testable_item', request_method='DELETE',
              permission='authenticated', renderer='json')
-def testable_delete(request):
-    testable = Testable.fetch_by_id(request.matchdict['testable_id'])
-    if not testable:
-        return http_bad_request(request, messages='Invalid testable_id')
-    if not testable.project.can_edit(request.user):
-        return HTTPForbidden()
-
+@validate(testable=EditableDBThing('testable_id', Testable, source=MATCHDICT))
+def testable_delete(request, testable):
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
     request.session.flash('Deleted Testable {0}.'.format(testable.name))
@@ -933,20 +883,19 @@ def testable_delete(request):
 
 @view_config(route_name='user_class_join', request_method='POST',
              permission='authenticated', renderer='json')
-def user_class_join(request):
-    class_name = request.matchdict['class_name']
-    username = request.matchdict['username']
+@validate(class_=AnyDBThing('class_name', Class, fetch_by='name',
+                            validator=String('class_name'), source=MATCHDICT),
+          username=String('username', min_length=6, max_length=64,
+                          source=MATCHDICT))
+def user_class_join(request, class_, username):
     if request.user.username != username:
         return http_bad_request(request, messages='Invalid user')
-    class_ = Class.fetch_by(name=class_name)
-    if not class_:
-        return http_bad_request(request, messages='Invalid class')
     request.user.classes.append(class_)
+    redir_location = request.route_path('class_join_list',
+                                        _query={'last_class': class_.name})
     session = Session()
     session.add(request.user)
     transaction.commit()
-    redir_location = request.route_path('class_join_list',
-                                        _query={'last_class': class_name})
     return http_created(request, redir_location=redir_location)
 
 
@@ -1016,11 +965,10 @@ def user_list(request):
 
 @view_config(route_name='user_item', request_method='GET',
              renderer='templates/user_view.pt', permission='authenticated')
+@validate(user=ViewableDBThing('username', User, fetch_by='username',
+                               validator=String('username'), source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def user_view(request):
-    user = User.fetch_by(username=request.matchdict['username'])
-    if not user:
-        return HTTPNotFound()
+def user_view(request, user):
     return {'page_title': 'User Page',
             'name': user.name,
             'classes_taking': user.classes,

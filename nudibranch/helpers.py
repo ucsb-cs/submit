@@ -188,6 +188,26 @@ def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
     return items
 
 
+def file_verifier_verification(function):
+    def wrapped(request, min_size, max_size, min_lines, max_lines,
+                *args, **kwargs):
+        msgs = []
+        if max_size is not None and max_size < min_size:
+            msgs.append('min_size cannot be > max_size')
+        if max_lines is not None and max_lines < min_lines:
+            msgs.append('min_lines cannot be > max_lines')
+        if min_size < min_lines:
+            msgs.append('min_lines cannot be > min_size')
+        if max_size is not None and max_lines is not None \
+                and max_size < max_lines:
+            msgs.append('max_lines cannot be > max_size')
+        if msgs:
+            return http_bad_request(request, messages=msgs)
+        return function(request, *args, min_size=min_size, max_size=max_size,
+                        min_lines=min_lines, max_lines=max_lines, **kwargs)
+    return wrapped
+
+
 def format_points(points):
     return "({0} {1})".format(
         points,
