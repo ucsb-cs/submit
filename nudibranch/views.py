@@ -76,7 +76,7 @@ def build_file_delete(request, build_file):
 @site_layout('nudibranch:templates/layout.pt')
 def class_admin_view(request):
     if not request.user.is_admin_for_any_class():
-        return HTTPForbidden()
+        raise HTTPForbidden()
     return {'page_title': 'Class Administrator Utilities'}
 
 
@@ -290,7 +290,7 @@ def file_verifier_update(request, file_verifier, filename, min_size, max_size,
 def home(request):
     if request.user:
         url = request.route_path('user_item', username=request.user.username)
-        return HTTPFound(location=url)
+        raise HTTPFound(location=url)
     return {'page_title': 'Home'}
 
 
@@ -663,7 +663,7 @@ def submission_view(request, submission, as_user):
         if test_case_result.test_case.output_type == 'diff':
             full_diff = to_full_diff(request, test_case_result)
             if not full_diff:
-                return HTTPNotFound()
+                raise HTTPNotFound()
             diff_renderer.add_diff(full_diff)
         else:  # Handle text or image output
             print('Other output type: {0}'
