@@ -275,7 +275,10 @@ def prev_next_user(project, user):
     """
     # TODO: Profile and optimize this query if necessary
     users = sorted(project.class_.users)
-    index = users.index(user)
+    try:
+        index = users.index(user)
+    except ValueError:
+        return None, None
     prev_user = users[index - 1] if index > 0 else None
     next_user = users[index + 1] if index + 1 < len(users) else None
     return prev_user, next_user
@@ -346,9 +349,7 @@ def test_case_verification(function):
 
 
 def to_full_diff(request, test_case_result):
-    '''Given a test case result, it will return a complete DiffWithMetadata
-    object, or None if we couldn't get the test case'''
-
+    """Return a completed DiffWithMetadata object."""
     try:
         diff_file = File.file_path(request.registry.settings['file_directory'],
                                    test_case_result.diff.sha1)

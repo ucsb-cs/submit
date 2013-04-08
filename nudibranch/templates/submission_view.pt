@@ -116,6 +116,18 @@
     </div>
   </div>
 
+  <!-- Temporary placeholder for text and image file output -->
+  <div tal:condition="output_files">
+    <div tal:repeat="result output_files">
+      <h3>${result.test_case.testable.name} : ${result.test_case.name}</h3>
+      <p tal:condition="result.test_case.output_type == 'text'">
+        <a href="${_R('file_item', sha1sum=result.diff.sha1, filename='_')}">Text output<a/></p>
+      <img tal:condition="result.test_case.output_type == 'image'"
+           src="${_R('file_item', sha1sum=result.diff.sha1, filename='_')}?raw=1" />
+    </div>
+    <hr/>
+  </div>
+
   <!-- Show the user any extra filenames that were submitted -->
   <div tal:condition="extra_files">
     <hr />

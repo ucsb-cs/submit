@@ -190,11 +190,15 @@ def file_item_info(request, file_):
              permission='authenticated', renderer='templates/file_view.pt')
 @validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
                                 validator=SHA1_VALIDATOR, source=MATCHDICT),
-          filename=String('filename', min_length=1, source=MATCHDICT))
+          filename=String('filename', min_length=1, source=MATCHDICT),
+          raw=TextNumber('raw', min_value=0, max_value=1,
+                         optional=True, source=SOURCE_GET))
 @site_layout('nudibranch:templates/layout.pt')
-def file_item_view(request, file_, filename):
+def file_item_view(request, file_, filename, raw):
     source = File.file_path(request.registry.settings['file_directory'],
                             file_.sha1)
+    if raw:
+        return FileResponse(source, request)
     contents = codecs.open(source, encoding='utf-8').read()
     return {'page_title': filename,
             'contents': contents,
@@ -659,20 +663,13 @@ def submission_view(request, submission, as_user):
         diff_renderer = HTMLDiff(points_possible=points_possible)
         prev_sub = next_sub = prev_user = next_user = None
 
+    output_files = []
     for test_case_result in submission.test_case_results:
         if test_case_result.test_case.output_type == 'diff':
-            full_diff = to_full_diff(request, test_case_result)
-            if not full_diff:
-                raise HTTPNotFound()
-            diff_renderer.add_diff(full_diff)
+            diff_renderer.add_diff(to_full_diff(request, test_case_result))
         else:  # Handle text or image output
-            print('Other output type: {0}'
-                  .format(test_case_result.test_case.source))
             if test_case_result.diff:
-                output_file = File.file_path(
-                    request.registry.settings['file_directory'],
-                    test_case_result.diff.sha1)
-                print(open(output_file).read())
+                output_files.append(test_case_result)
             else:
                 print('No output file captured.')
 
@@ -703,6 +700,7 @@ def submission_view(request, submission, as_user):
             'javascripts': ['diff.js'],
             'next_sub': next_sub,
             'next_user': next_user,
+            'output_files': output_files,
             'pending': pending,
             'prev_sub': prev_sub,
             'prev_user': prev_user,

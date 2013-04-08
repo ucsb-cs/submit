@@ -180,6 +180,11 @@ class File(BasicBase, Base):
                           self.submission_assocs)
             if classes.intersection(user.admin_for):
                 return True
+            # 4x-indirect lookups
+            classes = set(x.test_case.testable.project.class_ for x
+                          in self.test_case_result_for)
+            if classes.intersection(user.admin_for):
+                return True
         return False
 
 
@@ -599,7 +604,7 @@ class TestCaseResult(Base):
 
     """
     __tablename__ = 'testcaseresult'
-    diff = relationship(File)
+    diff = relationship(File, backref='test_case_result_for')
     diff_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     status = Column(Enum('nonexistent_executable', 'output_limit_exceeded',
                          'signal', 'success', 'timed_out',
