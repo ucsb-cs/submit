@@ -4,8 +4,8 @@
   <div tal:condition="classes_taking">
     <p>Member of These Classes</p>
     <ul>
-      <li tal:repeat="klass classes_taking">
-	<a href="${_R('class_item', class_name=klass.name)}">${klass.name}</a>
+      <li tal:repeat="class_ classes_taking">
+	<a href="${_R('class_item', class_name=class_.name)}">${class_.name}</a>
       </li>
     </ul>
   </div>
@@ -16,8 +16,8 @@
   <div tal:condition="classes_admining">
     <p>Administrator for These Classes</p>
     <ul>
-      <li tal:repeat="klass classes_admining">
-	<a href="${_R('class_item', class_name=klass.name)}">${klass.name}</a>
+      <li tal:repeat="class_ classes_admining">
+	<a href="${_R('class_item', class_name=class_.name)}">${class_.name}</a>
       </li>
     </ul>
   </div>

@@ -15,10 +15,10 @@
 
   <div tal:condition="submission_admin">
     <p class="floatleft nospace" tal:condition="prev_user">Previous student:
-      <a href="${_R('project_item_detailed', class_name=submission.project.klass.name, project_id=submission.project.id, username=prev_user.username)}">${prev_user.name}</a>
+      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, username=prev_user.username)}">${prev_user.name}</a>
     </p>
     <p class="floatright nospace" tal:condition="next_user">Next student:
-      <a href="${_R('project_item_detailed', class_name=submission.project.klass.name, project_id=submission.project.id, username=next_user.username)}">${next_user.name}</a>
+      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, username=next_user.username)}">${next_user.name}</a>
     </p>
     <div class="clear"></div>
     <p class="floatleft nospace" tal:condition="prev_sub">Student's previous submission:
@@ -40,7 +40,7 @@
   <p tal:condition="submission_admin"><a href="?as_user=1">View this page from the student's perspective</a></p>
 
   <div>User: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
-  <div>Class: ${submission.project.klass.name}</div>
+  <div>Class: ${submission.project.class_.name}</div>
   <div>Project: ${submission.project.name}</div>
   <div>Submitted: ${submission.created_at}</div>
 

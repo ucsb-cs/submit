@@ -254,7 +254,7 @@ def prev_next_user(project, user):
 
     """
     # TODO: Profile and optimize this query if necessary
-    users = sorted(project.klass.users)
+    users = sorted(project.class_.users)
     index = users.index(user)
     prev_user = users[index - 1] if index > 0 else None
     next_user = users[index + 1] if index + 1 < len(users) else None

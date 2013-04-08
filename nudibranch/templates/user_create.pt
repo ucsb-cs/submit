@@ -20,9 +20,9 @@
 
       <div tal:condition="admin_classes">
 	<label for="admin_for">Extra Permissions</label><br/>
-	<div tal:repeat="klass admin_classes">
+	<div tal:repeat="class_ admin_classes">
 	  <input type="checkbox" name="admin_for[]"
-		 value="${klass.id}">Class Administrator for ${klass.name}<br/>
+		 value="${class_.id}">Class Administrator for ${class_.name}<br/>
 	</div>
       </div>
     </p>

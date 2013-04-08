@@ -84,8 +84,8 @@ def class_admin_view(request):
 @validate(name=String('name', min_length=3))
 def class_create(request, name):
     session = Session()
-    klass = Class(name=name)
-    session.add(klass)
+    class_ = Class(name=name)
+    session.add(class_)
     try:
         transaction.commit()
     except IntegrityError:
@@ -131,7 +131,7 @@ def class_list(request):
 @site_layout('nudibranch:templates/layout.pt')
 def class_view(request, class_):
     return {'page_title': 'Class Page',
-            'class_admin': class_.can_edit(request.user), 'klass': class_}
+            'class_admin': class_.can_edit(request.user), 'class_': class_}
 
 
 @view_config(route_name='execution_file', request_method='PUT',
@@ -165,14 +165,14 @@ def file_create(request, b64data, sha1sum):
 
     # fetch or create (and save to disk) the file
     base_path = request.registry.settings['file_directory']
-    file = File.fetch_or_create(data, base_path, sha1sum=sha1sum)
+    file_ = File.fetch_or_create(data, base_path, sha1sum=sha1sum)
 
     # associate user with the file
-    request.user.files.append(file)
+    request.user.files.append(file_)
     session = Session()
     session.add(request.user)
 
-    file_id = file.id
+    file_id = file_.id
     transaction.commit()
     return {'file_id': file_id}
 
@@ -399,7 +399,7 @@ def password_reset_item(request, username, password, reset):
           class_=EditableDBThing('class_id', Class),
           makefile=ViewableDBThing('makefile_id', File, optional=True))
 def project_create(request, name, class_, makefile):
-    project = Project(name=name, klass=class_, makefile=makefile)
+    project = Project(name=name, class_=class_, makefile=makefile)
     session = Session()
     session.add(project)
     try:
@@ -421,7 +421,7 @@ def project_create(request, name, class_, makefile):
 @site_layout('nudibranch:templates/layout.pt')
 def project_edit(request, project):
     action = request.route_path('project_item_summary',
-                                class_name=project.klass.name,
+                                class_name=project.class_.name,
                                 project_id=project.id)
     return {'page_title': 'Edit Project', 'project': project, 'action': action,
             'flash': request.session.pop_flash()}
@@ -436,7 +436,7 @@ def project_edit(request, project):
 @site_layout('nudibranch:templates/layout.pt')
 def project_new(request, class_):
     dummy_project = DummyTemplateAttr(None)
-    dummy_project.klass = class_
+    dummy_project.class_ = class_
     return {'page_title': 'Create Project', 'project': dummy_project}
 
 
@@ -445,7 +445,7 @@ def project_new(request, class_):
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
 def project_requeue(request, project):
     items = 0
-    for user in project.klass.users:
+    for user in project.class_.users:
         submission = Submission.most_recent_submission(project.id, user.id)
         if submission:
             request.queue(submission_id=submission.id, _priority=2)
@@ -467,7 +467,7 @@ def project_requeue(request, project):
           project=EditableDBThing('project_id', Project, source=MATCHDICT))
 def project_update(request, name, makefile, is_ready, class_name,
                    delay_minutes, project):
-    if project.klass.name != class_name:
+    if project.class_.name != class_name:
         raise HTTPNotFound()
     if not project.update(name=name, makefile=makefile,
                           delay_minutes=delay_minutes,
@@ -499,7 +499,7 @@ def project_update(request, name, makefile, is_ready, class_name,
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_detailed(request, class_name, project, user):
     # Additional verification
-    if project.klass.name != class_name:
+    if project.class_.name != class_name:
         raise HTTPNotFound()
     submissions = Submission.query_by(project_id=project.id, user_id=user.id)
     if not submissions:
@@ -541,7 +541,7 @@ def project_view_detailed(request, class_name, project, user):
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_stats(request, class_name, project):
     # Additional verification
-    if project.klass.name != class_name:
+    if project.class_.name != class_name:
         raise HTTPNotFound()
     retval = get_submission_stats(Submission, project)
     retval['project'] = project
@@ -556,7 +556,7 @@ def project_view_stats(request, class_name, project):
 def project_view_summary(request):
     class_name = request.matchdict['class_name']
     project = Project.fetch_by_id(request.matchdict['project_id'])
-    if not project or project.klass.name != class_name:
+    if not project or project.class_.name != class_name:
         return HTTPNotFound()
 
     if not project.can_edit(request.user):
@@ -564,7 +564,7 @@ def project_view_summary(request):
 
     submissions = {}
     user_truncated = set()
-    for user in project.klass.users:
+    for user in project.class_.users:
         newest = (Submission.query_by(project=project, user=user)
                   .order_by(Submission.created_at.desc()).limit(4).all())
         if len(newest) == 4:
@@ -938,10 +938,10 @@ def user_class_join(request):
     username = request.matchdict['username']
     if request.user.username != username:
         return http_bad_request(request, messages='Invalid user')
-    klass = Class.fetch_by(name=class_name)
-    if not klass:
+    class_ = Class.fetch_by(name=class_name)
+    if not class_:
         return http_bad_request(request, messages='Invalid class')
-    request.user.classes.append(klass)
+    request.user.classes.append(class_)
     session = Session()
     session.add(request.user)
     transaction.commit()
@@ -962,10 +962,10 @@ def user_create(request, name, username, password, admin_for):
     asking_classes = []
     if admin_for:
         for class_id in admin_for:
-            klass = Class.fetch_by_id(class_id)
-            if klass is None:
+            class_ = Class.fetch_by_id(class_id)
+            if class_ is None:
                 return http_bad_request(request, messages='Nonexistent class')
-            asking_classes.append(klass)
+            asking_classes.append(class_)
 
     # make sure we can actually grant the permissions we
     # are requesting

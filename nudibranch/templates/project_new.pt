@@ -9,7 +9,7 @@
       <label for="makefile">Select a Makefile: </label>
       <input name="makefile_id" id="makefile" type="file" />
     </p>
-    <input type="hidden" name="class_id" id="class_id" value="${project.klass.id}"/>
+    <input type="hidden" name="class_id" id="class_id" value="${project.class_.id}"/>
     <input type="submit" name="submit" value="Create"/>
   </form>
 </div>

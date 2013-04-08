@@ -35,14 +35,14 @@ def _init_testing_db():
     user1 = User(name='User 1', username='user1@email', password='pswd1')
     user2 = User(name='User 2', username='user2@email', password='pswd2')
     user3 = User(name='User 3', username='user3@email', password='pswd3')
-    klass1 = Class(name='Class 1')
-    klass2 = Class(name='Class 2')
-    Session.add_all([admin, user1, user2, user3, klass1, klass2])
+    class1 = Class(name='Class 1')
+    class2 = Class(name='Class 2')
+    Session.add_all([admin, user1, user2, user3, class1, class2])
     Session.flush()
 
-    # Add two projects associated with klass1
-    project1 = Project(name='Project 1', klass=klass1, is_ready=True)
-    project2 = Project(name='Project 2', klass=klass1, is_ready=True)
+    # Add two projects associated with class1
+    project1 = Project(name='Project 1', class_=class1, is_ready=True)
+    project2 = Project(name='Project 2', class_=class1, is_ready=True)
     Session.add_all([project1, project2])
     Session.flush()
 
@@ -85,10 +85,10 @@ def _init_testing_db():
 
     # Make associatations
     admin.files.append(file2)
-    admin.admin_for.append(klass1)
-    user1.classes.append(klass1)
+    admin.admin_for.append(class1)
+    user1.classes.append(class1)
     user1.files.append(file1)
-    user3.classes.append(klass1)
+    user3.classes.append(class1)
     project2.makefile = file2
     Session.add_all([admin, user1, user3, project2])
     Session.flush()
@@ -181,8 +181,8 @@ class ClassTests(BaseAPITest):
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         self.assertEqual(route_path('class', request), info['redir_location'])
         name = json_data['name']
-        klass = Class.fetch_by(name=name)
-        self.assertEqual(json_data['name'], klass.name)
+        class_ = Class.fetch_by(name=name)
+        self.assertEqual(json_data['name'], class_.name)
 
     def test_class_edit(self):
         from nudibranch.views import class_edit
@@ -206,7 +206,7 @@ class ClassTests(BaseAPITest):
                                     user=user)
         info = class_view(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Class 1', info['klass'].name)
+        self.assertEqual('Class 1', info['class_'].name)
 
     def test_class_view_invalid(self):
         from nudibranch.views import class_view
@@ -415,7 +415,7 @@ class FileVerifierTests(BaseAPITest):
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         project = Session.query(Project).first()
         expected = route_path('project_edit', request,
-                              class_name=project.klass.name,
+                              class_name=project.class_.name,
                               project_id=project.id)
         self.assertEqual(expected, info['redir_location'])
         file_verifier = project.file_verifiers[-1]
@@ -494,8 +494,8 @@ class ProjectTests(BaseAPITest):
     @staticmethod
     def get_objects(username='admin', **kwargs):
         user = User.fetch_by(username=username)
-        klass = Session.query(Class).first()
-        json_data = {'name': 'Foobar', 'class_id': text_type(klass.id)}
+        class_ = Session.query(Class).first()
+        json_data = {'name': 'Foobar', 'class_id': text_type(class_.id)}
         json_data.update(kwargs)
         return user, json_data
 
@@ -507,7 +507,7 @@ class ProjectTests(BaseAPITest):
         else:
             proj = Session.query(Project).all()[1]
         user = User.fetch_by(username=username)
-        matchdict = {'class_name': proj.klass.name,
+        matchdict = {'class_name': proj.class_.name,
                      'project_id': text_type(proj.id)}
         json_data = {'name': 'Foobar', 'is_ready': '1'}
         if md_update:
@@ -519,7 +519,7 @@ class ProjectTests(BaseAPITest):
     def get_view_objects(username='user1@email', **kwargs):
         user = User.fetch_by(username=username)
         proj = Session.query(Project).first()
-        matchdict = {'class_name': proj.klass.name,
+        matchdict = {'class_name': proj.class_.name,
                      'project_id': text_type(proj.id),
                      'username': user.username}
         matchdict.update(kwargs)
@@ -599,18 +599,18 @@ class ProjectTests(BaseAPITest):
         info = project_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Edit Project', info['page_title'])
-        self.assertEqual(project.klass.id, info['project'].klass.id)
+        self.assertEqual(project.class_.id, info['project'].class_.id)
 
     def test_new(self):
         from nudibranch.views import project_new
-        klass = Session.query(Class).first()
+        class_ = Session.query(Class).first()
         user = User.fetch_by(username='admin')
-        request = self.make_request(matchdict={'class_name': klass.name},
+        request = self.make_request(matchdict={'class_name': class_.name},
                                     user=user)
         info = project_new(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
         self.assertEqual('Create Project', info['page_title'])
-        self.assertEqual(klass.id, info['project'].klass.id)
+        self.assertEqual(class_.id, info['project'].class_.id)
 
     def test_update_duplicate(self):
         from nudibranch.views import project_update
@@ -1017,7 +1017,7 @@ class TestCaseTests(BaseAPITest):
         self.assertEqual(HTTPCreated.code, request.response.status_code)
         testable = Session.query(Testable).first()
         expected = route_path('project_edit', request,
-                              class_name=testable.project.klass.name,
+                              class_name=testable.project.class_.name,
                               project_id=testable.project.id)
         self.assertEqual(expected, info['redir_location'])
         test_case = testable.test_cases[-1]

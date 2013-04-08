@@ -79,7 +79,7 @@ class BuildFile(BasicBase, Base):
 
 class Class(BasicBase, Base):
     name = Column(Unicode, nullable=False, unique=True)
-    projects = relationship('Project', backref='klass',
+    projects = relationship('Project', backref='class_',
                             cascade='all, delete-orphan')
 
     def __repr__(self):
@@ -163,24 +163,24 @@ class File(BasicBase, Base):
             return True
         elif user.admin_for:  # Begin more expensive comparisions
             # Single-indirect lookup
-            classes = set(x.klass for x in self.makefile_for_projects)
+            classes = set(x.class_ for x in self.makefile_for_projects)
             if classes.intersection(user.admin_for):
                 return True
             # Double indirect lookups
-            classes = set(x.project.klass for x in self.build_files)
+            classes = set(x.project.class_ for x in self.build_files)
             if classes.intersection(user.admin_for):
                 return True
-            classes = set(x.project.klass for x in self.execution_files)
+            classes = set(x.project.class_ for x in self.execution_files)
             if classes.intersection(user.admin_for):
                 return True
             # Triple-indirect lookups
-            classes = set(x.testable.project.klass for x in self.expected_for)
+            classes = set(x.testable.project.class_ for x in self.expected_for)
             if classes.intersection(user.admin_for):
                 return True
-            classes = set(x.testable.project.klass for x in self.stdin_for)
+            classes = set(x.testable.project.class_ for x in self.stdin_for)
             if classes.intersection(user.admin_for):
                 return True
-            classes = set(x.submission.project.klass for x in
+            classes = set(x.submission.project.class_ for x in
                           self.submission_assocs)
             if classes.intersection(user.admin_for):
                 return True
@@ -305,7 +305,7 @@ class Project(BasicBase, Base):
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the project."""
-        return self.klass.can_edit(user)
+        return self.class_.can_edit(user)
 
     def can_view(self, user):
         """Return whether or not `user` can view the project.
@@ -313,8 +313,8 @@ class Project(BasicBase, Base):
         The project's is_ready field must be set for a user to view.
 
         """
-        return self.klass.can_edit(user) or \
-            self.is_ready and self.klass in user.classes
+        return self.class_.can_edit(user) or \
+            self.is_ready and self.class_ in user.classes
 
     def optional_files(self):
         return frozenset([file_verifier.filename
@@ -895,12 +895,12 @@ def populate_database():
     admin = User(name='Administrator', password='password',
                  username='admin', is_admin=True)
     # Class
-    klass = Class(name='CS32')
-    Session.add(klass)
+    class_ = Class(name='CS32')
+    Session.add(class_)
     Session.flush()
 
     # Project
-    project = Project(name='Project 1', class_id=klass.id)
+    project = Project(name='Project 1', class_id=class_.id)
     Session.add(project)
     Session.flush()
 

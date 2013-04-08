@@ -1,20 +1,20 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <p>Info for ${klass.name}</p>
+  <p>Info for ${class_.name}</p>
 
   <p tal:condition="class_admin">
-    <a href="${_R('project_new', class_name=klass.name)}">Add project</a>
+    <a href="${_R('project_new', class_name=class_.name)}">Add project</a>
   </p>
 
   <p>Projects</p>
   <ul>
-    <div tal:repeat="project sorted(klass.projects, key=lambda x: x.name)" omit-tag="">
+    <div tal:repeat="project sorted(class_.projects, key=lambda x: x.name)" omit-tag="">
     <li tal:condition="project.can_view(request.user)">
       <a tal:condition="class_admin"
-	 href="${_R('project_item_summary', class_name=project.klass.name, project_id=project.id)}">
+	 href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">
 	${project.name}</a>
       <a tal:condition="not class_admin"
-	 href="${_R('project_item_detailed', class_name=project.klass.name, project_id=project.id, username=request.user.username)}">
+	 href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">
         ${project.name}</a>
     </li>
     </div>

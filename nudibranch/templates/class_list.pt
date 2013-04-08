@@ -3,8 +3,8 @@
   <p tal:condition="request.user.is_admin">
     <a href="${_R('class_new')}">Create new class</a>
   </p>
-  <div tal:repeat="klass classes">
-    <a href="${_R('class_item', class_name=klass.name)}">${klass.name}</a>
+  <div tal:repeat="class_ classes">
+    <a href="${_R('class_item', class_name=class_.name)}">${class_.name}</a>
   </div>
 </div>
 </div>
