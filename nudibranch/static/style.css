@@ -75,3 +75,19 @@ pre.make_output {
     border-bottom: 1px dotted gray;
 }
 
+.nospace {
+    margin: 0px;
+    padding: 0px;
+}
+
+.clear {
+    clear:both;
+}
+
+.floatleft {
+    float: left;
+}
+
+.floatright {
+    float: right;
+}

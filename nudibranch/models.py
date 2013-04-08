@@ -385,25 +385,6 @@ class Project(BasicBase, Base):
         submission.verified_at = func.now()
         return retval
 
-    def _first_with_filter(self, user, pred, reverse=False):
-        lst = sorted([u for u in self.klass.users
-                      if pred(u)],
-                     reverse=reverse)
-        return lst[0] if lst else None
-
-    def next_user(self, user):
-        '''Returns the next user (determined by name), or None if this
-        is the last user'''
-        # TODO: how are you supposed to do a query across an association
-        # table?
-        return self._first_with_filter(user,
-                                       lambda u: u.name > user.name)
-
-    def prev_user(self, user):
-        return self._first_with_filter(user,
-                                       lambda u: u.name < user.name,
-                                       reverse=True)
-
 
 class ProjectView(Base):
     __tablename__ = 'projectview'
@@ -856,7 +837,7 @@ class User(UserMixin, BasicBase, Base):
         return retval
 
     def __cmp__(self, other):
-        return cmp(self.name, other.name)
+        return cmp((self.name, self.username), (other.name, other.username))
 
     def __repr__(self):
         return 'User(username="{0}", name="{1}")'.format(self.username,

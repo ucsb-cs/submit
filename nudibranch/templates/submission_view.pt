@@ -13,12 +13,23 @@
   </script>
 
 
-  <!-- Determining the next user/submission -->
-  <div tal:condition="prev_next">
-    <hr />
-    <div tal:replace="structure prev_next"></div>
-    <hr />
+  <div tal:condition="submission_admin">
+    <p class="floatleft nospace" tal:condition="prev_user">Previous student:
+      <a href="${_R('project_item_detailed', class_name=submission.project.klass.name, project_id=submission.project.id, username=prev_user.username)}">${prev_user.name}</a>
+    </p>
+    <p class="floatright nospace" tal:condition="next_user">Next student:
+      <a href="${_R('project_item_detailed', class_name=submission.project.klass.name, project_id=submission.project.id, username=next_user.username)}">${next_user.name}</a>
+    </p>
+    <div class="clear"></div>
+    <p class="floatleft nospace" tal:condition="prev_sub">Student's previous submission:
+      <a href="${_R('submission_item', submission_id=prev_sub.id)}">${prev_sub.created_at}</a>
+    </p>
+    <p class="floatright nospace" tal:condition="next_sub">Student's next submission:
+      <a href="${_R('submission_item', submission_id=next_sub.id)}">${next_sub.created_at}</a>
+    </p>
+    <div class="clear"></div>
   </div>
+
 
   <fieldset tal:condition="flash">
     <legend>Status Messages</legend>
@@ -26,7 +37,7 @@
   </fieldset>
 
   <h3>Submission</h3>
-  <p tal:condition="submission_admin"><a href="?as_user=1">View this page from the user's perspective</a></p>
+  <p tal:condition="submission_admin"><a href="?as_user=1">View this page from the student's perspective</a></p>
 
   <div>User: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
   <div>Class: ${submission.project.klass.name}</div>

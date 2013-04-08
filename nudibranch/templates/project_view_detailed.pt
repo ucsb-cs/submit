@@ -1,9 +1,13 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <div tal:condition="prev_next_user">
-    <hr>
-    <div tal:replace="structure prev_next_user"></div>
-    <hr>
+  <div tal:condition="can_edit">
+    <p class="floatleft nospace" tal:condition="prev_user">Previous student:
+      <a href="${_R('project_item_detailed', class_name=project.klass.name, project_id=project.id, username=prev_user.username)}">${prev_user.name}</a>
+    </p>
+    <p class="floatright nospace" tal:condition="next_user">Next student:
+      <a href="${_R('project_item_detailed', class_name=project.klass.name, project_id=project.id, username=next_user.username)}">${next_user.name}</a>
+    </p>
+    <div class="clear"></div>
   </div>
 
   <p tal:condition="can_edit">

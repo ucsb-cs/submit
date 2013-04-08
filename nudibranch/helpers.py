@@ -6,6 +6,7 @@ from pyramid_addons.validation import (SOURCE_MATCHDICT, TextNumber,
                                        ValidateAbort, Validator)
 from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
 from .exceptions import InvalidId
+from .models import Submission
 
 
 class DummyTemplateAttr(object):
@@ -170,3 +171,24 @@ def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
             raise InvalidId(attr_name)
         items.append(item)
     return items
+
+
+def prev_next_submission(submission):
+    """Return adjacent sumbission objects for the given submission."""
+    return (Submission.earlier_submission_for_user(submission),
+            Submission.later_submission_for_user(submission))
+
+
+def prev_next_user(project, user):
+    """Return adjacent user objects or None for the given project and user.
+
+    The previous and next user objects are relative to sort order of the
+    project's users with respect to the passed in user.
+
+    """
+    # TODO: Profile and optimize this query if necessary
+    users = sorted(project.klass.users)
+    index = users.index(user)
+    prev_user = users[index - 1] if index > 0 else None
+    next_user = users[index + 1] if index + 1 < len(users) else None
+    return prev_user, next_user

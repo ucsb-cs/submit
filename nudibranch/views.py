@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 import codecs
-import os
 import pickle
 import transaction
 from base64 import b64decode
@@ -24,12 +23,10 @@ from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo
 from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
                       EditableDBThing, ViewableDBThing, get_submission_stats,
-                      fetch_request_ids)
+                      fetch_request_ids, prev_next_submission, prev_next_user)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
-from .prev_next import (NoSuchProjectException, NoSuchUserException,
-                        PrevNextFull, PrevNextUser)
 from .zipper import ZipSubmission
 
 
@@ -564,9 +561,10 @@ def project_view_detailed(request, class_name, project, user):
         raise HTTPNotFound()
 
     project_admin = project.can_edit(request.user)
-    prev_next_user = None
     if project_admin:
-        prev_next_user = PrevNextUser(request, project, user).to_html()
+        prev_user, next_user = prev_next_user(project, user)
+    else:
+        prev_user, next_user = None
 
     # Build submission file string
     required = []
@@ -579,12 +577,12 @@ def project_view_detailed(request, class_name, project, user):
     submit_string = ' '.join(sorted(required) + sorted(optional))
 
     return {'page_title': 'Project Page',
-            'css_files': ['prev_next.css'],
             'project': project,
             'project_admin': project_admin,
             'name': user.name,
-            'prev_next_user': prev_next_user,
             'can_edit': project_admin,
+            'prev_user': prev_user,
+            'next_user': next_user,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
                                   reverse=True),
@@ -782,19 +780,20 @@ def submission_view(request, submission, as_user):
             return {'_pd': pretty_date,
                     'delay': '{0:.1f} minutes'.format(delay),
                     'submission': submission}
-    prev_next_html = None
-    points_possible = submission.project.points_possible()
 
-    diff_renderer = None
+    points_possible = submission.project.points_possible()
     if submission_admin:
+        prev_sub, next_sub = prev_next_submission(submission)
+        prev_user, next_user = prev_next_user(submission.project,
+                                              submission.user)
         try:
-            prev_next_html = PrevNextFull(request, submission).to_html()
             diff_renderer = HTMLDiff(num_reveal_limit=None,
                                      points_possible=points_possible)
-        except (NoSuchUserException, NoSuchProjectException):
+        except InvalidId:
             return HTTPNotFound()
     else:
         diff_renderer = HTMLDiff(points_possible=points_possible)
+        prev_sub = next_sub = prev_user = next_user = None
 
     for test_case_result in submission.test_case_results:
         if test_case_result.test_case.output_type == 'diff':
@@ -821,19 +820,22 @@ def submission_view(request, submission, as_user):
     # Decode utf-8 and ignore errors until the data is diffed in unicode.
     diff_table = diff_renderer.make_whole_file().decode('utf-8', 'ignore')
     return {'page_title': 'Submission Page',
-            'css_files': ['diff.css', 'prev_next.css'],
-            'javascripts': ['diff.js'],
-            'flash': request.session.pop_flash(),
-            'submission': submission,
             '_pd': pretty_date,
             '_fp': format_points,
-            'testable_statuses': testable_statuses,
-            'waiting_to_run': waiting_to_run,
-            'submission_admin': submission_admin,
-            'verification': verification_info,
-            'extra_files': extra_files,
+            'css_files': ['diff.css'],
             'diff_table': diff_table,
-            'prev_next': prev_next_html}
+            'extra_files': extra_files,
+            'flash': request.session.pop_flash(),
+            'javascripts': ['diff.js'],
+            'next_sub': next_sub,
+            'next_user': next_user,
+            'prev_sub': prev_sub,
+            'prev_user': prev_user,
+            'submission': submission,
+            'submission_admin': submission_admin,
+            'testable_statuses': testable_statuses,
+            'verification': verification_info,
+            'waiting_to_run': waiting_to_run}
 
 
 @view_config(route_name='test_case', request_method='PUT',
