@@ -349,7 +349,7 @@ def test_case_verification(function):
     return wrapped
 
 
-def to_full_diff(request, test_case_result):
+def to_full_diff(request, test_case_result, is_admin):
     """Return a completed DiffWithMetadata object."""
     try:
         diff_file = File.file_path(request.registry.settings['file_directory'],
@@ -364,6 +364,6 @@ def to_full_diff(request, test_case_result):
     test_case = test_case_result.test_case
     return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
                             test_case.name, test_case.points,
-                            test_case.hide_expected,
+                            not is_admin and test_case.hide_expected,
                             DiffExtraInfo(test_case_result.status,
                                           test_case_result.extra))

@@ -666,7 +666,8 @@ def submission_view(request, submission, as_user):
     output_files = []
     for test_case_result in submission.test_case_results:
         if test_case_result.test_case.output_type == 'diff':
-            diff_renderer.add_diff(to_full_diff(request, test_case_result))
+            diff_renderer.add_diff(to_full_diff(request, test_case_result,
+                                                submission_admin))
         else:  # Handle text or image output
             if test_case_result.diff:
                 output_files.append(test_case_result)
