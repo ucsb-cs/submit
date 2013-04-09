@@ -364,5 +364,6 @@ def to_full_diff(request, test_case_result):
     test_case = test_case_result.test_case
     return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
                             test_case.name, test_case.points,
+                            test_case.hide_expected,
                             DiffExtraInfo(test_case_result.status,
                                           test_case_result.extra))

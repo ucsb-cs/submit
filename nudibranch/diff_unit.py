@@ -41,7 +41,9 @@ class DiffRenderable(object):
         '<p style="color:green;margin:0;padding:0;">{0}</p>'
     HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
 
-    def __init__(self, test_num, test_group, test_name, test_points):
+    def __init__(self, test_num, test_group, test_name, test_points,
+                 hide_expected):
+        self.hide_expected = hide_expected
         self.test_num = test_num
         self.test_group = test_group
         self.test_name = test_name
@@ -128,9 +130,9 @@ class DiffWithMetadata(DiffRenderable):
     Not intended to be stored.'''
 
     def __init__(self, diff, test_num, test_group,
-                 test_name, test_points, extra_info):
+                 test_name, test_points, hide_expected, extra_info):
         super(DiffWithMetadata, self).__init__(
-            test_num, test_group, test_name, test_points)
+            test_num, test_group, test_name, test_points, hide_expected)
         self._diff = diff
         self.extra_info = extra_info
 

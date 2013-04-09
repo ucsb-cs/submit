@@ -311,7 +311,8 @@ class Project(BasicBase, Base):
     build_files = relationship(BuildFile, backref='project',
                                cascade='all, delete-orphan')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
-    delay_minutes = Column(Integer, nullable=False, default=0)
+    delay_minutes = Column(Integer, nullable=False, default=0,
+                           server_default='0')
     execution_files = relationship(ExecutionFile, backref='project',
                                    cascade='all, delete-orphan')
     file_verifiers = relationship('FileVerifier', backref='project',
@@ -562,13 +563,15 @@ class TestCase(BasicBase, Base):
     expected = relationship(File, primaryjoin='File.id==TestCase.expected_id',
                             backref='expected_for')
     expected_id = Column(Integer, ForeignKey('file.id'), nullable=True)
+    hide_expected = Column(Boolean, default=False, nullable=False,
+                           server_default='0')
     name = Column(Unicode, nullable=False)
     output_filename = Column(Unicode, nullable=True)
     output_type = Column(Enum('diff', 'image', 'text', name='output_type'),
-                         nullable=False)
+                         nullable=False, server_default='diff')
     points = Column(Integer, nullable=False)
     source = Column(Enum('file', 'stderr', 'stdout', name='source'),
-                    nullable=False)
+                    nullable=False, server_default='stdout')
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id',
                          backref='stdin_for')
     stdin_id = Column(Integer, ForeignKey('file.id'), nullable=True)

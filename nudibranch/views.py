@@ -715,6 +715,8 @@ def submission_view(request, submission, as_user):
 @validate(name=String('name', min_length=1),
           args=String('args', min_length=1),
           expected=ViewableDBThing('expected_id', File, optional=True),
+          hide_expected=TextNumber('hide_expected', min_value=0, max_value=1,
+                                   optional=True),
           output_filename=String('output_filename', min_length=1,
                                  optional=True),
           output_source=OUTPUT_SOURCE, output_type=OUTPUT_TYPE,
@@ -722,9 +724,11 @@ def submission_view(request, submission, as_user):
           stdin=ViewableDBThing('stdin_id', File, optional=True),
           testable=EditableDBThing('testable_id', Testable))
 @test_case_verification
-def test_case_create(request, name, args, expected, output_filename,
-                     output_source, output_type, points, stdin, testable):
+def test_case_create(request, name, args, expected, hide_expected,
+                     output_filename, output_source, output_type, points,
+                     stdin, testable):
     test_case = TestCase(name=name, args=args, expected=expected,
+                         hide_expected=bool(hide_expected),
                          output_filename=output_filename,
                          output_type=output_type, points=points,
                          source=output_source, stdin=stdin, testable=testable)
@@ -747,6 +751,8 @@ def test_case_create(request, name, args, expected, output_filename,
 @validate(name=String('name', min_length=1),
           args=String('args', min_length=1),
           expected=ViewableDBThing('expected_id', File, optional=True),
+          hide_expected=TextNumber('hide_expected', min_value=0, max_value=1,
+                                   optional=True),
           output_filename=String('output_filename', min_length=1,
                                  optional=True),
           output_source=OUTPUT_SOURCE, output_type=OUTPUT_TYPE,
@@ -755,9 +761,11 @@ def test_case_create(request, name, args, expected, output_filename,
           test_case=EditableDBThing('test_case_id', TestCase,
                                     source=MATCHDICT))
 @test_case_verification
-def test_case_update(request, name, args, expected, output_filename,
-                     output_source, output_type, points, stdin, test_case):
+def test_case_update(request, name, args, expected, hide_expected,
+                     output_filename, output_source, output_type, points,
+                     stdin, test_case):
     if not test_case.update(name=name, args=args, expected=expected,
+                            hide_expected=bool(hide_expected),
                             output_filename=output_filename,
                             output_type=output_type, points=points,
                             source=output_source, stdin=stdin):

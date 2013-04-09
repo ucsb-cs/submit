@@ -395,18 +395,21 @@
         </div>
 
 
-
-        <div tal:condition="tc.expected_id">
-          <a href="${_R('file_item', sha1sum=tc.expected.sha1, filename='{0}:{1}:expected'.format(project.name, tc.name))}">Existing expected output file</a>
-        </div>
-        <div id="testable_${testable.id}_${tc.id}_expected_div"
+        <fieldset id="testable_${testable.id}_${tc.id}_expected_div"
              tal:attributes="style 'display: None' if tc.output_type != 'diff' else None">
+          <legend>Diff settings</legend>
+          <div tal:condition="tc.expected_id">
+            <a href="${_R('file_item', sha1sum=tc.expected.sha1, filename='{0}:{1}:expected'.format(project.name, tc.name))}">Existing expected output file</a>
+          </div>
           <label for="testable_${testable.id}_tc_expected_${tc.id}">Select a new expected output file: </label>
           <input name="expected_id" id="testable_${testable.id}_tc_expected_${tc.id}" type="file"
                  tal:attributes="disabled 'disabled' if tc.output_type != 'diff' else None" />
           <input id="testable_${testable.id}_tc_expected_id_${tc.id}" type="hidden"
                  name="expected_id" value="${tc.expected_id}" />
-        </div>
+          <input type="checkbox" name="hide_expected" id="testable_${testable.id}_tc_hide_expected_${tc.id}" value="1"
+                 tal:attributes="checked 'checked' if tc.hide_expected else None" />
+          <label for="testable_${testable.id}_tc_hide_expected_${tc.id}"><span class="help" title="This obscures the left-hand-side of the diff output in the student view thus preventing students from determining what their program should output.">Hide expected output</span></label>
+        </fieldset>
         <br/>
         <input type="submit" name="submit" value="update" />
       </form>
@@ -467,12 +470,15 @@
                  data-testable="${testable.id}" data-tc="new" />
           <label for="testable_${testable.id}_tc_type_image_new">Save (image)</label>
         </div>
-        <div id="testable_${testable.id}_new_expected_div">
+        <fieldset id="testable_${testable.id}_new_expected_div">
+          <legend>Diff settings</legend>
           <label for="testable_${testable.id}_tc_expected_new">Select the expected output file: </label>
           <input name="expected_id" id="testable_${testable.id}_tc_expected_new" type="file" />
           <input id="testable_${testable.id}_tc_expected_id_new" type="hidden"
                  name="expected_id" value="" />
-        </div>
+          <input type="checkbox" name="hide_expected" id="testable_${testable.id}_tc_hide_expected_new" value="1"/>
+          <label for="testable_${testable.id}_tc_hide_expected_new"><span class="help" title="This obscures the left-hand-side of the diff output in the student view thus preventing students from determining what their program should output.">Hide expected output</span></label>
+        </fieldset>
         <input type="hidden" name="testable_id" value="${testable.id}" />
         <br/>
         <input type="submit" name="submit" value="add" />

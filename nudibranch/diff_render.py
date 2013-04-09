@@ -43,7 +43,7 @@ _legend = """
 MAX_NUM_REVEALS = 3
 
 
-def limit_revealed_lines_to(diffs, limit):
+def limit_revealed_lines_to(diffs, limit, hide_expected):
     def truncate_line(todata):
         if len(todata[1]) > 1024:
             return todata[0], todata[1][:1024] + '...truncated'
@@ -52,6 +52,14 @@ def limit_revealed_lines_to(diffs, limit):
 
     num_reveals = 0
     retval = []
+
+    if hide_expected:
+        obscured = ('...', 'Expected output obscured by instructor.')
+        for _, todata, flag in diffs:
+            retval.append((obscured, todata, flag))
+            obscured = ('...', '')
+        return retval
+
     for fromdata, todata, flag in diffs:
         if flag and ('\0-' in fromdata[1] or '\0^' in fromdata[1]):
             num_reveals += 1
@@ -150,7 +158,7 @@ class HTMLDiff(difflib.HtmlDiff):
 
         # set up iterator to wrap lines that exceed desired width
         if self._wrapcolumn:
-            diffs = self._line_wrapper(diffs)
+            diffs = self._line_wrapper(diffs, diff.hide_expected)
 
         # collect up from/to lines and flags into lists (also format the lines)
         fromlist, tolist, flaglist = self._collect_lines(diffs)
@@ -291,8 +299,9 @@ class HTMLDiff(difflib.HtmlDiff):
             legend=self.legend_html(),
             table='<hr>\n'.join(tables))
 
-    def _line_wrapper(self, diffs):
-        diffs = limit_revealed_lines_to(diffs, self._num_reveal_limit)
+    def _line_wrapper(self, diffs, hide_expected):
+        diffs = limit_revealed_lines_to(diffs, self._num_reveal_limit,
+                                        hide_expected)
         return super(HTMLDiff, self)._line_wrapper(diffs)
 
     def _make_prefix(self):
