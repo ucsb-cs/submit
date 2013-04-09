@@ -1,6 +1,7 @@
 import json
 import pickle
 import pika
+import traceback
 import transaction
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
                                     http_created, http_forbidden, http_ok)
@@ -356,6 +357,10 @@ def to_full_diff(request, test_case_result):
         diff = pickle.load(open(diff_file))
     except (AttributeError, EOFError):
         diff = Diff(['submit system mismatch -- requeue submission\n'], [])
+    except:
+        msg = traceback.format_exc(1).split('\n')
+        msg.insert(0, 'unexected error -- requeue submission\n')
+        diff = Diff(msg, [])
     test_case = test_case_result.test_case
     return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
                             test_case.name, test_case.points,
