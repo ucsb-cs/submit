@@ -487,7 +487,7 @@ def project_view_detailed(request, class_name, project, user):
     if project_admin:
         prev_user, next_user = prev_next_user(project, user)
     else:
-        prev_user, next_user = None
+        prev_user = next_user = None
 
     # Build submission file string
     required = []
