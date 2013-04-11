@@ -354,8 +354,11 @@ def prepare_renderable(request, test_case_result, is_admin):
         return ImageOutput(test_case.id, test_case.testable.name,
                            test_case.name, test_case.points, extra, url)
     elif test_case.output_type == 'text':
-        msg = ['Text output is not completely handled\n']
-        return Diff(msg, [])
+        msg = 'Text output is not completely handled\n'
+        diff = Diff('', msg)
+        diff.hide_expected = False
+        return diff
+
     # Actual diff output
     try:
         diff_file = File.file_path(request.registry.settings['file_directory'],
@@ -363,10 +366,12 @@ def prepare_renderable(request, test_case_result, is_admin):
         diff = pickle.load(open(diff_file))
         diff.hide_expected = not is_admin and test_case.hide_expected
     except (AttributeError, EOFError):
-        diff = Diff(['submit system mismatch -- requeue submission\n'], [])
+        diff = Diff('', 'submit system mismatch -- requeue submission\n')
+        diff.hide_expected = False
     except:
-        msg = traceback.format_exc(1).split('\n')
-        msg.insert(0, 'unexected error -- requeue submission\n')
-        diff = Diff(msg, [])
+        msg = 'unexected error -- requeue submission\n'
+        msg += traceback.format_exc(1)
+        diff = Diff('', msg)
+        diff.hide_expected = False
     return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
                             test_case.name, test_case.points, extra)
