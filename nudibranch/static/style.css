@@ -91,3 +91,7 @@ pre.make_output {
 .floatright {
     float: right;
 }
+
+.result_image {
+    border: 1px solid black;
+}

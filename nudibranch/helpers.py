@@ -11,7 +11,7 @@ from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
 from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
 from zipfile import ZipFile
-from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo
+from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo, ImageOutput
 from .exceptions import InvalidId
 from .models import (BuildFile, File, FileVerifier, Session, Submission,
                      SubmissionToFile)
@@ -349,21 +349,29 @@ def test_case_verification(function):
     return wrapped
 
 
-def to_full_diff(request, test_case_result, is_admin):
+def prepare_renderable(request, test_case_result, is_admin):
     """Return a completed DiffWithMetadata object."""
+    test_case = test_case_result.test_case
+    extra = DiffExtraInfo(test_case_result.status, test_case_result.extra)
+    if test_case.output_type == 'image':
+        url = request.route_path('file_item', filename='_', _query={'raw': 1},
+                                 sha1sum=test_case_result.diff.sha1)
+        return ImageOutput(test_case.id, test_case.testable.name,
+                           test_case.name, test_case.points, extra, url)
+    elif test_case.output_type == 'text':
+        msg = ['Text output is not completely handled\n']
+        return Diff(msg, [])
+    # Actual diff output
     try:
         diff_file = File.file_path(request.registry.settings['file_directory'],
                                    test_case_result.diff.sha1)
         diff = pickle.load(open(diff_file))
+        diff.hide_expected = not is_admin and test_case.hide_expected
     except (AttributeError, EOFError):
         diff = Diff(['submit system mismatch -- requeue submission\n'], [])
     except:
         msg = traceback.format_exc(1).split('\n')
         msg.insert(0, 'unexected error -- requeue submission\n')
         diff = Diff(msg, [])
-    test_case = test_case_result.test_case
     return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
-                            test_case.name, test_case.points,
-                            not is_admin and test_case.hide_expected,
-                            DiffExtraInfo(test_case_result.status,
-                                          test_case_result.extra))
+                            test_case.name, test_case.points, extra)

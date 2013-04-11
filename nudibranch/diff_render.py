@@ -128,9 +128,9 @@ class HTMLDiff(difflib.HtmlDiff):
         self._num_reveal_limit = num_reveal_limit
         self._points_possible = points_possible
         for d in diffs:
-            self.add_diff(d)
+            self.add_renderable(d)
 
-    def add_diff(self, diff):
+    def add_renderable(self, diff):
         self._diff_html[diff] = self._make_html_for_diff(diff)
 
     def _make_html_for_diff(self, diff):
@@ -138,7 +138,7 @@ class HTMLDiff(difflib.HtmlDiff):
         if diff.should_show_table():
             table = self._make_table_for_diff(diff)
         wrong_things = diff.wrong_things_html_list()
-        inner = ''
+        inner = diff.extra_display()
         if table:
             inner += table
         if wrong_things:
@@ -158,7 +158,7 @@ class HTMLDiff(difflib.HtmlDiff):
 
         # set up iterator to wrap lines that exceed desired width
         if self._wrapcolumn:
-            diffs = self._line_wrapper(diffs, diff.hide_expected)
+            diffs = self._line_wrapper(diffs, diff._diff.hide_expected)
 
         # collect up from/to lines and flags into lists (also format the lines)
         fromlist, tolist, flaglist = self._collect_lines(diffs)

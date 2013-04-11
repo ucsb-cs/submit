@@ -22,10 +22,10 @@ from .exceptions import InvalidId
 from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
                       EditableDBThing, ViewableDBThing, ZipSubmission,
                       fetch_request_ids, file_verifier_verification,
-                      format_points, get_submission_stats,
+                      format_points, get_submission_stats, prepare_renderable,
                       prev_next_submission, prev_next_user,
                       project_file_create, project_file_delete,
-                      test_case_verification, to_full_diff)
+                      test_case_verification)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -654,17 +654,10 @@ def submission_view(request, submission, as_user):
         diff_renderer = HTMLDiff(points_possible=points_possible)
         prev_sub = next_sub = prev_user = next_user = None
 
-    output_files = []
     for test_case_result in submission.test_case_results:
-        if test_case_result.test_case.output_type == 'diff':
-            diff_renderer.add_diff(to_full_diff(request, test_case_result,
-                                                submission_admin))
-        else:  # Handle text or image output
-            if test_case_result.diff:
-                output_files.append(test_case_result)
-            else:
-                print('No output file captured.')
-
+        diff_renderer.add_renderable(prepare_renderable(request,
+                                                        test_case_result,
+                                                        submission_admin))
     if submission.verification_results:
         extra_files = submission.extra_filenames
         verification_issues = submission.verification_results.issues()
@@ -692,7 +685,6 @@ def submission_view(request, submission, as_user):
             'javascripts': ['diff.js'],
             'next_sub': next_sub,
             'next_user': next_user,
-            'output_files': output_files,
             'pending': pending,
             'prev_sub': prev_sub,
             'prev_user': prev_user,

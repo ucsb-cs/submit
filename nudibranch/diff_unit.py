@@ -41,9 +41,7 @@ class DiffRenderable(object):
         '<p style="color:green;margin:0;padding:0;">{0}</p>'
     HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
 
-    def __init__(self, test_num, test_group, test_name, test_points,
-                 hide_expected):
-        self.hide_expected = hide_expected
+    def __init__(self, test_num, test_group, test_name, test_points):
         self.test_num = test_num
         self.test_group = test_group
         self.test_name = test_name
@@ -70,6 +68,9 @@ class DiffRenderable(object):
             return "<ul>{0}</ul>".format("\n".join(list_items))
         else:
             return None
+
+    def extra_display(self):
+        return ''
 
     def escaped_group(self):
         return escape(self.test_group)
@@ -105,34 +106,14 @@ class DiffRenderable(object):
                                     self.test_points)
 
 
-class NonDiffErrors(DiffRenderable):
-    '''Used to encode errors that exist external to a diff, as when
-    files are missing so there isn't even a diff to show'''
-
-    def __init__(self, test_num, test_group,
-                 test_name, test_points, error_list):
-        super(NonDiffErrors, self).__init__(
-            test_num, test_group, test_name, test_points)
-        self.error_list = error_list
-
-    def is_correct(self):
-        return False
-
-    def should_show_table(self):
-        return False
-
-    def wrong_things(self):
-        return self.error_list
-
-
 class DiffWithMetadata(DiffRenderable):
     '''Wraps around a Diff to impart additional functionality.
     Not intended to be stored.'''
 
-    def __init__(self, diff, test_num, test_group,
-                 test_name, test_points, hide_expected, extra_info):
+    def __init__(self, diff, test_num, test_group, test_name,
+                 test_points, extra_info):
         super(DiffWithMetadata, self).__init__(
-            test_num, test_group, test_name, test_points, hide_expected)
+            test_num, test_group, test_name, test_points)
         self._diff = diff
         self.extra_info = extra_info
 
@@ -149,6 +130,28 @@ class DiffWithMetadata(DiffRenderable):
     def wrong_things(self):
         '''Returns a list of strings describing everything that's wrong'''
         return self._diff.wrong_things() + self.extra_info.wrong_things()
+
+
+class ImageOutput(DiffRenderable):
+    """Show output image if available."""
+    def __init__(self, test_num, test_group, test_name, test_points,
+                 extra_info, image_url):
+        super(ImageOutput, self).__init__(test_num, test_group, test_name,
+                                          test_points)
+        self.extra_info = extra_info
+        self.image_url = image_url
+
+    def extra_display(self):
+        return '<img class="result_image" src="{0}" />'.format(self.image_url)
+
+    def is_correct(self):
+        return False
+
+    def should_show_table(self):
+        return False
+
+    def wrong_things(self):
+        return self.extra_info.wrong_things()
 
 
 class Diff(object):
