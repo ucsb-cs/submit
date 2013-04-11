@@ -246,8 +246,10 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
 
 @view_config(route_name='file_verifier_item', request_method='DELETE',
              permission='authenticated', renderer='json')
-def file_verifier_delete(request):
-    return project_file_delete(request, 'file_verifier_id', FileVerifier)
+@validate(file_verifier=EditableDBThing('file_verifier_id', FileVerifier,
+                                        source=MATCHDICT))
+def file_verifier_delete(request, file_verifier):
+    return project_file_delete(request, file_verifier)
 
 
 @view_config(route_name='file_verifier_item', request_method='POST',
