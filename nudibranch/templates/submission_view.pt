@@ -39,9 +39,10 @@
   <h3>Submission</h3>
   <p tal:condition="submission_admin"><a href="?as_user=1">View this page from the student's perspective</a></p>
 
-  <div>User: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
-  <div>Class: ${submission.project.class_.name}</div>
-  <div>Project: ${submission.project.name}</div>
+  <div>Student: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
+  <div>Class: <a href="${_R('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
+  <div tal:condition="submission_admin">Project: <a href="${_R('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
+  <div tal:condition="not submission_admin">Project: ${submission.project.name}</div>
   <div>Submitted: ${submission.created_at}</div>
 
   <h4>Submission Files</h4>

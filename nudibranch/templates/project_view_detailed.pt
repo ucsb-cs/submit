@@ -11,7 +11,7 @@
   </div>
 
   <p tal:condition="can_edit">
-     Info for ${project.name}
+     Info for <a href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
      (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)
   </p>
   <p tal:condition="not can_edit">
