@@ -489,16 +489,6 @@ def project_view_detailed(request, class_name, project, user):
     else:
         prev_user = next_user = None
 
-    # Build submission file string
-    required = []
-    optional = []
-    for file_verifier in project.file_verifiers:
-        if file_verifier.optional:
-            optional.append('[{0}]'.format(file_verifier.filename))
-        else:
-            required.append(file_verifier.filename)
-    submit_string = ' '.join(sorted(required) + sorted(optional))
-
     return {'page_title': 'Project Page',
             'project': project,
             'project_admin': project_admin,
@@ -508,8 +498,7 @@ def project_view_detailed(request, class_name, project, user):
             'next_user': next_user,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
-                                  reverse=True),
-            'submit_string': submit_string}
+                                  reverse=True)}
 
 
 @view_config(route_name='project_item_stats',

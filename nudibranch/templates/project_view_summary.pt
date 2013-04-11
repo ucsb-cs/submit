@@ -3,6 +3,9 @@
   <h1>User Submissions Overview</h1>
   <p>Info for ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
+
+  <p>Make a submission via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
+
   <div tal:condition="submissions">
     <table border="1">
       <tr>

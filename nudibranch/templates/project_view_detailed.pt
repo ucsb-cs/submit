@@ -17,7 +17,7 @@
   <p tal:condition="not can_edit">
     Info for ${project.name}
   </p>
-  <p>Make a submission via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${submit_string}</code></p>
+  <p>Make a submission via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
   <blockquote>Files in brackets indicate partial submissions can be made without those
     files. Note that this does necessarily mean you will receive partial credit
     for such submissions.</blockquote>

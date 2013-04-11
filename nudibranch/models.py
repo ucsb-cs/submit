@@ -349,6 +349,17 @@ class Project(BasicBase, Base):
                     for testable in self.testables
                     for test_case in testable.test_cases])
 
+    def submit_string(self):
+        """Return a string specifying the files to submit for this project."""
+        required = []
+        optional = []
+        for file_verifier in self.file_verifiers:
+            if file_verifier.optional:
+                optional.append('[{0}]'.format(file_verifier.filename))
+            else:
+                required.append(file_verifier.filename)
+        return ' '.join(sorted(required) + sorted(optional))
+
     def verify_submission(self, base_path, submission):
         """Return list of testables that can be built."""
         results = VerificationResults()
