@@ -321,11 +321,6 @@ def project_file_delete(request, project_file):
     return http_ok(request, redir_location=redir_location)
 
 
-def readlines(path):
-    with open(path, 'r') as fh:
-        return fh.read().splitlines()
-
-
 def test_case_verification(function):
     def wrapped(request, expected, output_filename, output_source, output_type,
                 *args, **kwargs):

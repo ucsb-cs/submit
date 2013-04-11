@@ -10,7 +10,6 @@ from functools import wraps
 from nudibranch.models import (File, Session, Submission, TestCaseResult,
                                Testable, TestableResult, configure_sql)
 from nudibranch.diff_unit import Diff
-from nudibranch.helpers import readlines
 from sqlalchemy import engine_from_config
 
 BASE_FILE_PATH = None
@@ -106,12 +105,12 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
 
 
 def compute_diff(test_case, test_case_result, output_file):
-    expected_output = readlines(File.file_path(BASE_FILE_PATH,
-                                               test_case.expected.sha1))
+    expected_output = open(File.file_path(BASE_FILE_PATH,
+                                          test_case.expected.sha1)).read()
     if os.path.isfile(output_file):
-        actual_output = readlines('tc_{0}'.format(test_case.id))
+        actual_output = open('tc_{0}'.format(test_case.id)).read()
     else:
-        actual_output = []
+        actual_output = ''
     unit = Diff(expected_output, actual_output)
     test_case_result.diff = File.fetch_or_create(pickle.dumps(unit),
                                                  BASE_FILE_PATH)

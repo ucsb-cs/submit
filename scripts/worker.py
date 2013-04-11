@@ -20,7 +20,7 @@ INPUT_PATH = 'inputs'
 RESULTS_PATH = 'results'
 EXECUTION_FILES_PATH = 'execution_files'
 
-MAX_FILE_SIZE = 8192
+MAX_FILE_SIZE = 65536
 
 
 class SubmissionHandler(object):

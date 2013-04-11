@@ -1,5 +1,49 @@
-import difflib
 import xml.sax.saxutils
+from diff_match_patch import diff_match_patch as DMP
+
+
+def dmp_to_mdiff(diffs):
+    """Convert from diff_match_patch format to _mdiff format.
+
+    This is sadly necessary to use the HtmlDiff module.
+
+    """
+    def yield_buffer(lineno_left, lineno_right):
+        while left_buffer or right_buffer:
+            if left_buffer:
+                left = lineno_left, '\0-{0}\1'.format(left_buffer.pop(0))
+                lineno_left += 1
+            else:
+                left = '', '\n'
+            if right_buffer:
+                right = lineno_right, '\0+{0}\1'.format(right_buffer.pop(0))
+                lineno_right += 1
+            else:
+                right = '', '\n'
+            yield (left, right, True), lineno_left, lineno_right
+
+    lineno_left = lineno_right = 1
+    left_buffer = []
+    right_buffer = []
+
+    for op, data in diffs:
+        for line in data.splitlines(True):
+            if op == DMP.DIFF_EQUAL:
+                for item, lleft, llright in yield_buffer(lineno_left,
+                                                         lineno_right):
+                    lineno_left = lleft
+                    lineno_right = llright
+                    yield item
+                yield (lineno_left, line), (lineno_right, line), False
+                lineno_left += 1
+                lineno_right += 1
+            elif op == DMP.DIFF_DELETE:
+                left_buffer.append(line)
+            elif op == DMP.DIFF_INSERT:
+                right_buffer.append(line)
+
+    for item, _, _ in yield_buffer(lineno_left, lineno_right):
+        yield item
 
 
 class DiffExtraInfo(object):
@@ -191,34 +235,14 @@ class Diff(object):
         return retval
 
     def _make_diff(self, correct, given):
-        '''Only to be called when there is a difference'''
-        fromlines, tolines = self._tab_newline_replace(correct,
-                                                       given)
-        return [d for d in difflib._mdiff(fromlines, tolines)]
-
-    def _tab_newline_replace(self, fromlines, tolines):
-        """Returns from/to line lists with tabs expanded
-        and newlines removed.
-
-        Instead of tab characters being replaced by the number of spaces
-        needed to fill in to the next tab stop, this function will fill
-        the space with tab characters.  This is done so that the difference
-        algorithms can identify changes in a file when tabs are replaced by
-        spaces and vice versa.  At the end of the HTML generation, the tab
-        characters will be replaced with a nonbreakable space.
-        """
-        def expand_tabs(line):
-            # hide real spaces
-            line = line.replace(' ', '\0')
-            # expand tabs into spaces
-            line = line.expandtabs(self._tabsize)
-            # replace spaces from expanded tabs back into tab characters
-            # (we'll replace them with markup after we do differencing)
-            line = line.replace(' ', '\t')
-            return line.replace('\0', ' ').rstrip('\n')
-        fromlines = [expand_tabs(line) for line in fromlines]
-        tolines = [expand_tabs(line) for line in tolines]
-        return fromlines, tolines
+        """Return the intermediate representation of the diff."""
+        dmp = DMP()
+        dmp.Diff_Timeout = 0
+        text1, text2, array = dmp.diff_linesToChars(correct, given)
+        diffs = dmp.diff_main(text1, text2)
+        dmp.diff_cleanupSemantic(diffs)
+        dmp.diff_charsToLines(diffs, array)
+        return list(dmp_to_mdiff(diffs))
 
 
 def escape(string):
