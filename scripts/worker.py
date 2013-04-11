@@ -59,12 +59,13 @@ class SubmissionHandler(object):
                         os.path.join(tmp_dir, filename))
 
         args = command.split()
-        if args[0] not in ('bash', 'sh', 'python'):  # allow some programs
+        # allow some programs
+        if args[0] not in ('bash', 'sh', 'python', 'python2', 'python3'):
             args[0] = os.path.join(os.getcwd(), SRC_PATH, args[0])
             if not os.path.isfile(args[0]):
                 raise NonexistentExecutable()
         else:
-            # Need to copy the binary
+            # Need to copy the script(s)
             for arg in args:
                 src = os.path.join(SRC_PATH, arg)
                 if os.path.isfile(src):
