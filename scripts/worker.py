@@ -20,7 +20,7 @@ INPUT_PATH = 'inputs'
 RESULTS_PATH = 'results'
 EXECUTION_FILES_PATH = 'execution_files'
 
-MAX_FILE_SIZE = 65536
+MAX_FILE_SIZE = 8192
 
 
 class SubmissionHandler(object):
@@ -45,7 +45,7 @@ class SubmissionHandler(object):
             time.sleep(0.1)
 
     @staticmethod
-    def execute(command, stderr=None, stdin=None, stdout=None, time_limit=3,
+    def execute(command, stderr=None, stdin=None, stdout=None, time_limit=2,
                 files=None, save=None):
         if not stderr:
             stderr = open('/dev/null', 'w')
@@ -69,6 +69,10 @@ class SubmissionHandler(object):
                 src = os.path.join(SRC_PATH, arg)
                 if os.path.isfile(src):
                     shutil.copy(src, os.path.join(tmp_dir, arg))
+
+        # Hack to give more time to turtle_capture.sh
+        if len(args) > 2 and args[1] == 'turtle_capture.sh':
+            time_limit = 16  # How can we run this faster?
 
         # Run command with a timelimit
         # TODO: Do we only get partial output with stdout?
@@ -193,18 +197,26 @@ class SubmissionHandler(object):
                         stderr = output
                     execute(tc['args'], stderr=stderr, stdin=stdin,
                             stdout=stdout)
+                max_file_size = MAX_FILE_SIZE
             else:
                 execute(tc['args'], save=(tc['output_filename'], output_file))
+                if tc['output_filename'].endswith('.png'):
+                    max_file_size = 131072  # Avoid truncating images
+
             if not os.path.isfile(output_file):
                 # Hack on this status until we update the ENUM
-                result['status'] = 'output_limit_exceeded'
-            elif os.path.getsize(output_file) > MAX_FILE_SIZE:
+                if result['status'] == 'success':
+                    # Don't overwrite other statuses
+                    result['status'] = 'output_limit_exceeded'
+            elif os.path.getsize(output_file) > max_file_size:
                 # Truncate output file size
                 print('Truncating outputfile', os.path.getsize(output_file))
                 fd = os.open(output_file, os.O_WRONLY)
-                os.ftruncate(fd, MAX_FILE_SIZE)
+                os.ftruncate(fd, max_file_size)
                 os.close(fd)
-                result['status'] = 'output_limit_exceeded'
+                if result['status'] == 'success':
+                    # Don't overwrite other statuses
+                    result['status'] = 'output_limit_exceeded'
             results[tc['id']] = result
         with open(os.path.join(RESULTS_PATH, 'test_cases'), 'w') as fp:
             json.dump(results, fp)
