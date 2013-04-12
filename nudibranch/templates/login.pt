@@ -6,6 +6,11 @@
     <h3>Note: JavaScript is required to successfully submit this form.</h3>
   </noscript>
 
+  <fieldset tal:condition="flash">
+    <legend>Status Messages</legend>
+    <p tal:repeat="msg flash">${msg}</p>
+  </fieldset>
+
   <div class="bottom">
     <form name="login" action="${_R('session')}" method="POST"
           onsubmit="return form_request(this, 'put');">
@@ -16,6 +21,7 @@
         <label for="password">Password</label><br/>
         <input type="password" name="password" id="password" />
       </p>
+      <input tal:condition="dst" type="hidden" name="dst" value="${dst}" />
       <input type="submit" name="submit" value="Login" />
     </form>
   </div>

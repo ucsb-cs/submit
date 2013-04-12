@@ -10,10 +10,12 @@ from pyramid_addons.validation import (Enum, List, String, RegexString,
                                        TextNumber, WhiteSpaceString, validate,
                                        SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
-from pyramid.httpexceptions import HTTPForbidden, HTTPFound, HTTPNotFound
+from pyramid.httpexceptions import (HTTPForbidden, HTTPFound, HTTPNotFound,
+                                    HTTPSeeOther)
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
-from pyramid.view import notfound_view_config, view_config
+from pyramid.view import (forbidden_view_config, notfound_view_config,
+                          view_config)
 from pyramid_mailer import get_mailer
 from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
@@ -38,6 +40,15 @@ SHA1_VALIDATOR = String('sha1sum', min_length=40, max_length=40,
                         source=MATCHDICT)
 UUID_VALIDATOR = String('token', min_length=36, max_length=36,
                         source=MATCHDICT)
+
+
+@forbidden_view_config()
+def forbidden_view(context, request):
+    if request.user:
+        return context
+    request.session.flash('You must be logged in to do that.')
+    return HTTPSeeOther(request.route_path('session',
+                                           _query={'dst': request.path}))
 
 
 @notfound_view_config()
@@ -540,13 +551,17 @@ def project_view_summary(request, class_name, project):
 
 
 @view_config(route_name='session', renderer='json', request_method='PUT')
-@validate(username=String('email'), password=WhiteSpaceString('password'))
-def session_create(request, username, password):
+@validate(username=String('email'), password=WhiteSpaceString('password'),
+          dst=String('dst', optional=True))
+def session_create(request, username, password, dst):
     user = User.login(username, password)
     if user:
         headers = remember(request, user.id)
-        url = request.route_path('user_item',
-                                 username=user.username)
+        if dst:
+            url = dst
+        else:
+            url = request.route_path('user_item',
+                                     username=user.username)
         retval = http_created(request, headers=headers, redir_location=url)
     else:
         retval = http_conflict(request, message='Invalid login')
@@ -563,10 +578,12 @@ def session_destroy(request):
 
 @view_config(route_name='session', renderer='templates/login.pt',
              request_method='GET')
+@validate(username=String('username', optional=True, source=SOURCE_GET),
+          dst=String('dst', optional=True, source=SOURCE_GET))
 @site_layout('nudibranch:templates/layout.pt')
-def session_edit(request):
-    username = request.GET.get('username', '')
-    return {'page_title': 'Login', 'username': username}
+def session_edit(request, username, dst):
+    return {'page_title': 'Login', 'username': username, 'dst': dst,
+            'flash': request.session.pop_flash()}
 
 
 @view_config(route_name='submission', renderer='json', request_method='PUT',
