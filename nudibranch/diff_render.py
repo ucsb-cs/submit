@@ -53,21 +53,19 @@ def limit_revealed_lines_to(diffs, limit, hide_expected):
     num_reveals = 0
     retval = []
 
-    if hide_expected:
-        obscured = ('...', 'Expected output obscured by instructor.')
-        for _, todata, flag in diffs:
-            retval.append((obscured, todata, flag))
-            obscured = ('...', '')
-        return retval
-
+    obscured = '<<Expected output obscured by instructor.>>'
     for fromdata, todata, flag in diffs:
         if flag and ('\0-' in fromdata[1] or '\0^' in fromdata[1]):
             num_reveals += 1
         if limit and num_reveals > limit:
-            trun = ('...', '<<OUTPUT TRUNCATED>>')
+            trun = ('...', '<<Remaining diff not shown>>')
             retval.append((trun, trun, False))
             break
-        retval.append((fromdata, truncate_line(todata), flag))
+        if hide_expected:
+            retval.append(((fromdata[0], obscured), todata, flag))
+            obscured = ''
+        else:
+            retval.append((fromdata, truncate_line(todata), flag))
     return retval
 
 
