@@ -41,6 +41,7 @@ _legend = """
     </table>"""
 
 MAX_NUM_REVEALS = 3
+MAX_DIFF_LINES = 512
 
 
 def limit_revealed_lines_to(diffs, limit, hide_expected):
@@ -51,13 +52,16 @@ def limit_revealed_lines_to(diffs, limit, hide_expected):
             return todata
 
     num_reveals = 0
+    different_lines = 0
     retval = []
 
     obscured = '<<Expected output obscured by instructor.>>'
     for fromdata, todata, flag in diffs:
-        if flag and ('\0-' in fromdata[1] or '\0^' in fromdata[1]):
-            num_reveals += 1
-        if limit and num_reveals > limit:
+        if flag:
+            different_lines += 1
+            if '\0-' in fromdata[1] or '\0^' in fromdata[1]:
+                num_reveals += 1
+        if different_lines > MAX_DIFF_LINES or limit and num_reveals > limit:
             trun = ('...', '<<Remaining diff not shown>>')
             retval.append((trun, trun, False))
             break
