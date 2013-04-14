@@ -2,9 +2,7 @@
 <div metal:fill-slot="content">
   <div class="header">LOGIN</div>
 
-  <noscript>
-    <h3>Note: JavaScript is required to successfully submit this form.</h3>
-  </noscript>
+  <div metal:use-macro="_MACROS['js_test']"></div>
 
   <fieldset tal:condition="flash">
     <legend>Status Messages</legend>

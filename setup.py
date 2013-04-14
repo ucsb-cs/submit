@@ -11,7 +11,7 @@ requires = [
     'diff-match-patch==20120106',
     'pika>=0.9.6',
     'pyramid>=1.4',
-    'pyramid_addons>=0.15',
+    'pyramid_addons>=0.16',
     'pyramid_mailer>=0.10',
     'pyramid_tm>=0.5',
     'python-daemon>=1.5.5',

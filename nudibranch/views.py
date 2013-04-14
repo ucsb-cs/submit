@@ -350,7 +350,8 @@ def password_reset_create(request, username):
 @view_config(route_name='password_reset',
              renderer='templates/password_reset.pt',
              request_method='GET')
-@site_layout('nudibranch:templates/layout.pt')
+@site_layout('nudibranch:templates/layout.pt',
+             'nudibranch:templates/macros.pt')
 def password_reset_edit(request):
     return {'page_title': 'Password Reset'}
 
@@ -360,7 +361,8 @@ def password_reset_edit(request):
              request_method='GET')
 @validate(reset=AnyDBThing('token', PasswordReset, fetch_by='reset_token',
                            validator=UUID_VALIDATOR, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
+@site_layout('nudibranch:templates/layout.pt',
+             'nudibranch:templates/macros.pt')
 def password_reset_edit_item(request, reset):
     return {'page_title': 'Password Reset',
             'token': reset.get_token()}
@@ -580,7 +582,8 @@ def session_destroy(request):
              request_method='GET')
 @validate(username=String('username', optional=True, source=SOURCE_GET),
           dst=String('dst', optional=True, source=SOURCE_GET))
-@site_layout('nudibranch:templates/layout.pt')
+@site_layout('nudibranch:templates/layout.pt',
+             'nudibranch:templates/macros.pt')
 def session_edit(request, username, dst):
     return {'page_title': 'Login', 'username': username, 'dst': dst,
             'flash': request.session.pop_flash()}
@@ -961,7 +964,8 @@ def user_create(request, name, username, password, admin_for):
 
 @view_config(route_name='user_new', renderer='templates/user_create.pt',
              request_method='GET')
-@site_layout('nudibranch:templates/layout.pt')
+@site_layout('nudibranch:templates/layout.pt',
+             'nudibranch:templates/macros.pt')
 def user_edit(request):
     admin_classes = request.user.classes_can_admin() if request.user else None
     return {'page_title': 'Create User',
