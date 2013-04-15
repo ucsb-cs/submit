@@ -546,9 +546,13 @@ def project_view_summary(request, class_name, project):
         if len(newest) == 4:
             user_truncated.add(user)
         submissions[user] = newest[:3]
+    recent_submissions = (Submission.query_by(project=project)
+                          .order_by(Submission.created_at.desc())
+                          .limit(10).all())
     return {'page_title': 'Admin Project Page',
             'project': project,
             'user_truncated': user_truncated,
+            'recent_submissions': recent_submissions,
             'submissions': sorted(submissions.items())}
 
 

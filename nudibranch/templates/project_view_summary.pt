@@ -1,15 +1,24 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <h1>User Submissions Overview</h1>
-  <p>Info for ${project.name}
+  <h1>Student Submissions Overview</h1>
+  <p>Info for <a href="${_R('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
 
   <p>Make a submission via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
 
+  <div tal:condition="recent_submissions"><h3>Most recent submissions</h3>
+    <ul>
+      <li tal:repeat="submission recent_submissions">
+	<a href="${_R('submission_item', submission_id=submission.id)}">
+	  ${submission.created_at}</a> by ${submission.user.name}
+      </li>
+    </ul>
+  </div>
+
   <div tal:condition="submissions">
     <table border="1">
       <tr>
-	<th>User</th>
+	<th>Student</th>
 	<th>Submissions (Most Recent Three Shown)</th>
       </tr>
       <tr tal:repeat="(user, user_submissions) submissions">

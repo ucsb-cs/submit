@@ -8,15 +8,16 @@
 
   <p>Projects</p>
   <ul>
-    <div tal:repeat="project sorted(class_.projects, key=lambda x: x.name)" omit-tag="">
-    <li tal:condition="project.can_view(request.user)">
-      <a tal:condition="class_admin"
-	 href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">
-	${project.name}</a>
-      <a tal:condition="not class_admin"
-	 href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">
-        ${project.name}</a>
-    </li>
+    <div tal:repeat="project sorted(class_.projects, key=lambda x: x.name)" tal:omit-tag="">
+      <li tal:condition="project.can_view(request.user)">
+        <span tal:condition="class_admin" tal:omit-tag="">
+          <a href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+          <span tal:condition="project.is_ready" tal:omit-tag="">(ready for submission)</span>
+        </span>
+        <a tal:condition="not class_admin"
+	   href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">
+          ${project.name}</a>
+      </li>
     </div>
   </ul>
 </div>
