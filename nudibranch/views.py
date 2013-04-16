@@ -121,7 +121,7 @@ def class_edit(request):
 def class_join_list(request):
     # get all the classes that the given user is not in, and let the
     # user optionally join them
-    all_classes = frozenset(Session().query(Class).all())
+    all_classes = frozenset(Class.query_by(is_locked=False).all())
     user_classes = frozenset(request.user.classes)
     return {'page_title': 'Join Class',
             'classes': sorted(all_classes - user_classes)}
@@ -914,6 +914,8 @@ def testable_delete(request, testable):
 def user_class_join(request, class_, username):
     if request.user.username != username:
         return http_bad_request(request, messages='Invalid user')
+    if class_.is_locked:
+        return http_bad_request(request, messages='Invalid class')
     request.user.classes.append(class_)
     redir_location = request.route_path('class_join_list',
                                         _query={'last_class': class_.name})
