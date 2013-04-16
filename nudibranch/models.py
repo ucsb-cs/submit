@@ -78,6 +78,8 @@ class BuildFile(BasicBase, Base):
 
 
 class Class(BasicBase, Base):
+    is_locked = Column(Boolean, default=False, nullable=False,
+                       server_default='0')
     name = Column(Unicode, nullable=False, unique=True)
     projects = relationship('Project', backref='class_',
                             cascade='all, delete-orphan')
@@ -93,7 +95,7 @@ class Class(BasicBase, Base):
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the class."""
-        return user.is_admin or self in user.admin_for
+        return user.is_admin or not self.is_locked and self in user.admin_for
 
     def can_view(self, user):
         """Return whether or not `user` can view the class."""
