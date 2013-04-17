@@ -10,8 +10,8 @@ from pyramid_addons.validation import (Enum, List, String, RegexString,
                                        TextNumber, WhiteSpaceString, validate,
                                        SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
-from pyramid.httpexceptions import (HTTPForbidden, HTTPFound, HTTPNotFound,
-                                    HTTPSeeOther)
+from pyramid.httpexceptions import (HTTPException, HTTPForbidden, HTTPFound,
+                                    HTTPNotFound, HTTPSeeOther)
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import (forbidden_view_config, notfound_view_config,
@@ -21,13 +21,12 @@ from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
 from .exceptions import InvalidId
-from .helpers import (DBThing as AnyDBThing, DummyTemplateAttr,
-                      EditableDBThing, ViewableDBThing, ZipSubmission,
-                      fetch_request_ids, file_verifier_verification,
-                      format_points, get_submission_stats, prepare_renderable,
-                      prev_next_submission, prev_next_user,
-                      project_file_create, project_file_delete,
-                      test_case_verification)
+from .helpers import (
+    AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
+    EditableDBThing, ViewableDBThing, ZipSubmission, fetch_request_ids,
+    file_verifier_verification, format_points, get_submission_stats,
+    prepare_renderable, prev_next_submission, prev_next_user,
+    project_file_create, project_file_delete, test_case_verification)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -40,6 +39,15 @@ SHA1_VALIDATOR = String('sha1sum', min_length=40, max_length=40,
                         source=MATCHDICT)
 UUID_VALIDATOR = String('token', min_length=36, max_length=36,
                         source=MATCHDICT)
+
+
+@forbidden_view_config(xhr=True, renderer='json')
+@notfound_view_config(xhr=True, renderer='json')
+@view_config(context=HTTPException, xhr=True, renderer='json')
+def json_exception(context, request):
+    """Always return json content in the body of Exceptions to xhr requests."""
+    request.response.status = context.code
+    return {'error': context._status, 'messages': context.message}
 
 
 @forbidden_view_config()
@@ -86,7 +94,7 @@ def build_file_delete(request, build_file):
              renderer='templates/class_admin_utils.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def class_admin_view(request):
-    if not request.user.is_admin_for_any_class():
+    if not request.user.admin_for:
         raise HTTPForbidden()
     return {'page_title': 'Class Administrator Utilities'}
 
@@ -143,7 +151,7 @@ def class_list(request):
 @site_layout('nudibranch:templates/layout.pt')
 def class_view(request, class_):
     return {'page_title': 'Class Page',
-            'class_admin': class_.can_edit(request.user), 'class_': class_}
+            'class_admin': class_.is_admin(request.user), 'class_': class_}
 
 
 @view_config(route_name='execution_file', request_method='PUT',
@@ -410,7 +418,7 @@ def project_create(request, name, class_, makefile):
 @view_config(route_name='project_edit',
              renderer='templates/project_edit.pt',
              request_method='GET', permission='authenticated')
-@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
+@validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def project_edit(request, project):
     action = request.route_path('project_item_summary',
@@ -486,7 +494,7 @@ def project_update(request, name, makefile, is_ready, class_name,
              request_method=('GET', 'HEAD'),
              permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
-          project=ViewableDBThing('project_id', Project, source=MATCHDICT),
+          project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
           user=ViewableDBThing('username', User, fetch_by='username',
                                validator=String('username'), source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
@@ -498,7 +506,7 @@ def project_view_detailed(request, class_name, project, user):
     if not submissions:
         raise HTTPNotFound()
 
-    project_admin = project.can_edit(request.user)
+    project_admin = project.can_view(request.user)
     if project_admin:
         prev_user, next_user = prev_next_user(project, user)
     else:
@@ -519,7 +527,7 @@ def project_view_detailed(request, class_name, project, user):
 @view_config(route_name='project_item_stats',
              renderer='templates/project_stats.pt', permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
-          project=EditableDBThing('project_id', Project, source=MATCHDICT))
+          project=ViewableDBThing('project_id', Project, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_stats(request, class_name, project):
     # Additional verification
@@ -535,7 +543,7 @@ def project_view_stats(request, class_name, project):
              request_method=('GET', 'HEAD'),
              permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
-          project=EditableDBThing('project_id', Project, source=MATCHDICT))
+          project=ViewableDBThing('project_id', Project, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_summary(request, class_name, project):
     submissions = {}

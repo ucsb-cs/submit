@@ -4,9 +4,8 @@ import pika
 import traceback
 import transaction
 from pyramid_addons.helpers import (http_bad_request, http_conflict,
-                                    http_created, http_forbidden, http_ok)
-from pyramid_addons.validation import (SOURCE_MATCHDICT, TextNumber,
-                                       ValidateAbort, Validator)
+                                    http_created, http_ok)
+from pyramid_addons.validation import SOURCE_MATCHDICT, TextNumber, Validator
 from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
 from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
@@ -55,6 +54,26 @@ class DBThing(Validator):
         return thing
 
 
+class AccessibleDBThing(DBThing):
+
+    """An extension of DBThing that also checks for accessibility.
+
+    Usage of this validator assumes the Thing class has a `can_acess` method
+    that takes as a sole argument a User object.
+
+    """
+
+    def run(self, value, errors, request):
+        """Return thing, but abort validation if request.user cannot edit."""
+        thing = super(AccessibleDBThing, self).run(value, errors, request)
+        if errors:
+            return None
+        if not thing.can_access(request.user):
+            message = 'Insufficient permissions for {0}'.format(self.param)
+            raise HTTPForbidden(message)
+        return thing
+
+
 class EditableDBThing(DBThing):
 
     """An extension of DBThing that also checks for edit access.
@@ -70,11 +89,8 @@ class EditableDBThing(DBThing):
         if errors:
             return None
         if not thing.can_edit(request.user):
-            if self.source == SOURCE_MATCHDICT:
-                # If part of the URL don't provide any extra information
-                raise HTTPForbidden()
             message = 'Insufficient permissions for {0}'.format(self.param)
-            raise ValidateAbort(http_forbidden(request, messages=message))
+            raise HTTPForbidden(message)
         return thing
 
 
@@ -93,11 +109,8 @@ class ViewableDBThing(DBThing):
         if errors:
             return None
         if not thing.can_view(request.user):
-            if self.source == SOURCE_MATCHDICT:
-                # If part of the URL don't provide any extra information
-                raise HTTPForbidden()
             message = 'Insufficient permissions for {0}'.format(self.param)
-            raise ValidateAbort(http_forbidden(request, messages=message))
+            raise HTTPForbidden(message)
         return thing
 
 

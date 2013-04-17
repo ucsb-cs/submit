@@ -53,6 +53,9 @@
 
   <div class="header">${page_title}</div>
 
+  <h3 tal:condition="project.class_.is_locked">The class for this project is
+    locked. You will not be able to make any changes.</h3>
+
   <fieldset tal:condition="flash">
     <legend>Status Messages</legend>
     <p tal:repeat="msg flash">${msg}</p>

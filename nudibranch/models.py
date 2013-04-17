@@ -99,7 +99,11 @@ class Class(BasicBase, Base):
 
     def can_view(self, user):
         """Return whether or not `user` can view the class."""
-        return self.can_edit(user) or self in user.classes
+        return self.is_admin(user) or self in user.classes
+
+    def is_admin(self, user):
+        """Return whether or not `user` is an admin for the class."""
+        return user.is_admin or self in user.admin_for
 
 
 class ExecutionFile(BasicBase, Base):
@@ -332,18 +336,22 @@ class Project(BasicBase, Base):
     def delay(self):
         return timedelta(minutes=self.delay_minutes)
 
+    def can_access(self, user):
+        """Return whether or not `user` can access a project.
+
+        The project's is_ready field must be set for a user to access.
+
+        """
+        return self.class_.is_admin(user) or \
+            self.is_ready and self.class_ in user.classes
+
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the project."""
         return self.class_.can_edit(user)
 
     def can_view(self, user):
-        """Return whether or not `user` can view the project.
-
-        The project's is_ready field must be set for a user to view.
-
-        """
-        return self.class_.can_edit(user) or \
-            self.is_ready and self.class_ in user.classes
+        """Return whether or not `user` can view the project's settings."""
+        return self.class_.is_admin(user)
 
     def points_possible(self):
         """Return the total points possible for this project."""
@@ -773,9 +781,6 @@ class User(UserMixin, BasicBase, Base):
             return Session().query(Class).order_by(Class.name).all()
         else:
             return sorted(self.admin_for)
-
-    def is_admin_for_any_class(self):
-        return len(self.admin_for) > 0
 
 
 def configure_sql(engine):

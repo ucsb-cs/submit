@@ -3,7 +3,9 @@
   <p>Info for ${class_.name}</p>
 
   <p tal:condition="class_admin">
-    <a href="${_R('project_new', class_name=class_.name)}">Add project</a>
+    <h3 tal:condition="class_.is_locked">This class is locked. You will not be
+      able to make any changes.</h3>
+    <a tal:condition="not class_.is_locked" href="${_R('project_new', class_name=class_.name)}">Add project</a>
   </p>
 
   <p>Projects</p>
