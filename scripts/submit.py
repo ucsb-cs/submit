@@ -48,6 +48,7 @@ class Submit(object):
         self.request_timeout = int(config['request_timeout'])
         self._url = config['url']
         self.session = requests.session()
+        self.session.headers['X-Requested-With'] = 'XMLHttpRequest'
         self.email = None
 
     def login(self, email=None, password=None):
@@ -93,6 +94,7 @@ class Submit(object):
             print('Submission successful')
             print('Results will be available at: {0}'.format(url))
             return 0
+        print ('Submission failed.')
         return 3
 
     def request(self, url, method='get', **data):
