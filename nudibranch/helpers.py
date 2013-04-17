@@ -3,10 +3,10 @@ import pickle
 import pika
 import traceback
 import transaction
-from pyramid_addons.helpers import (http_bad_request, http_conflict,
-                                    http_created, http_ok)
+from pyramid_addons.helpers import http_created, http_ok
 from pyramid_addons.validation import SOURCE_MATCHDICT, TextNumber, Validator
-from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
+from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict,
+                                    HTTPForbidden, HTTPNotFound)
 from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
 from zipfile import ZipFile
@@ -216,7 +216,7 @@ def file_verifier_verification(function):
                 and max_size < max_lines:
             msgs.append('max_lines cannot be > max_size')
         if msgs:
-            return http_bad_request(request, messages=msgs)
+            raise HTTPBadRequest(msgs)
         return function(request, *args, min_size=min_size, max_size=max_size,
                         min_lines=min_lines, max_lines=max_lines, **kwargs)
     return wrapped
@@ -303,9 +303,8 @@ def project_file_create(request, file_, filename, project, cls):
     if cls == BuildFile and FileVerifier.fetch_by(project_id=project.id,
                                                   filename=filename,
                                                   optional=False):
-        return http_bad_request(request, messages=('A required expected file '
-                                                   'already exists with that '
-                                                   'name.'))
+        msg = 'A required expected file already exists with that name.'
+        raise HTTPBadRequest(msg)
     cls_file = cls(file=file_, filename=filename, project=project)
     session = Session()
     session.add(cls_file)
@@ -313,8 +312,7 @@ def project_file_create(request, file_, filename, project, cls):
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('That filename already exists '
-                                               'for the project'))
+        raise HTTPConflict('That filename already exists for the project')
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
     request.session.flash('Added {0} {1}.'.format(cls.__name__, filename))
@@ -349,7 +347,7 @@ def test_case_verification(function):
         elif not expected and output_type == 'diff':
             msgs.append('expected_id must be set when the type is diff')
         if msgs:
-            return http_bad_request(request, messages=msgs)
+            raise HTTPBadRequest(msgs)
         return function(request, *args, expected=expected,
                         output_filename=output_filename,
                         output_source=output_source, output_type=output_type,

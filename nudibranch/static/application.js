@@ -47,13 +47,14 @@ function handle_response(xhr) {
         if (data['redir_location'])
             window.location = data['redir_location'];
         else
-            alert(data['message'])
+            alert(data['messages'])
         break;
     case 201:  // Created
         window.location = data['redir_location'];
         break;
     case 400:  // BadRequest
     case 403:  // Forbidden
+    case 409:  // Conflict
         msg = data['error']
         if (typeof data['messages'] === 'string')
             msg += '\n * ' + data['messages']
@@ -61,9 +62,6 @@ function handle_response(xhr) {
             for (i in data['messages'])
                 msg += '\n * ' + data['messages'][i]
         alert(msg);
-        break;
-    case 409:  // Conflict
-        alert(data['message']);
         break;
     case 410:  // Gone
         window.location = data['redir_location'];
