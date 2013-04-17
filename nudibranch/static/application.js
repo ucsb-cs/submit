@@ -47,7 +47,7 @@ function handle_response(xhr) {
         if (data['redir_location'])
             window.location = data['redir_location'];
         else
-            alert(data['messages'])
+            alert(data['message'])
         break;
     case 201:  // Created
         window.location = data['redir_location'];

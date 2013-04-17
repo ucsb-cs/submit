@@ -3,15 +3,15 @@ import codecs
 import transaction
 from base64 import b64decode
 from hashlib import sha1
-from pyramid_addons.helpers import (http_conflict, http_created, http_gone,
-                                    http_ok, pretty_date, site_layout)
+from pyramid_addons.helpers import (http_created, http_gone, http_ok,
+                                    pretty_date, site_layout)
 from pyramid_addons.validation import (Enum, List, String, RegexString,
                                        TextNumber, WhiteSpaceString, validate,
                                        SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
-from pyramid.httpexceptions import (HTTPBadRequest, HTTPError, HTTPForbidden,
-                                    HTTPFound, HTTPNotFound, HTTPOk,
-                                    HTTPRedirection, HTTPSeeOther)
+from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPError,
+                                    HTTPForbidden, HTTPFound, HTTPNotFound,
+                                    HTTPOk, HTTPRedirection, HTTPSeeOther)
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import (forbidden_view_config, notfound_view_config,
@@ -116,8 +116,7 @@ def class_create(request, name):
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('Class \'{0}\' already exists'
-                                               .format(name)))
+        raise HTTPConflict('Class \'{0}\' already exists'.format(name))
     return http_created(request, redir_location=request.route_path('class'))
 
 
@@ -261,8 +260,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('That filename already exists '
-                                               'for the project'))
+        raise HTTPConflict('That filename already exists for the project')
 
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
@@ -310,8 +308,7 @@ def file_verifier_update(request, file_verifier, filename, min_size, max_size,
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('That filename already exists '
-                                               'for the project'))
+        raise HTTPConflict('That filename already exists for the project')
     return http_ok(request, message='updated')
 
 
@@ -330,14 +327,12 @@ def home(request):
 @validate(username=String('email'))
 def password_reset_create(request, username):
     if username == 'admin':
-        return http_conflict(request, message='Hahaha, nice try!')
+        raise HTTPConflict('Hahaha, nice try!')
     user = User.fetch_by(username=username)
     if not user:
-        return http_conflict(request, message='Invalid email')
+        raise HTTPConflict('Invalid email')
     password_reset = PasswordReset.generate(user)
-
     failure_message = 'You were already sent a password reset email.'
-
     if password_reset:
         session = Session()
         session.add(password_reset)
@@ -345,7 +340,7 @@ def password_reset_create(request, username):
             session.flush()
         except IntegrityError:
             transaction.abort()
-            return http_conflict(request, message=failure_message)
+            raise HTTPConflict(failure_message)
         site_name = request.registry.settings['site_name']
         reset_url = request.route_url('password_reset_item',
                                       token=password_reset.get_token())
@@ -358,7 +353,7 @@ def password_reset_create(request, username):
         return http_ok(request,
                        message='A password reset link will be emailed to you.')
     else:
-        return http_conflict(request, message=failure_message)
+        raise HTTPConflict(failure_message)
 
 
 @view_config(route_name='password_reset',
@@ -390,8 +385,8 @@ def password_reset_edit_item(request, reset):
                            validator=UUID_VALIDATOR, source=MATCHDICT))
 def password_reset_item(request, username, password, reset):
     if reset.user.username != username:
-        return http_conflict(request, message=('The reset token and username '
-                                               'combination is not valid.'))
+        raise HTTPConflict('The reset token and username '
+                           'combination is not valid.')
     session = Session()
     reset.user.password = password
     session.add(reset.user)
@@ -413,9 +408,7 @@ def project_create(request, name, class_, makefile):
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('Project name already exists '
-                                               'for the class'))
-
+        raise HTTPConflict('That project name already exists for the class')
     redir_location = request.route_path('project_edit', project_id=project.id)
     transaction.commit()
     return http_created(request, redir_location=redir_location)
@@ -487,8 +480,7 @@ def project_update(request, name, makefile, is_ready, class_name,
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('Project name already exists '
-                                               'for the class'))
+        raise HTTPConflict('That project name already exists for the class')
     request.session.flash('Project updated')
     redir_location = request.route_path('project_edit',
                                         project_id=project_id)
@@ -575,17 +567,14 @@ def project_view_summary(request, class_name, project):
           dst=String('dst', optional=True))
 def session_create(request, username, password, dst):
     user = User.login(username, password)
-    if user:
-        headers = remember(request, user.id)
-        if dst:
-            url = dst
-        else:
-            url = request.route_path('user_item',
-                                     username=user.username)
-        retval = http_created(request, headers=headers, redir_location=url)
+    if not user:
+        raise HTTPConflict('Invalid login')
+    headers = remember(request, user.id)
+    if dst:
+        url = dst
     else:
-        retval = http_conflict(request, message='Invalid login')
-    return retval
+        url = request.route_path('user_item', username=user.username)
+    return http_created(request, headers=headers, redir_location=url)
 
 
 @view_config(route_name='session', renderer='json', request_method='DELETE',
@@ -757,8 +746,7 @@ def test_case_create(request, name, args, expected, hide_expected,
         session.flush()  # Cannot commit the transaction here
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('That name already exists for '
-                                               'the testable'))
+        raise HTTPConflict('That name already exists for the testable')
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
     transaction.commit()
@@ -795,8 +783,7 @@ def test_case_update(request, name, args, expected, hide_expected,
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('That name already exists for '
-                                               'the project'))
+        raise HTTPConflict('That name already exists for the testable')
     return http_ok(request, message='Test case updated')
 
 
@@ -843,8 +830,7 @@ def testable_create(request, name, make_target, executable, build_file_ids,
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('That name already exists for '
-                                               'the project'))
+        raise HTTPConflict('That name already exists for the project')
     return http_created(request, redir_location=redir_location)
 
 
@@ -879,6 +865,8 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
     except InvalidId as exc:
         raise HTTPBadRequest('Invalid {0}'.format(exc.message))
 
+    session = Session()
+    session.autoflush = False  # Don't flush while testing for changes
     if not testable.update(_ignore_order=True, name=name,
                            make_target=make_target,
                            executable=executable,
@@ -886,15 +874,12 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
                            execution_files=execution_files,
                            file_verifiers=file_verifiers):
         return http_ok(request, message='Nothing to change')
-
-    session = Session()
     session.add(testable)
     try:
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('That name already exists for '
-                                               'the project'))
+        raise HTTPConflict('That name already exists for the project')
     return http_ok(request, message='Testable updated')
 
 
@@ -942,14 +927,14 @@ def user_create(request, name, username, password, admin_for):
     session = Session()
     user = User(name=name, username=username, password=password,
                 is_admin=False)
-    user.admin_for.extend(admin_for)
+    if admin_for:
+        user.admin_for.extend(admin_for)
     session.add(user)
     try:
         transaction.commit()
     except IntegrityError:
         transaction.abort()
-        return http_conflict(request, message=('User \'{0}\' already exists'
-                                               .format(username)))
+        raise HTTPConflict('User \'{0}\' already exists'.format(username))
     redir_location = request.route_path('session',
                                         _query={'username': username})
     return http_created(request, redir_location=redir_location)
