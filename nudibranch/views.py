@@ -3,15 +3,15 @@ import codecs
 import transaction
 from base64 import b64decode
 from hashlib import sha1
-from pyramid_addons.helpers import (http_bad_request, http_conflict,
-                                    http_created, http_gone, http_ok,
-                                    pretty_date, site_layout)
+from pyramid_addons.helpers import (http_conflict, http_created, http_gone,
+                                    http_ok, pretty_date, site_layout)
 from pyramid_addons.validation import (Enum, List, String, RegexString,
                                        TextNumber, WhiteSpaceString, validate,
                                        SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
-from pyramid.httpexceptions import (HTTPException, HTTPForbidden, HTTPFound,
-                                    HTTPNotFound, HTTPSeeOther)
+from pyramid.httpexceptions import (HTTPBadRequest, HTTPError, HTTPForbidden,
+                                    HTTPFound, HTTPNotFound, HTTPOk,
+                                    HTTPRedirection, HTTPSeeOther)
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import (forbidden_view_config, notfound_view_config,
@@ -41,9 +41,15 @@ UUID_VALIDATOR = String('token', min_length=36, max_length=36,
                         source=MATCHDICT)
 
 
+# We need a specific view config for each of HTTPError, HTTPOk, and
+# HTTPRedirection as HTTPException will not work as a context. Because python
+# has explicit decorators for forbidden and notfound (and we use them) we must
+# also use those decorators here.
 @forbidden_view_config(xhr=True, renderer='json')
 @notfound_view_config(xhr=True, renderer='json')
-@view_config(context=HTTPException, xhr=True, renderer='json')
+@view_config(context=HTTPError, xhr=True, renderer='json')
+@view_config(context=HTTPOk, xhr=True, renderer='json')
+@view_config(context=HTTPRedirection, xhr=True, renderer='json')
 def json_exception(context, request):
     """Always return json content in the body of Exceptions to xhr requests."""
     request.response.status = context.code
@@ -181,7 +187,7 @@ def file_create(request, b64data, sha1sum):
     expected_sha1 = sha1(data).hexdigest()
     if sha1sum != expected_sha1:
         msg = 'sha1sum does not match expected: {0}'.format(expected_sha1)
-        return http_bad_request(request, messages=msg)
+        raise HTTPBadRequest(msg)
 
     # fetch or create (and save to disk) the file
     base_path = request.registry.settings['file_directory']
@@ -244,7 +250,7 @@ def file_verifier_create(request, filename, min_size, max_size, min_lines,
     if not optional and BuildFile.fetch_by(project=project, filename=filename):
         msg = ('A build file already exists with that name. '
                'Provide a different name, or mark as optional.')
-        return http_bad_request(request, messages=msg)
+        raise HTTPBadRequest(msg)
     filev = FileVerifier(filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, optional=bool(optional),
@@ -291,7 +297,7 @@ def file_verifier_update(request, file_verifier, filename, min_size, max_size,
                                            filename=filename):
         msg = ('A build file already exists with that name. '
                'Provide a different name, or mark as optional.')
-        return http_bad_request(request, messages=msg)
+        raise HTTPBadRequest(msg)
     if not file_verifier.update(filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
                                 max_lines=max_lines, optional=bool(optional),
@@ -603,29 +609,25 @@ def session_edit(request, username, dst):
 
 @view_config(route_name='submission', renderer='json', request_method='PUT',
              permission='authenticated')
-@validate(project_id=TextNumber('project_id', min_value=0),
+@validate(project=AccessibleDBThing('project_id', Project),
           file_ids=List('file_ids', TextNumber('', min_value=0),
                         min_elements=1),
           filenames=List('filenames', String('', min_length=1),
                          min_elements=1))
-def submission_create(request, project_id, file_ids, filenames):
+def submission_create(request, project, file_ids, filenames):
     # Additional input verification
     if len(file_ids) != len(filenames):
-        return http_bad_request(request,
-                                messages='# file_ids must match # filenames')
+        msg = 'Number of file_ids must match number of filenames'
+        raise HTTPBadRequest(msg)
 
-    # Verify user permission on project and files
-    session = Session()
-    project = Project.fetch_by_id(project_id)
+    # Verify user permission on files
     msgs = []
-    if not project:
-        msgs.append('Invalid project_id')
     user_file_ids = [x.id for x in request.user.files]
     for i, file_id in enumerate(file_ids):
         if file_id not in user_file_ids:
             msgs.append('Invalid file "{0}"'.format(filenames[i]))
     if msgs:
-        return http_bad_request(request, messages=msgs)
+        raise HTTPBadRequest(msgs)
 
     # Make a submission
     submission = Submission(project_id=project.id, user_id=request.user.id)
@@ -633,6 +635,7 @@ def submission_create(request, project_id, file_ids, filenames):
     for file_id, filename in zip(file_ids, filenames):
         assoc.append(SubmissionToFile(file_id=file_id, filename=filename))
     submission.files.extend(assoc)
+    session = Session()
     session.add(submission)
     session.add_all(assoc)
     session.flush()
@@ -812,9 +815,8 @@ def test_case_update(request, name, args, expected, hide_expected,
 def testable_create(request, name, make_target, executable, build_file_ids,
                     execution_file_ids, file_verifier_ids, project):
     if make_target and not project.makefile:
-        return http_bad_request(request, messages=('make_target cannot be '
-                                                   'specified without a make '
-                                                   'file'))
+        msg = 'make_target cannot be specified without a make file'
+        raise HTTPBadRequest(msg)
 
     try:
         # Verify the ids actually exist and are associated with the project
@@ -827,8 +829,7 @@ def testable_create(request, name, make_target, executable, build_file_ids,
                                            'file_verifier_id',
                                            project.file_verifiers)
     except InvalidId as exc:
-        return http_bad_request(request,
-                                messages='Invalid {0}'.format(exc.message))
+        raise HTTPBadRequest('Invalid {0}'.format(exc.message))
 
     testable = Testable(name=name, make_target=make_target,
                         executable=executable, project=project,
@@ -862,9 +863,8 @@ def testable_create(request, name, make_target, executable, build_file_ids,
 def testable_edit(request, name, make_target, executable, build_file_ids,
                   execution_file_ids, file_verifier_ids, testable):
     if make_target and not testable.project.makefile:
-        return http_bad_request(request, messages=('make_target cannot be '
-                                                   'specified without a make '
-                                                   'file'))
+        msg = 'make_target cannot be specified without a make file'
+        raise HTTPBadRequest(msg)
 
     try:
         # Verify the ids actually exist and are associated with the project
@@ -877,8 +877,7 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
                                            'file_verifier_id',
                                            testable.project.file_verifiers)
     except InvalidId as exc:
-        return http_bad_request(request,
-                                messages='Invalid {0}'.format(exc.message))
+        raise HTTPBadRequest('Invalid {0}'.format(exc.message))
 
     if not testable.update(_ignore_order=True, name=name,
                            make_target=make_target,
@@ -921,9 +920,9 @@ def testable_delete(request, testable):
                           source=MATCHDICT))
 def user_class_join(request, class_, username):
     if request.user.username != username:
-        return http_bad_request(request, messages='Invalid user')
+        raise HTTPBadRequest('Invalid username')
     if class_.is_locked:
-        return http_bad_request(request, messages='Invalid class')
+        raise HTTPBadRequest('Invalid class')
     request.user.classes.append(class_)
     redir_location = request.route_path('class_join_list',
                                         _query={'last_class': class_.name})
@@ -937,33 +936,13 @@ def user_class_join(request, class_, username):
 @validate(name=String('name', min_length=3),
           username=String('email', min_length=6, max_length=64),
           password=WhiteSpaceString('password', min_length=6),
-          admin_for=List('admin_for', TextNumber('', min_value=0),
+          admin_for=List('admin_for', EditableDBThing('', Class),
                          optional=True))
 def user_create(request, name, username, password, admin_for):
-    # get the classes we are requesting, and make sure
-    # they are all valid
-    asking_classes = []
-    if admin_for:
-        for class_id in admin_for:
-            class_ = Class.fetch_by_id(class_id)
-            if class_ is None:
-                return http_bad_request(request, messages='Nonexistent class')
-            asking_classes.append(class_)
-
-    # make sure we can actually grant the permissions we
-    # are requesting
-    if asking_classes and not request.user.is_admin:
-        can_add_permission_for = frozenset(request.user.admin_for)
-        asking_permission_for = frozenset(asking_classes)
-        if len(asking_permission_for - can_add_permission_for) > 0:
-            return http_bad_request(
-                request, messages=('Insufficient permissions to add '
-                                   'permissions.'))
-
     session = Session()
     user = User(name=name, username=username, password=password,
                 is_admin=False)
-    user.admin_for.extend(asking_classes)
+    user.admin_for.extend(admin_for)
     session.add(user)
     try:
         transaction.commit()
