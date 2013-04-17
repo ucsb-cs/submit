@@ -56,6 +56,15 @@ def json_exception(context, request):
     return {'error': context._status, 'messages': context.message}
 
 
+# Prevent PredicateMismatch exception
+@view_config(context=HTTPError)
+@view_config(context=HTTPOk)
+@view_config(context=HTTPRedirection)
+def normal_exception(context, request):
+    """Just return the normal context"""
+    return context
+
+
 @forbidden_view_config()
 def forbidden_view(context, request):
     if request.user:
