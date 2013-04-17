@@ -488,7 +488,7 @@ class Submission(BasicBase, Base):
 
     def can_view(self, user):
         """Return whether or not `user` can view the submission."""
-        return user == self.user or self.project.can_edit(user)
+        return user == self.user or self.project.can_view(user)
 
     def get_delay(self, update):
         """Return the minutes to delay the viewing of submission results.
