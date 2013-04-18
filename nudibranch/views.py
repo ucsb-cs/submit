@@ -23,7 +23,7 @@ from .diff_render import HTMLDiff
 from .exceptions import InvalidId
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
-    EditableDBThing, ViewableDBThing, ZipSubmission, fetch_request_ids,
+    EditableDBThing, ViewableDBThing, ZipSubmission, clone, fetch_request_ids,
     file_verifier_verification, format_points, get_submission_stats,
     prepare_renderable, prev_next_submission, prev_next_user,
     project_file_create, project_file_delete, test_case_verification)
@@ -164,8 +164,13 @@ def class_list(request):
                             validator=String('class_name'), source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def class_view(request, class_):
-    return {'page_title': 'Class Page',
-            'class_admin': class_.is_admin(request.user), 'class_': class_}
+    class_admin = class_.is_admin(request.user)
+    projects = []
+    if class_admin:
+        for other in sorted(request.user.admin_for):
+            projects.extend(other.projects)
+    return {'page_title': 'Class Page', 'class_': class_,
+            'class_admin': class_admin, 'projects': projects}
 
 
 @view_config(route_name='execution_file', request_method='PUT',
@@ -402,6 +407,51 @@ def password_reset_item(request, username, password, reset):
     session.delete(reset)
     transaction.commit()
     return http_ok(request, message='Your password was changed successfully.')
+
+
+@view_config(route_name='project_clone', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validate(class_=EditableDBThing('class_id', Class),
+          src_project=ViewableDBThing('project_id', Project))
+def project_clone(request, class_, src_project):
+    # Build a copy of the project settings
+    name = '(cloned) {0}: {1}'.format(src_project.class_.name,
+                                      src_project.name)
+    update = {'class_': class_, 'is_ready': False, 'name': name}
+    project = clone(src_project, ('class_id',), update)
+
+    session = Session()
+    session.autoflush = False  # Don't flush while testing for changes
+
+    # Copy project "files" keeping a mapping between src and dst objects
+    mapping = {'build_files': {}, 'execution_files': {}, 'file_verifiers': {}}
+    for attr in mapping:
+        for item in getattr(src_project, attr):
+            new = clone(item, ('project_id',))
+            getattr(project, attr).append(new)
+            mapping[attr][item] = new
+
+    # Copy project testables
+    for src_testable in src_project.testables:
+        testable = clone(src_testable, ('project_id',))
+        project.testables.append(testable)
+        # Set testable "files" with the appropriate "new" file
+        for attr, file_mapping in mapping.items():
+            getattr(testable, attr).extend(file_mapping[x] for x
+                                           in getattr(src_testable, attr))
+        # Copy test cases
+        testable.test_cases = [clone(x, ('testable_id',))
+                               for x in src_testable.test_cases]
+    session.add(project)
+    try:
+        session.flush()
+    except IntegrityError:
+        transaction.abort()
+        raise HTTPConflict('The name `{0}` already exists for the class.'
+                           .format(name))
+    redir_location = request.route_path('project_edit', project_id=project.id)
+    transaction.commit()
+    return http_created(request, redir_location=redir_location)
 
 
 @view_config(route_name='project', request_method='PUT',

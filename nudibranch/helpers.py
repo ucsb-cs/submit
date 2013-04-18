@@ -178,6 +178,32 @@ class ZipSubmission(object):
                        "{0}/{1}".format(self.dirname, archive_filename))
 
 
+def clone(item, exclude=None, update=None):
+    """Return a clone of the SQLA object.
+
+    :param item: The SQLA object to copy the attributes from.
+    :param exclude: If provided, should be an iterable that contains the names
+        attributes to exclude from the copy. The attributes `created_at` and
+        `id` are always excluded.
+    :param update: If provided, should be a mapping of attribute name, to the
+        value that should be set.
+
+    """
+    # Prepare attribute exclusion set
+    if not exclude:
+        exclude = set()
+    if not isinstance(exclude, set):
+        exclude = set(exclude)
+    exclude.update(('created_at', 'id'))
+    # Build a mapping of attributes to values
+    attrs = {x: getattr(item, x) for x in item.__mapper__.columns.keys()
+             if x not in exclude}
+    if update:  # Update the mapping if necessary
+        attrs.update(update)
+    # Build and return the SQLA object
+    return item.__class__(**attrs)
+
+
 def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
     """Return a list of cls instances for all the ids provided in item_ids.
 

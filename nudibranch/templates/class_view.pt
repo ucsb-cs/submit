@@ -5,7 +5,18 @@
   <p tal:condition="class_admin">
     <h3 tal:condition="class_.is_locked">This class is locked. You will not be
       able to make any changes.</h3>
-    <a tal:condition="not class_.is_locked" href="${_R('project_new', class_name=class_.name)}">Add project</a>
+    <div tal:condition="not class_.is_locked">
+      <p><a href="${_R('project_new', class_name=class_.name)}">Create new project</a></p>
+      <form tal:condition="projects" name="input" action="${_R('project_clone')}"
+	    onsubmit="return form_request(this, 'PUT');">
+        <input type="submit" value="clone selected project" />
+        <input type="hidden" name="class_id" value="${class_.id}" />
+        <select name="project_id">
+          <option value="">--Select a project to clone--</option>
+          <option tal:repeat="project projects" value="${project.id}">${project.class_.name}: ${project.name}</option>
+        </select>
+      </form>
+    </div>
   </p>
 
   <p>Projects</p>
