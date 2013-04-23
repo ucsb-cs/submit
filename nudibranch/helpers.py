@@ -385,16 +385,22 @@ def prepare_renderable(request, test_case_result, is_admin):
     """Return a completed DiffWithMetadata object."""
     test_case = test_case_result.test_case
     extra = DiffExtraInfo(test_case_result.status, test_case_result.extra)
+    diff = None
     if test_case.output_type == 'image':
-        url = request.route_path('file_item', filename='_', _query={'raw': 1},
-                                 sha1sum=test_case_result.diff.sha1)
-        return ImageOutput(test_case.id, test_case.testable.name,
+        if test_case_result.diff:
+            url = request.route_path('file_item', filename='_',
+                                     _query={'raw': 1},
+                                     sha1sum=test_case_result.diff.sha1)
+            return ImageOutput(test_case.id, test_case.testable.name,
                            test_case.name, test_case.points, extra, url)
+        diff = Diff('', 'waiting on image\n')
     elif test_case.output_type == 'text':
         msg = 'Text output is not completely handled\n'
         diff = Diff('', msg)
+    if diff:  # Hack for unhandled output:
         diff.hide_expected = False
-        return diff
+        return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
+                                test_case.name, test_case.points, extra)
 
     # Actual diff output
     try:
