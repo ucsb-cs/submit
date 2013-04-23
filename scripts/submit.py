@@ -70,7 +70,7 @@ class Submit(object):
                 self.email = email
                 break
             else:
-                print(response.json()['message'])
+                print(response.json()['messages'])
                 email = password = None
 
     def msg(self, message):
