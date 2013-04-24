@@ -16,6 +16,11 @@ BASE_FILE_PATH = None
 PRIVATE_KEY_FILE = None
 
 
+class OutOfSync(Exception):
+
+    """Indicate the worker is out of sync."""
+
+
 def complete_file(func):
     @wraps(func)
     def wrapped(complete_file, host, remote_dir, submission_id, testable_id,
@@ -25,6 +30,9 @@ def complete_file(func):
         os.chdir(new_cwd)
         try:
             retval = func(submission_id, testable_id, user, host, remote_dir)
+        except OutOfSync as exc:
+            print('Out of Sync: {0}'.format(exc))
+            return
         finally:
             shutil.rmtree(new_cwd)
             os.chdir(prev_cwd)
@@ -58,6 +66,13 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3} .'.format(
         PRIVATE_KEY_FILE, user, host, os.path.join(remote_dir, 'results/'))
     subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
+
+    # Verify the results are for the correct submission and testable. If they
+    # are not raise an exception so we don't put the "complete" file.
+    ids = [int(x) for x in open('sync_files').read().split('.')]
+    if [submission_id, testable_id] != ids:
+        raise OutOfSync('Fetch results: {0}.{1}'.format(submission_id,
+                                                        testable_id))
 
     session = Session()
 
@@ -140,6 +155,22 @@ def sync_files():
 
 @complete_file
 def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
+    # Rsync to pre-sync files
+    cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3}/ .'.format(
+        PRIVATE_KEY_FILE, user, host, remote_dir)
+    subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
+
+    # Verify a clean working directory and that the worker wants files for the
+    # submission and testable. If they are not raise an exception so we don't
+    # put the "complete" file.
+    if os.listdir('.') != ['sync_verification']:
+        raise OutOfSync('Sync files: {0}.{1}'.format(submission_id,
+                                                     testable_id))
+    ids = [int(x) for x in open('sync_verification').read().split('.')]
+    if [submission_id, testable_id] != ids:
+        raise OutOfSync('Sync files: {0}.{1}'.format(submission_id,
+                                                     testable_id))
+
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
         raise Exception('Invalid submission id: {0}'.format(submission_id))

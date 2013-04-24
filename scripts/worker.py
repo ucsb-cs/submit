@@ -19,6 +19,7 @@ SRC_PATH = 'src'
 INPUT_PATH = 'inputs'
 RESULTS_PATH = 'results'
 EXECUTION_FILES_PATH = 'execution_files'
+SYNC_FILE = 'sync_files'
 
 MAX_FILE_SIZE = 65536
 
@@ -135,14 +136,19 @@ class SubmissionHandler(object):
     def do_work(self, submission_id, testable_id):
         self._cleanup()
         print('Got job: {0}.{1}'.format(submission_id, testable_id))
+        # sync_files worker will verify the request using this file
+        with open('sync_verification', 'w') as fp:
+            fp.write('{0}.{1}'.format(submission_id, testable_id))
         self.communicate(queue=self.settings['queue_sync_files'],
-                         complete_file='sync_files',
+                         complete_file=SYNC_FILE,
                          submission_id=submission_id, testable_id=testable_id)
         print('\tFiles synced: {0}.{1}'.format(submission_id, testable_id))
         data = json.load(open('post_sync_data'))
         os.mkdir(RESULTS_PATH)
         if self.make_project(data['executable'], data['make_target']):
             self.run_tests(data['test_cases'])
+        # Move SYNC_FILE for fetch_result verification worker
+        os.rename(SYNC_FILE, os.path.join(RESULTS_PATH, SYNC_FILE))
         self.communicate(queue=self.settings['queue_fetch_results'],
                          complete_file='results_fetched',
                          submission_id=submission_id, testable_id=testable_id)
