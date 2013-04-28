@@ -63,13 +63,13 @@
 
   <!-- Verification results block -->
   <div tal:condition="submission.verified_at and verification_issues">
-    <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:yellow">yellow</span> indicates warnings.</p>
+    <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:orange">orange</span> indicates warnings.</p>
     <ul>
       <li tal:repeat="filename sorted(verification_issues)">
 	<b>${filename}</b>
 	<ul>
 	  <li tal:repeat="warning verification_issues[filename][0]">
-	    <span style="color:yellow">${warning}</span>
+	    <span style="color:orange">${warning}</span>
 	  </li>
 	  <li tal:repeat="error verification_issues[filename][1]">
 	    <span style="color:red">${error}</span>
@@ -105,7 +105,7 @@
 	<li tal:repeat="(file, warnerr) sorted(status.issues.items())">
 	  <b>${file}</b>
 	  <ul>
-	    <li style="color:yellow" tal:repeat="warning warnerr[0]">
+	    <li style="color:orange" tal:repeat="warning warnerr[0]">
 	      ${warning}
 	    </li>
 	    <li style="color:red" tal:repeat="error warnerr[1]">

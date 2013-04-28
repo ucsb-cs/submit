@@ -81,7 +81,7 @@ class SubmissionHandler(object):
         try:
             poll = select.epoll()
             main_pipe = Popen(args, stdin=stdin, stdout=PIPE, stderr=stderr,
-                              cwd=tmp_dir)
+                              cwd=tmp_dir, preexec_fn=os.setsid)
             poll.register(main_pipe.stdout, select.EPOLLIN | select.EPOLLHUP)
             do_poll = True
             start = time.time()
@@ -89,7 +89,8 @@ class SubmissionHandler(object):
                 remaining_time = start + time_limit - time.time()
                 if remaining_time <= 0:
                     if main_pipe.poll() is None:  # Ensure it's still running
-                        os.kill(main_pipe.pid, signal.SIGKILL)
+                        # Kill the entire process group
+                        os.killpg(main_pipe.pid, signal.SIGKILL)
                         raise TimeoutException()
                 for file_descriptor, event in poll.poll(remaining_time):
                     stdout.write(os.read(file_descriptor, 8192))
