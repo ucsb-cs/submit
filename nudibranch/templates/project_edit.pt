@@ -61,6 +61,12 @@
     <p tal:repeat="msg flash">${msg}</p>
   </fieldset>
 
+  <p>
+    <a href="${_R('class_item', class_name=project.class_.name)}">${project.class_.name}</a>
+    --
+    <a href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+  </p>
+
   <input type="button" value="requeue latest submissions" class="requeue" />
 
   <form id="project_form" name="input" action="${action}"

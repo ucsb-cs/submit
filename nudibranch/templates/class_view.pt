@@ -25,6 +25,7 @@
       <li tal:condition="project.can_access(request.user)">
         <span tal:condition="class_admin" tal:omit-tag="">
           <a href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+          (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)
           <span tal:condition="project.is_ready" tal:omit-tag="">(ready for submission)</span>
         </span>
         <a tal:condition="not class_admin"
