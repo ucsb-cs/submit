@@ -812,6 +812,21 @@ def test_case_create(request, name, args, expected, hide_expected,
     return http_created(request, redir_location=redir_location)
 
 
+@view_config(route_name='test_case_item', request_method='DELETE',
+             permission='authenticated', renderer='json')
+@validate(test_case=EditableDBThing('test_case_id', TestCase,
+                                    source=MATCHDICT))
+def test_case_delete(request, test_case):
+    redir_location = request.route_path(
+        'project_edit', project_id=test_case.testable.project.id)
+    request.session.flash('Deleted TestCase {0}.'.format(test_case.name))
+    session = Session()
+    session.delete(test_case)
+    transaction.commit()
+    return http_ok(request, redir_location=redir_location)
+
+
+
 @view_config(route_name='test_case_item', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
@@ -949,7 +964,6 @@ def testable_delete(request, testable):
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
     request.session.flash('Deleted Testable {0}.'.format(testable.name))
-    # Delete the file
     session = Session()
     session.delete(testable)
     transaction.commit()
