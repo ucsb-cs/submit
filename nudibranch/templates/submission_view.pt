@@ -69,7 +69,7 @@
 	<b>${filename}</b>
 	<ul>
 	  <li tal:repeat="warning verification_issues[filename][0]">
-	    <span style="color:orange">${warning}</span>
+	    <span style="color:orange">Line ${warning['lineno']}: <strong>${warning['token']}</strong></span>
 	  </li>
 	  <li tal:repeat="error verification_issues[filename][1]">
 	    <span style="color:red">${error}</span>
