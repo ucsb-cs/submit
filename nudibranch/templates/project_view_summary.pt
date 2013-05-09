@@ -6,6 +6,8 @@
 
   <p>Make a submission via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
 
+  <p tal:condition="recent_submissions"><a href="${_R('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
+
   <div tal:condition="recent_submissions"><h3>Most recent submissions</h3>
     <ul>
       <li tal:repeat="submission recent_submissions">

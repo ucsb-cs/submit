@@ -359,6 +359,17 @@ class Project(BasicBase, Base):
                     for testable in self.testables
                     for test_case in testable.test_cases])
 
+    def recent_submissions(self):
+        """Generate a list of the most recent submissions for each user.
+
+        Only yields a submission for a user if they've made one.
+
+        """
+        for user in self.class_.users:
+            submission = Submission.most_recent_submission(self.id, user.id)
+            if submission:
+                yield submission
+
     def submit_string(self):
         """Return a string specifying the files to submit for this project."""
         required = []
@@ -490,6 +501,12 @@ class Submission(BasicBase, Base):
         """Return whether or not `user` can view the submission."""
         return user == self.user or self.project.can_view(user)
 
+    def file_mapping(self):
+        """Return a mapping of filename to File object for the submission."""
+        results = Session().query(SubmissionToFile).filter_by(
+            submission_id=self.id)
+        return dict((x.filename, x.file) for x in results)
+
     def get_delay(self, update):
         """Return the minutes to delay the viewing of submission results.
 
@@ -568,14 +585,6 @@ class SubmissionToFile(Base):
     filename = Column(Unicode, nullable=False, primary_key=True)
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            primary_key=True, nullable=False)
-
-    @staticmethod
-    def fetch_file_mapping_for_submission(submission_id):
-        '''Given a submission id, it returns a mapping of filenames
-        to File objects'''
-        results = Session().query(SubmissionToFile).filter_by(
-            submission_id=submission_id)
-        return dict([(stf.filename, stf.file) for stf in results])
 
 
 class TestCase(BasicBase, Base):

@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import codecs
+import os
 import transaction
 from base64 import b64decode
 from hashlib import sha1
@@ -23,10 +24,11 @@ from .diff_render import HTMLDiff
 from .exceptions import InvalidId
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
-    EditableDBThing, ViewableDBThing, ZipSubmission, clone, fetch_request_ids,
+    EditableDBThing, ViewableDBThing, clone, fetch_request_ids,
     file_verifier_verification, format_points, get_submission_stats,
     prepare_renderable, prev_next_submission, prev_next_user,
-    project_file_create, project_file_delete, test_case_verification)
+    project_file_create, project_file_delete, test_case_verification,
+    zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
@@ -473,6 +475,23 @@ def project_create(request, name, class_, makefile):
     return http_created(request, redir_location=redir_location)
 
 
+@view_config(route_name='project_item_download', request_method='GET',
+             permission='authenticated')
+@validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
+def project_download(request, project):
+    def file_path(file_):
+        return File.file_path(request.registry.settings['file_directory'],
+                              file_.sha1)
+
+    files = []
+    for sub in project.recent_submissions():
+        user_path = '{0}_{1}'.format(sub.user.username, sub.id)
+        for filename, file_ in sub.file_mapping().items():
+            files.append((os.path.join(project.name, user_path, filename),
+                          file_path(file_)))
+    return zip_response(request, project.name + '.zip', files)
+
+
 @view_config(route_name='project_edit',
              renderer='templates/project_edit.pt',
              request_method='GET', permission='authenticated')
@@ -503,14 +522,11 @@ def project_new(request, class_):
              request_method='PUT', permission='authenticated')
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
 def project_requeue(request, project):
-    items = 0
-    for user in project.class_.users:
-        submission = Submission.most_recent_submission(project.id, user.id)
-        if submission:
-            request.queue(submission_id=submission.id, _priority=2)
-            items += 1
+    count = 0
+    for count, submission in enumerate(project.recent_submissions()):
+        request.queue(submission_id=submission.id, _priority=2)
     request.session.flash('Requeued the most recent submissions ({0} items).'
-                          .format(items))
+                          .format(count))
     return http_ok(request, redir_location=request.url)
 
 
@@ -826,7 +842,6 @@ def test_case_delete(request, test_case):
     return http_ok(request, redir_location=redir_location)
 
 
-
 @view_config(route_name='test_case_item', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
@@ -1049,11 +1064,13 @@ def user_view(request, user):
 @validate(submission=ViewableDBThing('submission_id', Submission,
                                      source=MATCHDICT))
 def zipfile_download(request, submission):
-    with ZipSubmission(submission, request) as zipfile:
-        response = FileResponse(
-            zipfile.actual_filename(),
-            content_type=str('application/zip'))
-        disposition = str('attachment; filename="{0}"'
-                          .format(zipfile.pretty_filename()))
-        response.headers[str('Content-disposition')] = disposition
-        return response
+    def file_path(file_):
+        return File.file_path(request.registry.settings['file_directory'],
+                              file_.sha1)
+    base_path = '{0}_{1}'.format(submission.user.username, submission.id)
+    # include makefile and student submitted files
+    files = [(os.path.join(base_path, 'Makefile'),
+              file_path(submission.project.makefile))]
+    for filename, file_ in submission.file_mapping().items():
+        files.append((os.path.join(base_path, filename), file_path(file_)))
+    return zip_response(request, base_path + '.zip', files)

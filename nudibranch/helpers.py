@@ -7,13 +7,13 @@ from pyramid_addons.helpers import http_created, http_ok
 from pyramid_addons.validation import SOURCE_MATCHDICT, TextNumber, Validator
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict,
                                     HTTPForbidden, HTTPNotFound)
+from pyramid.response import FileResponse
 from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
 from zipfile import ZipFile
 from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo, ImageOutput
 from .exceptions import InvalidId
-from .models import (BuildFile, File, FileVerifier, Session, Submission,
-                     SubmissionToFile)
+from .models import BuildFile, File, FileVerifier, Session, Submission
 
 
 class DummyTemplateAttr(object):
@@ -112,70 +112,6 @@ class ViewableDBThing(DBThing):
             message = 'Insufficient permissions for {0}'.format(self.param)
             raise HTTPForbidden(message)
         return thing
-
-
-class ZipSubmission(object):
-    """Puts a submission into a zip file.
-
-    This packages up the following:
-    -Makefile to build the project
-    -User-submitted code that can be build with said makefile
-    -Test cases, along with any stdin needed to run said test cases
-
-    """
-    def __init__(self, submission, request):
-        self.submission = submission
-        self.request = request
-        self.dirname = '{0}_{1}'.format(submission.user.username,
-                                        submission.id)
-        self.backing_file = None
-
-    def __enter__(self):
-        self.open()
-        return self
-
-    def __exit__(self, tpe, value, traceback):
-        self.close()
-
-    def _add_makefile(self):
-        self.write(self.file_path(self.submission.project.makefile),
-                   'Makefile')
-
-    def _add_user_code(self):
-        filemapping = SubmissionToFile.fetch_file_mapping_for_submission(
-            self.submission.id)
-        for filename, db_file in filemapping.iteritems():
-            self.write(self.file_path(db_file), filename)
-
-    def actual_filename(self):
-        return self.backing_file.name
-
-    def close(self):
-        self.backing_file.close()
-        self.backing_file = None
-
-    def open(self):
-        self.backing_file = NamedTemporaryFile()
-        try:
-            self.zip = ZipFile(self.backing_file, 'w')
-            self._add_makefile()
-            self._add_user_code()
-        finally:
-            self.zip.close()
-
-    def file_path(self, file_):
-        return File.file_path(self.request.registry.settings['file_directory'],
-                              file_.sha1)
-
-    def pretty_filename(self):
-        return '{0}.zip'.format(self.dirname)
-
-    def write(self, backing_file, archive_filename):
-        '''Writes the given file to the archive with the given name.
-        Puts everything in the same directory as specified by
-        get_dirname_from_submission'''
-        self.zip.write(backing_file,
-                       "{0}/{1}".format(self.dirname, archive_filename))
 
 
 def clone(item, exclude=None, update=None):
@@ -392,7 +328,7 @@ def prepare_renderable(request, test_case_result, is_admin):
                                      _query={'raw': 1},
                                      sha1sum=test_case_result.diff.sha1)
             return ImageOutput(test_case.id, test_case.testable.name,
-                           test_case.name, test_case.points, extra, url)
+                               test_case.name, test_case.points, extra, url)
         diff = Diff('', 'waiting on image\n')
     elif test_case.output_type == 'text':
         msg = 'Text output is not completely handled\n'
@@ -418,3 +354,27 @@ def prepare_renderable(request, test_case_result, is_admin):
         diff.hide_expected = False
     return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
                             test_case.name, test_case.points, extra)
+
+
+def zip_response(request, filename, files):
+    """Return a Response object that is a zipfile with name filename.
+
+    :param request: The request object.
+    :param filename: The filename the browser should save the file as.
+    :param files: A list of mappings between filenames (path/.../file) to file
+        objects.
+
+    """
+    tmp_file = NamedTemporaryFile()
+    try:
+        with ZipFile(tmp_file, 'w') as zip_file:
+            for zip_path, actual_path in files:
+                zip_file.write(actual_path, zip_path)
+        tmp_file.flush()  # Just in case
+        response = FileResponse(tmp_file.name, request=request,
+                                content_type=str('application/zip'))
+        response.headers['Content-disposition'] = ('attachment; filename="{0}"'
+                                                   .format(filename))
+        return response
+    finally:
+        tmp_file.close()
