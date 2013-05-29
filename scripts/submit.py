@@ -94,7 +94,10 @@ class Submit(object):
             print('Submission successful')
             print('Results will be available at: {0}'.format(url))
             return 0
-        print ('Submission failed.')
+        elif response.status_code == 400:
+            print('Submission failed: {0}'.format(response.json()['messages']))
+        else:
+            print ('Submission failed.')
         return 3
 
     def request(self, url, method='get', **data):
