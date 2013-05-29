@@ -683,6 +683,8 @@ def submission_create(request, project, file_ids, filenames):
     if len(file_ids) != len(filenames):
         msg = 'Number of file_ids must match number of filenames'
         raise HTTPBadRequest(msg)
+    elif len(set(filenames)) != len(filenames):
+        raise HTTPBadRequest('A filename cannot be provided more than once')
 
     # Verify user permission on files
     msgs = []
