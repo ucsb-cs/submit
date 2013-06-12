@@ -18,6 +18,7 @@
     <ul>
       <li tal:repeat="class_ admin_classes">
 	<a href="${_R('class_item', class_name=class_.name)}">${class_.name}</a>
+        <span tal:condition="class_.is_locked">(Locked)</span>
       </li>
     </ul>
   </div>
