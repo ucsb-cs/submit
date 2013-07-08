@@ -505,6 +505,27 @@ def project_edit(request, project):
             'flash': request.session.pop_flash()}
 
 
+@view_config(route_name='project_info', request_method='GET',
+             permission='authenticated', renderer='json')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
+def project_info(request, project):
+    retval = {'id': project.id, 'name': project.name, 'testables': {}}
+    for testable in project.testables:
+        test_cases = {}
+        for test_case in testable.test_cases:
+            stdin = test_case.stdin.sha1 if test_case.stdin else None
+            expected = test_case.expected.sha1 if test_case.expected else None
+            test_cases[test_case.name] = {
+                'id': test_case.id, 'args': test_case.args,
+                'source': test_case.source,
+                'stdin': stdin, 'expected': expected,
+                'output_type': test_case.output_type,
+                'output_filename': test_case.output_filename}
+        retval['testables'][testable.name] = {'id': testable.id,
+                                              'test_cases': test_cases}
+    return retval
+
+
 @view_config(route_name='project_new',
              renderer='templates/project_new.pt',
              request_method='GET', permission='authenticated')
@@ -918,11 +939,14 @@ def testable_create(request, name, make_target, executable, build_file_ids,
     session = Session()
     session.add(testable)
     try:
-        transaction.commit()
+        session.flush()
     except IntegrityError:
         transaction.abort()
         raise HTTPConflict('That name already exists for the project')
-    return http_created(request, redir_location=redir_location)
+    testable_id = testable.id
+    transaction.commit()
+    return http_created(request, redir_location=redir_location,
+                        testable_id=testable_id)
 
 
 @view_config(route_name='testable_item', request_method='POST',

@@ -37,6 +37,7 @@ def add_routes(config):
     config.add_route('password_reset_item', '/password_reset/{token}')
     config.add_route('project', '/project')
     config.add_route('project_clone', '/project/clone')
+    config.add_route('project_info', '/project/{project_id}')
     config.add_route('project_item_download', 'project/download/{project_id}')
     config.add_route('project_item_summary',
                      '/class/{class_name}/{project_id}')
