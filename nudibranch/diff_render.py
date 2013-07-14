@@ -276,8 +276,8 @@ class HTMLDiff(difflib.HtmlDiff):
         return total, self._points_possible, percent
 
     def make_summary(self):
-        retval = self._make_test_summary()
-        retval += self.TENTATIVE_SCORE_BLOCK.format(*self.tentative_score())
+        retval = self.TENTATIVE_SCORE_BLOCK.format(*self.tentative_score())
+        retval += self._make_test_summary()
         return retval
 
     def is_legend_needed(self):
