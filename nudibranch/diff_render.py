@@ -294,9 +294,8 @@ class HTMLDiff(difflib.HtmlDiff):
             return "<hr>"
 
     def make_whole_file(self):
-        tables = sorted([self._diff_html[diff]
-                         for diff in self._all_diffs()
-                         if self._has_diff(diff)])
+        tables = [self._diff_html[diff] for diff in sorted(self._all_diffs())
+                  if self._has_diff(diff)]
         return self._file_template % dict(
             summary=self.make_summary(),
             legend=self.legend_html(),
