@@ -1,5 +1,7 @@
 import xml.sax.saxutils
 from diff_match_patch import diff_match_patch as DMP
+from .helpers import alphanum_key
+
 
 
 def dmp_to_mdiff(diffs):
@@ -123,9 +125,11 @@ class DiffRenderable(object):
         return escape(self.test_name)
 
     def __cmp__(self, other):
-        groups = cmp(self.test_group, other.test_group)
+        groups = cmp(alphanum_key(self.test_group),
+                     alphanum_key(other.test_group))
         if groups == 0:
-            names = cmp(self.test_name, other.test_name)
+            names = cmp(alphanum_key(self.test_name),
+                        alphanum_key(other.test_name))
             if names == 0:
                 return self.test_num - other.test_num
             else:

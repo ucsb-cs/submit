@@ -1,6 +1,7 @@
 import json
 import pickle
 import pika
+import re
 import traceback
 import transaction
 from pyramid_addons.helpers import http_created, http_ok
@@ -11,7 +12,6 @@ from pyramid.response import FileResponse
 from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
 from zipfile import ZipFile
-from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo, ImageOutput
 from .exceptions import InvalidId
 from .models import BuildFile, File, FileVerifier, Session, Submission
 
@@ -112,6 +112,16 @@ class ViewableDBThing(DBThing):
             message = 'Insufficient permissions for {0}'.format(self.param)
             raise HTTPForbidden(message)
         return thing
+
+
+def alphanum_key(string):
+    """Return a comparable tuple with extracted number segments.
+
+    Adapted from: http://stackoverflow.com/a/2669120/176978
+
+    """
+    convert = lambda text: int(text) if text.isdigit() else text
+    return [convert(segment) for segment in re.split('([0-9]+)', string)]
 
 
 def clone(item, exclude=None, update=None):
@@ -378,3 +388,7 @@ def zip_response(request, filename, files):
         return response
     finally:
         tmp_file.close()
+
+
+# Avoid cyclic import
+from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo, ImageOutput
