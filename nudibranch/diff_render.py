@@ -105,7 +105,7 @@ class HTMLDiff(difflib.HtmlDiff):
         """\t<a href="javascript:void(0)" onclick="hideAll(""" + \
         """'difflib_chg_{0}_top');">Hide All</a>\n""" + \
         "</p>"
-    FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}</h3>\n{2}'
+    FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}: {2}</h3>\n{3}'
     TENTATIVE_SCORE_BLOCK = ('<p>Tentative execution score: {0} / {1} '
                              '({2:.2f}%)</p>\n')
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
@@ -147,6 +147,7 @@ class HTMLDiff(difflib.HtmlDiff):
             inner += wrong_things
         if inner != '':
             return self.FAILING_TEST_BLOCK.format(diff.name_id(),
+                                                  diff.escaped_group(),
                                                   diff.escaped_name(),
                                                   inner)
         else:
