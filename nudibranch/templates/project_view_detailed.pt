@@ -33,6 +33,7 @@
     <li tal:repeat="submission submissions">
       <a href="${_R('submission_item', submission_id=submission.id)}">${str(submission.created_at)}
     </a>
+    (${submission.points} / ${submission.points_possible})
     </li>
   </ul>
 </div>

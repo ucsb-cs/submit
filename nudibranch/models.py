@@ -445,14 +445,18 @@ class ProjectView(Base):
 
 class Submission(BasicBase, Base):
     files = relationship('SubmissionToFile', backref='submission')
+    points = Column(Integer, default=0, nullable=False, server_default='0')
+    points_possible = Column(Integer, default=0, nullable=False,
+                             server_default='0')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_case_results = relationship('TestCaseResult', backref='submission',
                                      cascade='all, delete-orphan')
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     testable_results = relationship('TestableResult', backref='submission',
                                     cascade='all, delete-orphan')
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
+
 
     @property
     def extra_filenames(self):

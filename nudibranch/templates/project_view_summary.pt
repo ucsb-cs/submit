@@ -13,6 +13,7 @@
       <li tal:repeat="submission recent_submissions">
 	<a href="${_R('submission_item', submission_id=submission.id)}">
 	  ${submission.created_at}</a> by ${submission.user.name}
+          (${submission.points} / ${submission.points_possible})
       </li>
     </ul>
   </div>
@@ -33,6 +34,7 @@
 	    <li tal:repeat="user_submission user_submissions">
 	      <a href="${_R('submission_item', submission_id=user_submission.id)}">
 		${user_submission.created_at}</a>
+                (${user_submission.points} / ${user_submission.points_possible})
 	    </li>
 	    <li tal:condition="user in user_truncated">
 	      <a href="${_R('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], username=user.username)}">

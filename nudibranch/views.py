@@ -767,14 +767,10 @@ def submission_view(request, submission, as_user):
 
     points_possible = submission.project.points_possible()
     if submission_admin:
-        prev_sub, next_sub = prev_next_submission(submission)
-        prev_user, next_user = prev_next_user(submission.project,
-                                              submission.user)
         diff_renderer = HTMLDiff(num_reveal_limit=None,
                                  points_possible=points_possible)
     else:
         diff_renderer = HTMLDiff(points_possible=points_possible)
-        prev_sub = next_sub = prev_user = next_user = None
 
     for test_case_result in submission.test_case_results:
         diff_renderer.add_renderable(prepare_renderable(request,
@@ -793,9 +789,38 @@ def submission_view(request, submission, as_user):
             - submission.testables_with_build_errors():
         # Decode utf-8 and ignore errors until the data is diffed in unicode.
         diff_table = diff_renderer.make_whole_file().decode('utf-8', 'ignore')
+        points, _, _ = diff_renderer.tentative_score()
     else:
+        points = 0
         diff_table = None
     testable_statuses = submission.testable_statuses()
+
+    # Update the session if necessary
+    if points != submission.points \
+            or points_possible != submission.points_possible:
+        session = Session()
+        submission.points = points
+        submission.points_possible = points_possible
+        session.add(submission)
+        # Free items from the session that won't be modified
+        session.expunge(request.user)
+        for testable in submission.project.testables:
+            session.expunge(testable)
+        try:
+            transaction.commit()
+        except IntegrityError:
+            transaction.abort()
+        # Re-associate objects with the new session
+        session = Session()
+        session.add(submission)
+
+    # Do this after we've potentially updated the session
+    if submission_admin:
+        prev_sub, next_sub = prev_next_submission(submission)
+        prev_user, next_user = prev_next_user(submission.project,
+                                              submission.user)
+    else:
+        prev_sub = next_sub = prev_user = next_user = None
 
     return {'page_title': 'Submission Page',
             '_pd': pretty_date,
