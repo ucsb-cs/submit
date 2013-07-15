@@ -806,6 +806,8 @@ def submission_view(request, submission, as_user):
         session.expunge(request.user)
         for testable in submission.project.testables:
             session.expunge(testable)
+        for testable_result in submission.testable_results:
+            session.expunge(testable_result)
         try:
             transaction.commit()
         except IntegrityError:
