@@ -126,7 +126,7 @@ class Submit(object):
         # Have we already uploaded the file?
         response = self.request(test_url, 'GET')
         self.msg('Test file: {0}'.format(response.status_code))
-        if response.status_code == 200:
+        if response.status_code == 200 and response.json()['owns_file']:
             return response.json()['file_id']
         # Upload the file
         response = self.request(upload_url, 'PUT',

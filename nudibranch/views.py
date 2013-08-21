@@ -223,7 +223,7 @@ def file_create(request, b64data, sha1sum):
 @validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
                                 validator=SHA1_VALIDATOR, source=MATCHDICT))
 def file_item_info(request, file_):
-    return {'file_id': file_.id}
+    return {'file_id': file_.id, 'owns_file': file_ in request.user.files}
 
 
 @view_config(route_name='file_item', request_method='GET',
