@@ -21,7 +21,7 @@ RESULTS_PATH = 'results'
 EXECUTION_FILES_PATH = 'execution_files'
 SYNC_FILE = 'sync_files'
 
-MAX_FILE_SIZE = 65536
+MAX_FILE_SIZE = 81920
 
 
 class SubmissionHandler(object):
