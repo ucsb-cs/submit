@@ -61,19 +61,22 @@ class SubmissionHandler(object):
 
         args = command.split()
         # allow some programs
-        if args[0] not in ('bash', 'sh', 'python', 'python2', 'python3'):
+        if args[0] not in ('bash', 'python', 'python2', 'python3', 'sh',
+                           'valgrind'):
             args[0] = os.path.join(os.getcwd(), SRC_PATH, args[0])
             if not os.path.isfile(args[0]):
                 raise NonexistentExecutable()
         else:
-            # Need to copy the script(s)
+            # Need to copy the script(s) if they are listed on the command line
             for arg in args:
                 src = os.path.join(SRC_PATH, arg)
                 if os.path.isfile(src):
                     shutil.copy(src, os.path.join(tmp_dir, arg))
 
-        # Hack to give more time to turtle_capture.sh
-        if len(args) > 2 and args[1] == 'turtle_capture.sh':
+        # Hacks to give more time to some scripts:
+        if args[0] in ('valgrind',):
+            time_limit = 4
+        elif len(args) > 2 and args[1] == 'turtle_capture.sh':
             time_limit = 16  # How can we run this faster?
 
         # Run command with a timelimit
