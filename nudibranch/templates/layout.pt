@@ -1,7 +1,7 @@
 <metal:page define-macro="layout"><!DOCTYPE html>
 <meta charset="UTF-8" />
 <title><p tal:condition="page_title" tal:replace="page_title + ' - '">Submit</title>
-<link rel="shortcut icon" href="${_S('nudibranch:static/favicon.ico')}" />
+<link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T///////8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAAAF0lEQVRIx2NgGAWjYBSMglEwCkbBSAcACBAAAeaR9cIAAAAASUVORK5CYII=" rel="shortcut icon" type="image/x-icon" />
 <link rel="stylesheet" href="${_S('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}"
       type="text/css" media="screen" />
 <link rel="stylesheet" href="${_S('nudibranch:static/style.css')}"

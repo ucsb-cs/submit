@@ -6,4 +6,5 @@ dist/
 *.DS_Store
 .coverage
 load_from_backup.sh
+nb_shell.sh
 update_app.sh
