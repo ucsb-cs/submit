@@ -81,6 +81,12 @@ def not_found(request):
     return Response('Not Found', status='404 Not Found')
 
 
+@view_config(route_name='robots', request_method='GET', http_cache=86400)
+def robots(request):
+    return Response(body='User-agent: *\nDisallow: /\n',
+                    content_type=str('text/plain'))
+
+
 @view_config(route_name='admin_utils', request_method='GET',
              permission='admin',
              renderer='templates/admin_utils.pt')

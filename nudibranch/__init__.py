@@ -20,6 +20,7 @@ class Root(object):
 def add_routes(config):
     # Application routes
     config.add_route('home', '/')
+    config.add_route('robots', '/robots.txt')
     config.add_route('build_file', '/build_file')
     config.add_route('build_file_item', '/build_file/{build_file_id}')
     config.add_route('class', '/class')
