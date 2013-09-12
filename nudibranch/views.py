@@ -786,10 +786,12 @@ def submission_view(request, submission, as_user):
         extra_files = submission.extra_filenames
         verification_issues = submission.verification_results.issues()
         pending = submission.testables_pending()
+        testable_statuses = submission.testable_statuses()
     else:
         extra_files = None
         verification_issues = None
         pending = None
+        testable_statuses = []
 
     if submission.testables_completed() \
             - submission.testables_with_build_errors():
@@ -799,7 +801,7 @@ def submission_view(request, submission, as_user):
     else:
         points = 0
         diff_table = None
-    testable_statuses = submission.testable_statuses()
+
 
     # Update the session if necessary
     if points != submission.points \
