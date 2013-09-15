@@ -31,38 +31,39 @@ builtins._sqla_mixins_session = Session
 
 testable_to_build_file = Table(
     'testable_to_build_file', Base.metadata,
-    Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
+    Column('testable_id', Integer, ForeignKey('testable.id'),
+           primary_key=True),
     Column('build_file_id', Integer, ForeignKey('buildfile.id'),
-           nullable=False))
+           primary_key=True))
 
 testable_to_execution_file = Table(
     'testable_to_execution_file', Base.metadata,
-    Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
+    Column('testable_id', Integer, ForeignKey('testable.id'),
+           primary_key=True),
     Column('execution_file_id', Integer, ForeignKey('executionfile.id'),
-           nullable=False))
+           primary_key=True))
 
 testable_to_file_verifier = Table(
     'testable_to_file_verifier', Base.metadata,
-    Column('testable_id', Integer, ForeignKey('testable.id'), nullable=False),
+    Column('testable_id', Integer, ForeignKey('testable.id'),
+           primary_key=True),
     Column('file_verifier_id', Integer, ForeignKey('fileverifier.id'),
-           nullable=False))
+           primary_key=True))
 
 user_to_class = Table(
     'user_to_class', Base.metadata,
-    Column('user_id', Integer, ForeignKey('user.id'), nullable=False),
-    Column('class_id', Integer, ForeignKey('class.id'), nullable=False))
+    Column('user_id', Integer, ForeignKey('user.id'), primary_key=True),
+    Column('class_id', Integer, ForeignKey('class.id'), primary_key=True))
+
+user_to_class_admin = Table(
+    'user_to_class_admin', Base.metadata,
+    Column('user_id', Integer, ForeignKey('user.id'), primary_key=True),
+    Column('class_id', Integer, ForeignKey('class.id'), primary_key=True))
 
 user_to_file = Table(
     'user_to_file', Base.metadata,
-    Column('user_id', Integer, ForeignKey('user.id'), nullable=False),
-    Column('file_id', Integer, ForeignKey('file.id'), nullable=False))
-
-# which classes a user is an admin for
-user_to_class_admin = Table('user_to_class_admin', Base.metadata,
-                            Column('user_id', Integer, ForeignKey('user.id'),
-                                   nullable=False),
-                            Column('class_id', Integer, ForeignKey('class.id'),
-                                   nullable=False))
+    Column('user_id', Integer, ForeignKey('user.id'), primary_key=True),
+    Column('file_id', Integer, ForeignKey('file.id'), primary_key=True))
 
 
 class BuildFile(BasicBase, Base):
