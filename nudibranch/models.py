@@ -324,6 +324,7 @@ class Project(BasicBase, Base):
                                    cascade='all, delete-orphan')
     file_verifiers = relationship('FileVerifier', backref='project',
                                   cascade='all, delete-orphan')
+    group_max = Column(Integer, nullable=False, default=1, server_default='1')
     makefile = relationship(File, backref='makefile_for_projects')
     makefile_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     name = Column(Unicode, nullable=False)

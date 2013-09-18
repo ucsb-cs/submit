@@ -566,13 +566,15 @@ def project_requeue(request, project):
           class_name=String('class_name', source=MATCHDICT),
           delay_minutes=TextNumber('delay_minutes', min_value=0,
                                    optional=True, default=0),
+          group_max=TextNumber('group_max', min_value=1),
           project=EditableDBThing('project_id', Project, source=MATCHDICT))
 def project_update(request, name, makefile, is_ready, class_name,
-                   delay_minutes, project):
+                   delay_minutes, group_max, project):
     if project.class_.name != class_name:
         raise HTTPNotFound()
     if not project.update(name=name, makefile=makefile,
                           delay_minutes=delay_minutes,
+                          group_max=group_max,
                           is_ready=bool(is_ready)):
         return http_ok(request, message='Nothing to change')
     project_id = project.id

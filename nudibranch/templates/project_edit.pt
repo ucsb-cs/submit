@@ -77,6 +77,10 @@
       <br/>
       <input type="text" name="name" id="name" value="${project.name}" />
       <br/>
+      <label for="group_max">Maximum Group Size</label>
+      <br/>
+      <input type="text" name="group_max" id="group_max" value="${project.group_max}" />
+      <br/>
       <label for="delay_minutes">Submission Results Delay (in minutes)</label>
       <br/>
       <input type="text" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}" />
