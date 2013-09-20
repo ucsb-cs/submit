@@ -246,9 +246,9 @@ class Group(BasicBase, Base):
     def users_str(self):
         return ', '.join(sorted(x.name for x in self.users))
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         """Compare the first users in sorted order."""
-        return cmp(sorted(self.users)[0], sorted(other.users)[0])
+        return sorted(self.users)[0] < sorted(other.users)[0]
 
     def can_view(self, user):
         """Return whether or not `user` can view info about the group."""
@@ -483,7 +483,6 @@ class Submission(BasicBase, Base):
                                     cascade='all, delete-orphan')
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
-
 
     @property
     def extra_filenames(self):
@@ -821,10 +820,52 @@ class User(UserMixin, BasicBase, Base):
         else:
             return sorted(self.admin_for)
 
+    def group_with(self, to_user, project):
+        """Join the users in a group."""
+        from_user = self
+        from_assoc = from_user.fetch_group_assoc(project)
+        to_assoc = to_user.fetch_group_assoc(project)
+
+        session = Session()
+
+        if from_user == to_user or from_assoc == to_assoc and from_assoc:
+            raise Exception('Prevent attempt to join the same group.')
+
+        if not from_assoc and not to_assoc:
+            to_assoc = UserToGroup(group=Group(project=project),
+                                   project=project, user=to_user)
+            session.add(to_assoc)
+            from_count = 1
+        elif not to_assoc:
+            from_assoc, to_assoc = to_assoc, from_assoc
+            from_user, to_user = to_user, from_user
+            from_count = 1
+        elif to_assoc.user_count > from_assoc.user_count:
+            from_assoc, to_assoc = to_assoc, from_assoc
+            from_user, to_user = to_user, from_user
+            from_count = from_assoc.user_count
+        else:
+            from_count = from_assoc.user_count
+
+        if project.group_max < to_assoc.user_count + from_count:
+            raise Exception('Too many people to join group.')
+
+        if from_assoc:  # Move the submissions and users
+            old_group = from_assoc.group
+            for submission in from_assoc.group.submissions[:]:
+                submission.group = to_assoc.group
+            for assoc in from_assoc.group.group_assocs[:]:
+                assoc.group = to_assoc.group
+            session.delete(old_group)
+        else:  # Add the user to the group
+            from_assoc = UserToGroup(group=assoc.group, project=project,
+                                     user=from_user)
+            session.add(from_assoc)
+
     def fetch_group_assoc(self, project):
         return (Session.query(UserToGroup)
-                .filter(UserToGroup.user==self)
-                .filter(UserToGroup.project==project)).first()
+                .filter(UserToGroup.user == self)
+                .filter(UserToGroup.project == project)).first()
 
     def make_submission(self, project):
         group_assoc = self.fetch_group_assoc(project)
@@ -850,7 +891,7 @@ class UserToGroup(Base):
     @property
     def user_count(self):
         return (Session.query(UserToGroup)
-                .filter(UserToGroup.group_id==self.group_id).count())
+                .filter(UserToGroup.group_id == self.group_id).count())
 
     def __eq__(self, other):
         if not isinstance(other, UserToGroup):

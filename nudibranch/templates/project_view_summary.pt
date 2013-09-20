@@ -26,8 +26,10 @@
       </tr>
       <tr tal:repeat="(group, group_submissions) submissions">
 	<td>
-	  <a tal:repeat="user group.users" href="${_R('user_item', username=user.username)}">
-	    ${user.name}</a>
+          <div tal:repeat="user sorted(group.users)">
+	    <a href="${_R('user_item', username=user.username)}">
+	      ${user.name}</a>
+          </div>
 	</td>
 	<td>
 	  <ul tal:condition="group_submissions">

@@ -3,7 +3,6 @@ from diff_match_patch import diff_match_patch as DMP
 from .helpers import alphanum_key
 
 
-
 def dmp_to_mdiff(diffs):
     """Convert from diff_match_patch format to _mdiff format.
 

@@ -650,6 +650,7 @@ def project_view_detailed_user(request, class_name, project, user):
             'next_group': None,
             'submissions': []}
 
+
 @view_config(route_name='project_item_stats',
              renderer='templates/project_stats.pt', permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
@@ -827,7 +828,6 @@ def submission_view(request, submission, as_user):
     else:
         points = 0
         diff_table = None
-
 
     # Update the session if necessary
     if points != submission.points \
