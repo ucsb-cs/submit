@@ -234,6 +234,28 @@ class FileVerifier(BasicBase, Base):
         return errors, warnings
 
 
+class Group(BasicBase, Base):
+    project = relationship('Project', backref='groups')
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+
+    @property
+    def users(self):
+        return (x.user for x in self.group_assocs)
+
+    @property
+    def users_str(self):
+        return ', '.join(sorted(x.name for x in self.users))
+
+    def __cmp__(self, other):
+        """Compare the first users in sorted order."""
+        return cmp(sorted(self.users)[0], sorted(other.users)[0])
+
+    def can_view(self, user):
+        """Return whether or not `user` can view info about the group."""
+        return user.is_admin or user in self.users \
+            or self.project.class_ in user.admin_for
+
+
 class VerificationResults(object):
 
     """Stores verification information about a single submission.
@@ -367,8 +389,8 @@ class Project(BasicBase, Base):
         Only yields a submission for a user if they've made one.
 
         """
-        for user in self.class_.users:
-            submission = Submission.most_recent_submission(self.id, user.id)
+        for group in self.groups:
+            submission = Submission.most_recent_submission(self, group)
             if submission:
                 yield submission
 
@@ -432,12 +454,12 @@ class ProjectView(Base):
     __tablename__ = 'projectview'
     created_at = Column(DateTime(timezone=True), default=func.now(),
                         nullable=False)
+    group = relationship(Group)
+    group_id = Column(Integer, ForeignKey('group.id'), primary_key=True,
+                      nullable=False)
+    project = relationship(Project)
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True,
                         nullable=False)
-    project = relationship(Project)
-    user_id = Column(Integer, ForeignKey('user.id'), primary_key=True,
-                     nullable=False)
-    user = relationship('User')
 
     @classmethod
     def fetch_by(cls, **kwargs):
@@ -446,6 +468,10 @@ class ProjectView(Base):
 
 
 class Submission(BasicBase, Base):
+    created_by = relationship('User')
+    created_by_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    group = relationship(Group, backref='submissions')
+    group_id = Column(Integer, ForeignKey('group.id'), nullable=False)
     files = relationship('SubmissionToFile', backref='submission')
     points = Column(Integer, default=0, nullable=False, server_default='0')
     points_possible = Column(Integer, default=0, nullable=False,
@@ -455,7 +481,6 @@ class Submission(BasicBase, Base):
                                      cascade='all, delete-orphan')
     testable_results = relationship('TestableResult', backref='submission',
                                     cascade='all, delete-orphan')
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     verification_results = Column(PickleType)
     verified_at = Column(DateTime(timezone=True), index=True)
 
@@ -465,18 +490,18 @@ class Submission(BasicBase, Base):
         return self.verification_results._extra_filenames
 
     @staticmethod
-    def earlier_submission_for_user(submission):
+    def earlier_submission_for_group(submission):
         """Return the submission immediately prior to the given submission."""
         return (Submission
-                .query_by(project=submission.project, user=submission.user)
+                .query_by(project=submission.project, group=submission.group)
                 .filter(Submission.created_at < submission.created_at)
                 .order_by(Submission.created_at.desc()).first())
 
     @staticmethod
-    def later_submission_for_user(submission):
+    def later_submission_for_group(submission):
         """Return the submission immediately prior to the given submission."""
         return (Submission
-                .query_by(project=submission.project, user=submission.user)
+                .query_by(project=submission.project, group=submission.group)
                 .filter(Submission.created_at > submission.created_at)
                 .order_by(Submission.created_at).first())
 
@@ -494,9 +519,9 @@ class Submission(BasicBase, Base):
         return retval
 
     @staticmethod
-    def most_recent_submission(project_id, user_id):
+    def most_recent_submission(project, group):
         """Return the most recent submission for the user and project id."""
-        return (Submission.query_by(project_id=project_id, user_id=user_id)
+        return (Submission.query_by(project=project, group=group)
                 .order_by(Submission.created_at.desc()).first())
 
     def can_edit(self, user):
@@ -505,7 +530,7 @@ class Submission(BasicBase, Base):
 
     def can_view(self, user):
         """Return whether or not `user` can view the submission."""
-        return user == self.user or self.project.can_view(user)
+        return user in self.group.users or self.project.can_view(user)
 
     def file_mapping(self):
         """Return a mapping of filename to File object for the submission."""
@@ -526,10 +551,10 @@ class Submission(BasicBase, Base):
             # Never delay longer than the project's delay time
             return None
         session = Session()
-        pv = ProjectView.fetch_by(project=self.project, user=self.user)
+        pv = ProjectView.fetch_by(project=self.project, group=self.group)
         if not pv:  # Don't delay
             if update:
-                pv = ProjectView(project=self.project, user=self.user)
+                pv = ProjectView(project=self.project, group=self.group)
                 session.add(pv)
                 session.flush()  # What if this fails?
             return None
@@ -749,7 +774,6 @@ class User(UserMixin, BasicBase, Base):
     files = relationship(File, secondary=user_to_file, backref='users')
     admin_for = relationship(Class, secondary=user_to_class_admin,
                              backref='admins')
-    submissions = relationship('Submission', backref='user')
 
     @staticmethod
     def get_value(cls, value):
@@ -796,6 +820,42 @@ class User(UserMixin, BasicBase, Base):
             return Session().query(Class).order_by(Class.name).all()
         else:
             return sorted(self.admin_for)
+
+    def fetch_group_assoc(self, project):
+        return (Session.query(UserToGroup)
+                .filter(UserToGroup.user==self)
+                .filter(UserToGroup.project==project)).first()
+
+    def make_submission(self, project):
+        group_assoc = self.fetch_group_assoc(project)
+        if not group_assoc:
+            group_assoc = UserToGroup(group=Group(project=project),
+                                      project=project, user=self)
+        return Submission(created_by=self, group=group_assoc.group,
+                          project=project)
+
+
+class UserToGroup(Base):
+    __tablename__ = 'user_to_group'
+    created_at = Column(DateTime(timezone=True), default=func.now(),
+                        nullable=False)
+    group = relationship('Group', backref='group_assocs')
+    group_id = Column(Integer, ForeignKey('group.id'), index=True,
+                      nullable=False)
+    project = relationship('Project', backref='group_assocs')
+    project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
+    user = relationship('User', backref='groups_assocs')
+    user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
+
+    @property
+    def user_count(self):
+        return (Session.query(UserToGroup)
+                .filter(UserToGroup.group_id==self.group_id).count())
+
+    def __eq__(self, other):
+        if not isinstance(other, UserToGroup):
+            return False
+        return self.group_id == other.group_id
 
 
 def configure_sql(engine):

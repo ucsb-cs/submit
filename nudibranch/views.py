@@ -26,11 +26,11 @@ from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
     EditableDBThing, ViewableDBThing, clone, fetch_request_ids,
     file_verifier_verification, format_points, get_submission_stats,
-    prepare_renderable, prev_next_submission, prev_next_user,
+    prepare_renderable, prev_next_submission, prev_next_group,
     project_file_create, project_file_delete, test_case_verification,
     zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
-                     PasswordReset, Project, Session, Submission,
+                     Group, PasswordReset, Project, Session, Submission,
                      SubmissionToFile, TestCase, Testable, User)
 
 
@@ -491,7 +491,7 @@ def project_download(request, project):
 
     files = []
     for sub in project.recent_submissions():
-        user_path = '{0}_{1}'.format(sub.user.username, sub.id)
+        user_path = '{0}_{1}'.format(sub.group.users_str, sub.id)
         for filename, file_ in sub.file_mapping().items():
             files.append((os.path.join(project.name, user_path, filename),
                           file_path(file_)))
@@ -597,34 +597,58 @@ def project_update(request, name, makefile, is_ready, class_name,
              permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
           project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
-          user=ViewableDBThing('username', User, fetch_by='username',
-                               validator=String('username'), source=MATCHDICT))
+          group=ViewableDBThing('group_id', Group, source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
-def project_view_detailed(request, class_name, project, user):
+def project_view_detailed(request, class_name, project, group):
     # Additional verification
     if project.class_.name != class_name:
         raise HTTPNotFound()
-    submissions = Submission.query_by(project_id=project.id, user_id=user.id)
+    submissions = Submission.query_by(project=project, group=group)
     if not submissions:
         raise HTTPNotFound()
 
     project_admin = project.can_view(request.user)
     if project_admin:
-        prev_user, next_user = prev_next_user(project, user)
+        prev_group, next_group = prev_next_group(project, group)
     else:
-        prev_user = next_user = None
+        prev_group = next_group = None
 
     return {'page_title': 'Project Page',
             'project': project,
             'project_admin': project_admin,
-            'name': user.name,
+            'name': group.users_str,
             'can_edit': project_admin,
-            'prev_user': prev_user,
-            'next_user': next_user,
+            'prev_group': prev_group,
+            'next_group': next_group,
             'submissions': sorted(submissions,
                                   key=lambda s: s.created_at,
                                   reverse=True)}
 
+
+@view_config(route_name='project_item_detailed_user',
+             renderer='templates/project_view_detailed.pt',
+             request_method=('GET', 'HEAD'),
+             permission='authenticated')
+@validate(class_name=String('class_name', source=MATCHDICT),
+          project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
+          user=ViewableDBThing('username', User, fetch_by='username',
+                               validator=String('username'), source=MATCHDICT))
+@site_layout('nudibranch:templates/layout.pt')
+def project_view_detailed_user(request, class_name, project, user):
+    group_assoc = user.fetch_group_assoc(project)
+    if group_assoc:
+        url = request.route_path('project_item_detailed',
+                                 class_name=class_name, project_id=project.id,
+                                 group_id=group_assoc.group_id)
+        raise HTTPFound(location=url)
+    return {'page_title': 'Project Page',
+            'project': project,
+            'project_admin': False,
+            'name': user.name,
+            'can_edit': False,
+            'prev_group': None,
+            'next_group': None,
+            'submissions': []}
 
 @view_config(route_name='project_item_stats',
              renderer='templates/project_stats.pt', permission='authenticated')
@@ -649,19 +673,19 @@ def project_view_stats(request, class_name, project):
 @site_layout('nudibranch:templates/layout.pt')
 def project_view_summary(request, class_name, project):
     submissions = {}
-    user_truncated = set()
-    for user in project.class_.users:
-        newest = (Submission.query_by(project=project, user=user)
+    group_truncated = set()
+    for group in project.groups:
+        newest = (Submission.query_by(project=project, group=group)
                   .order_by(Submission.created_at.desc()).limit(4).all())
         if len(newest) == 4:
-            user_truncated.add(user)
-        submissions[user] = newest[:3]
+            group_truncated.add(group)
+        submissions[group] = newest[:3]
     recent_submissions = (Submission.query_by(project=project)
                           .order_by(Submission.created_at.desc())
                           .limit(10).all())
     return {'page_title': 'Admin Project Page',
             'project': project,
-            'user_truncated': user_truncated,
+            'group_truncated': group_truncated,
             'recent_submissions': recent_submissions,
             'submissions': sorted(submissions.items())}
 
@@ -724,8 +748,7 @@ def submission_create(request, project, file_ids, filenames):
     if msgs:
         raise HTTPBadRequest(msgs)
 
-    # Make a submission
-    submission = Submission(project_id=project.id, user_id=request.user.id)
+    submission = request.user.make_submission(project)
     assoc = []
     for file_id, filename in zip(file_ids, filenames):
         assoc.append(SubmissionToFile(file_id=file_id, filename=filename))
@@ -766,7 +789,8 @@ def submission_view(request, submission, as_user):
     submission_admin = (not bool(as_user) and
                         submission.project.can_edit(request.user))
     if not submission_admin:  # Only check delay for user view
-        delay = submission.get_delay(update=submission.user == request.user)
+        delay = submission.get_delay(
+            update=request.user in submission.group.users)
         if delay:
             request.override_renderer = 'templates/submission_delay.pt'
             return {'_pd': pretty_date,
@@ -829,10 +853,10 @@ def submission_view(request, submission, as_user):
     # Do this after we've potentially updated the session
     if submission_admin:
         prev_sub, next_sub = prev_next_submission(submission)
-        prev_user, next_user = prev_next_user(submission.project,
-                                              submission.user)
+        prev_group, next_group = prev_next_group(submission.project,
+                                                 submission.group)
     else:
-        prev_sub = next_sub = prev_user = next_user = None
+        prev_sub = next_sub = prev_group = next_group = None
 
     return {'page_title': 'Submission Page',
             '_pd': pretty_date,
@@ -843,10 +867,10 @@ def submission_view(request, submission, as_user):
             'flash': request.session.pop_flash(),
             'javascripts': ['diff.js'],
             'next_sub': next_sub,
-            'next_user': next_user,
+            'next_group': next_group,
             'pending': pending,
             'prev_sub': prev_sub,
-            'prev_user': prev_user,
+            'prev_group': prev_group,
             'submission': submission,
             'submission_admin': submission_admin,
             'testable_statuses': testable_statuses,
@@ -1130,7 +1154,7 @@ def zipfile_download(request, submission):
     def file_path(file_):
         return File.file_path(request.registry.settings['file_directory'],
                               file_.sha1)
-    base_path = '{0}_{1}'.format(submission.user.username, submission.id)
+    base_path = '{0}_{1}'.format(submission.group.users_str, submission.id)
     # include makefile and student submitted files
     files = [(os.path.join(base_path, 'Makefile'),
               file_path(submission.project.makefile))]

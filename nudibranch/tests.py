@@ -94,7 +94,7 @@ def _init_testing_db():
     Session.flush()
 
     # Make a submission
-    submission = Submission(project_id=project1.id, user_id=user1.id)
+    submission = user1.make_submission(project1)
     s2f = SubmissionToFile(filename='File 1', file=file1)
     submission.files.append(s2f)
     Session.add_all([submission, s2f])

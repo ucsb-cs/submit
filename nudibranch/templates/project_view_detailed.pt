@@ -1,11 +1,11 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div tal:condition="can_edit">
-    <p class="floatleft nospace" tal:condition="prev_user">Previous student:
-      <a href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, username=prev_user.username)}">${prev_user.name}</a>
+    <p class="floatleft nospace" tal:condition="prev_group">Previous group:
+      <a href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
     </p>
-    <p class="floatright nospace" tal:condition="next_user">Next student:
-      <a href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, username=next_user.username)}">${next_user.name}</a>
+    <p class="floatright nospace" tal:condition="next_group">Next group:
+      <a href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=next_group.id)}">${next_group.users_str}</a>
     </p>
     <div class="clear"></div>
   </div>
@@ -26,7 +26,7 @@
   <p tal:condition="not project_admin and not submissions">You have no submissions</p>
 
   <p tal:condition="project_admin and submissions">
-    These are the submissions for ${name}:</p>
+    These are the submissions for <strong>${name}</strong>:</p>
   <p tal:condition="not project_admin and submissions">
     There are your submissions:</p>
   <ul tal:condition="submissions">

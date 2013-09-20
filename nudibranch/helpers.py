@@ -220,7 +220,7 @@ def get_submission_stats(cls, project):
     """Return a dictionary of items containing submission stats.
 
     :key count: The total number of submissions
-    :key unique: The total number of unique students submitting
+    :key unique: The total number of unique groups submitting
     :key by_hour: A list containing the count and unique submissions by hour
     :key start: The datetime of the first submission
     :key end: The datetime of the most recent submission
@@ -239,35 +239,35 @@ def get_submission_stats(cls, project):
         if not start:
             start = submission.created_at
         count += 1
-        unique.add(submission.user_id)
+        unique.add(submission.group_id)
         cur['count'] += 1
-        cur['unique'].add(submission.user_id)
+        cur['unique'].add(submission.group_id)
     return {'count': count, 'unique': len(unique), 'start': start,
             'end': submission.created_at, 'by_hour': by_hour}
 
 
 def prev_next_submission(submission):
     """Return adjacent sumbission objects for the given submission."""
-    return (Submission.earlier_submission_for_user(submission),
-            Submission.later_submission_for_user(submission))
+    return (Submission.earlier_submission_for_group(submission),
+            Submission.later_submission_for_group(submission))
 
 
-def prev_next_user(project, user):
-    """Return adjacent user objects or None for the given project and user.
+def prev_next_group(project, group):
+    """Return adjacent group objects or None for the given project and group.
 
-    The previous and next user objects are relative to sort order of the
-    project's users with respect to the passed in user.
+    The previous and next group objects are relative to sort order of the
+    project's groups with respect to the passed in group.
 
     """
     # TODO: Profile and optimize this query if necessary
-    users = sorted(project.class_.users)
+    groups = sorted(project.groups)
     try:
-        index = users.index(user)
+        index = groups.index(group)
     except ValueError:
         return None, None
-    prev_user = users[index - 1] if index > 0 else None
-    next_user = users[index + 1] if index + 1 < len(users) else None
-    return prev_user, next_user
+    prev_group = groups[index - 1] if index > 0 else None
+    next_group = groups[index + 1] if index + 1 < len(groups) else None
+    return prev_group, next_group
 
 
 def project_file_create(request, file_, filename, project, cls):

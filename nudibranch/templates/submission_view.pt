@@ -14,17 +14,17 @@
 
 
   <div tal:condition="submission_admin">
-    <p class="floatleft nospace" tal:condition="prev_user">Previous student:
-      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, username=prev_user.username)}">${prev_user.name}</a>
+    <p class="floatleft nospace" tal:condition="prev_group">Previous group:
+      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
     </p>
-    <p class="floatright nospace" tal:condition="next_user">Next student:
-      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, username=next_user.username)}">${next_user.name}</a>
+    <p class="floatright nospace" tal:condition="next_group">Next group:
+      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, group_id=next_group.id)}">${next_group.users_str}</a>
     </p>
     <div class="clear"></div>
-    <p class="floatleft nospace" tal:condition="prev_sub">Student's previous submission:
+    <p class="floatleft nospace" tal:condition="prev_sub">Group's previous submission:
       <a href="${_R('submission_item', submission_id=prev_sub.id)}">${prev_sub.created_at}</a>
     </p>
-    <p class="floatright nospace" tal:condition="next_sub">Student's next submission:
+    <p class="floatright nospace" tal:condition="next_sub">Group's next submission:
       <a href="${_R('submission_item', submission_id=next_sub.id)}">${next_sub.created_at}</a>
     </p>
     <div class="clear"></div>
@@ -39,7 +39,7 @@
   <h3>Submission</h3>
   <p tal:condition="submission_admin"><a href="?as_user=1">View this page from the student's perspective</a></p>
 
-  <div>Student: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
+  <div>Student(s): ${submission.group.users_str}</div>
   <div>Class: <a href="${_R('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
   <div tal:condition="submission_admin">Project: <a href="${_R('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
   <div tal:condition="not submission_admin">Project: ${submission.project.name}</div>

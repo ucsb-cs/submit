@@ -45,7 +45,9 @@ def add_routes(config):
     config.add_route('project_item_stats',
                      '/class/{class_name}/{project_id}/stats')
     config.add_route('project_item_detailed',
-                     '/class/{class_name}/{project_id}/{username}')
+                     '/class/{class_name}/{project_id}/{group_id}')
+    config.add_route('project_item_detailed_user',
+                     '/class/{class_name}/{project_id}/u/{username}')
     config.add_route('session', '/session')
     config.add_route('submission', '/submission')
     config.add_route('submission_item', '/submission/{submission_id}')

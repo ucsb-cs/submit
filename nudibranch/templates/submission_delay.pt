@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <h3>Submission</h3>
-  <div>User: ${submission.user.name} &lt;${submission.user.username}&gt;</div>
+  <div>Student(s): ${submission.group.users_str}</div>
   <div>Class: ${submission.project.class_.name}</div>
   <div>Project: ${submission.project.name}</div>
   <div>Submitted: ${submission.created_at}</div>

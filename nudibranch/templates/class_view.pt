@@ -29,7 +29,7 @@
           <span tal:condition="project.is_ready" tal:omit-tag="">(ready for submission)</span>
         </span>
         <a tal:condition="not class_admin"
-	   href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">
+	   href="${_R('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">
           ${project.name}</a>
       </li>
     </div>

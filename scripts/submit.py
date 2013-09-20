@@ -16,7 +16,7 @@ class Submit(object):
     PATHS = {'auth':           'session',
              'file_item':      'file/{sha1sum}/_',
              'file_item_info': 'file/info/{sha1sum}',
-             'project_item':   'class/{class_name}/{project_id}/{email}',
+             'project_item':   'class/{class_name}/{project_id}/u/{email}',
              'submission':     'submission'}
 
     @staticmethod
@@ -167,7 +167,7 @@ class Submit(object):
                        email=self.email)
         response = self.request(url, 'HEAD')
         self.msg('Access test: {0}'.format(response.status_code))
-        return response.status_code == 200
+        return response.status_code in [200, 302]
 
 
 def main():
