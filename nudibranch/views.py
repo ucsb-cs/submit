@@ -21,7 +21,7 @@ from pyramid_mailer import get_mailer
 from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
-from .exceptions import InvalidId
+from .exceptions import GroupWithException, InvalidId
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
     EditableDBThing, ViewableDBThing, clone, fetch_request_ids,
@@ -30,8 +30,8 @@ from .helpers import (
     project_file_create, project_file_delete, test_case_verification,
     zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
-                     Group, PasswordReset, Project, Session, Submission,
-                     SubmissionToFile, TestCase, Testable, User)
+                     Group, GroupRequest, PasswordReset, Project, Session,
+                     Submission, SubmissionToFile, TestCase, Testable, User)
 
 
 # A few reoccuring validators
@@ -509,6 +509,107 @@ def project_edit(request, project):
                                 project_id=project.id)
     return {'page_title': 'Edit Project', 'project': project, 'action': action,
             'flash': request.session.pop_flash()}
+
+
+@view_config(route_name='project_group_item', renderer='json',
+             request_method='PUT')
+@validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
+          group_request=EditableDBThing('group_request_id', GroupRequest,
+                                        source=MATCHDICT))
+def project_group_request_confirm(request, project, group_request):
+    try:
+        request.user.group_with(group_request.from_user, project)
+        failed = False
+    except GroupWithException as exc:
+        request.session.flash(exc.args[0])
+        failed = True
+
+    try:
+        Session.delete(group_request)
+        Session.flush()
+    except IntegrityError:
+        raise HTTPConflict('Could not join the group at this time.')
+    url = request.route_url('project_group', project_id=project.id)
+    if failed:
+        return http_gone(request, redir_location=url)
+    request.session.flash('Joined group with {}'
+                          .format(group_request.from_user))
+    return http_ok(request, redir_location=url)
+
+
+@view_config(route_name='project_group', renderer='json',
+             request_method='PUT')
+@validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
+          username=String('email'))
+def project_group_request_create(request, project, username):
+    if not request.user.can_join_group(project):
+        raise HTTPConflict('You cannot expand your group for this project.')
+    user = User.fetch_by(username=username)
+    if not user or project.class_ not in user.classes:
+        raise HTTPConflict('Invalid email.')
+    if not user.can_join_group(project):
+        raise HTTPConflict('That user cannot join your group.')
+    self_assoc = request.user.fetch_group_assoc(project)
+    user_assoc = user.fetch_group_assoc(project)
+    if self_assoc == user_assoc:
+        raise HTTPConflict('You are already in a group with that student.')
+
+    session = Session()
+    session.add(GroupRequest(from_user=request.user, project=project,
+                             to_user=user))
+    try:
+        session.flush()
+    except IntegrityError:
+        transaction.abort()
+        raise HTTPConflict('Could not create your group request.')
+
+    site_name = request.registry.settings['site_name']
+    url = request.route_url('project_group', project_id=project.id)
+    body = ('Your fellow {} student, {}, has requested you join their '
+            'group for "{}". Please visit the following link to confirm or '
+            'deny the request:\n\n{}'.format(
+            project.class_.name, request.user, project.name, url))
+    message = Message(subject='{}: {} "{}" Group Request'
+                      .format(site_name, project.class_.name, project.name),
+                      recipients=[user.username], body=body)
+    #get_mailer(request).send(message)
+    request.session.flash('Request to {} sent via email.'.format(user))
+    transaction.commit()
+    return http_ok(request, redir_location=request.url)
+
+
+@view_config(route_name='project_group_item', renderer='json',
+             request_method='DELETE')
+@validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
+          group_request=AccessibleDBThing('group_request_id', GroupRequest,
+                                          source=MATCHDICT))
+def project_group_request_delete(request, project, group_request):
+    if request.user == group_request.from_user:
+        msg = 'Revoked request to {}.'.format(group_request.to_user)
+    else:
+        msg = 'Denied request from {}.'.format(group_request.from_user)
+    Session.delete(group_request)
+    request.session.flash(msg)
+    url = request.route_url('project_group', project_id=project.id)
+    return http_ok(request, redir_location=url)
+
+
+@view_config(route_name='project_group', request_method='GET',
+             renderer='templates/project_group.pt',
+             permission='authenticated')
+@validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT))
+@site_layout('nudibranch:templates/layout.pt',
+             'nudibranch:templates/macros.pt')
+def project_group_view(request, project):
+    assoc = request.user.fetch_group_assoc(project)
+    members = assoc.group.users_str if assoc else request.user.name
+    pending = GroupRequest.query_by(project=project, to_user=request.user)
+    requested = GroupRequest.query_by(from_user=request.user,
+                                      project=project).first()
+    can_join = request.user.can_join_group(project)
+    return {'page_title': 'Group management', 'project': project,
+            'members': members, 'can_join': can_join, 'pending': pending.all(),
+            'requested': requested, 'flash': request.session.pop_flash()}
 
 
 @view_config(route_name='project_info', request_method='GET',

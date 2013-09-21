@@ -17,6 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
+from .exceptions import GroupWithException
 
 if sys.version_info < (3, 0):
     builtins = __import__('__builtin__')
@@ -254,6 +255,22 @@ class Group(BasicBase, Base):
         """Return whether or not `user` can view info about the group."""
         return user.is_admin or user in self.users \
             or self.project.class_ in user.admin_for
+
+
+class GroupRequest(BasicBase, Base):
+    __table_args__ = (UniqueConstraint('from_user_id', 'project_id'),)
+    from_user_id = Column(Integer, ForeignKey('user.id'), index=True)
+    from_user = relationship('User', foreign_keys=[from_user_id])
+    project = relationship('Project')
+    project_id = Column(Integer, ForeignKey('project.id'), index=True)
+    to_user_id = Column(Integer, ForeignKey('user.id'), index=True)
+    to_user = relationship('User', foreign_keys=[to_user_id])
+
+    def can_access(self, user):
+        return user == self.from_user or user == self.to_user
+
+    def can_edit(self, user):
+        return user == self.to_user
 
 
 class VerificationResults(object):
@@ -804,9 +821,17 @@ class User(UserMixin, BasicBase, Base):
                                                          self.name)
 
     def __str__(self):
-        admin_str = '(admin)' if self.is_admin else ''
-        return 'Name: {0} Email: {1} {2}'.format(self.name, self.username,
-                                                 admin_str)
+        admin_str = ' (admin)' if self.is_admin else ''
+        return '{0} <{1}>{2}'.format(self.name, self.username, admin_str)
+
+    def can_join_group(self, project):
+        """Return whether or not user can join a group on `project`."""
+        if project.class_.is_locked or project.group_max < 2:
+            return False
+        u2g = self.fetch_group_assoc(project)
+        if u2g:
+            return len(list(u2g.group.users)) < project.group_max
+        return True
 
     def can_view(self, user):
         """Return whether or not `user` can view information about the user."""
@@ -829,7 +854,7 @@ class User(UserMixin, BasicBase, Base):
         session = Session()
 
         if from_user == to_user or from_assoc == to_assoc and from_assoc:
-            raise Exception('Prevent attempt to join the same group.')
+            raise GroupWithException('You are already part of that group.')
 
         if not from_assoc and not to_assoc:
             to_assoc = UserToGroup(group=Group(project=project),
@@ -848,7 +873,8 @@ class User(UserMixin, BasicBase, Base):
             from_count = from_assoc.user_count
 
         if project.group_max < to_assoc.user_count + from_count:
-            raise Exception('Too many people to join group.')
+            raise GroupWithException('There are too many users to join that '
+                                     'group.')
 
         if from_assoc:  # Move the submissions and users
             old_group = from_assoc.group
