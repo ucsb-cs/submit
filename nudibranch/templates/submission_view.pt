@@ -52,7 +52,7 @@
 
   <h4>Submission Files</h4>
   <ul tal:condition="submission.files">
-    <li tal:repeat="f sorted(submission.files, key=lambda x:x.filename)">
+    <li tal:repeat="f sorted(submission.files)">
       <a href="${_R('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
     </li>
   </ul>
@@ -99,7 +99,7 @@
        tal:replace="structure diff_table"></div>
 
   <!-- For each test group, reasons for failure (if applicable) -->
-  <div tal:repeat="status sorted(testable_statuses, key=lambda x: x.testable.name)">
+  <div tal:repeat="status sorted(testable_statuses)">
     <div tal:condition="status.is_error()">
       <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
       <pre tal:condition="status.has_make_output()" class="make_output">${status.testable_results.make_results}</pre>

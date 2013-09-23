@@ -18,6 +18,7 @@ from sqlalchemy.orm import relationship, scoped_session, sessionmaker
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 from .exceptions import GroupWithException
+from .helpers import alphanum_key
 
 if sys.version_info < (3, 0):
     builtins = __import__('__builtin__')
@@ -74,6 +75,9 @@ class BuildFile(BasicBase, Base):
     filename = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
+    def __cmp__(self, other):
+        return cmp(alphanum_key(self.filename), alphanum_key(other.filename))
+
     def can_edit(self, user):
         """Return whether or not the user can edit the build file."""
         return self.project.can_edit(user)
@@ -93,7 +97,7 @@ class Class(BasicBase, Base):
         return 'Class Name: {0}'.format(self.name)
 
     def __cmp__(self, other):
-        return cmp(self.name, other.name)
+        return cmp(alphanum_key(self.name), alphanum_key(other.name))
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the class."""
@@ -114,6 +118,9 @@ class ExecutionFile(BasicBase, Base):
     file_id = Column(Integer, ForeignKey('file.id'), nullable=False)
     filename = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+
+    def __cmp__(self, other):
+        return cmp(alphanum_key(self.filename), alphanum_key(other.filename))
 
     def can_edit(self, user):
         """Return whether or not the user can edit the build file."""
@@ -208,7 +215,7 @@ class FileVerifier(BasicBase, Base):
     warning_regex = Column(Unicode)
 
     def __cmp__(self, other):
-        return cmp(self.filename, other.filename)
+        return cmp(alphanum_key(self.filename), alphanum_key(other.filename))
 
     def can_edit(self, user):
         return self.project.can_edit(user)
@@ -376,6 +383,9 @@ class Project(BasicBase, Base):
     @property
     def delay(self):
         return timedelta(minutes=self.delay_minutes)
+
+    def __cmp__(self, other):
+        return cmp(alphanum_key(self.name), alphanum_key(other.name))
 
     def can_access(self, user):
         """Return whether or not `user` can access a project.
@@ -633,6 +643,9 @@ class SubmissionToFile(Base):
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            primary_key=True, nullable=False)
 
+    def __cmp__(self, other):
+        return cmp(alphanum_key(self.filename), alphanum_key(other.filename))
+
 
 class TestCase(BasicBase, Base):
     __table_args__ = (UniqueConstraint('name', 'testable_id'),)
@@ -657,7 +670,7 @@ class TestCase(BasicBase, Base):
                                  cascade='all, delete-orphan')
 
     def __cmp__(self, other):
-        return cmp(self.name, other.name)
+        return cmp(alphanum_key(self.name), alphanum_key(other.name))
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the test_case."""
@@ -720,6 +733,9 @@ class TestableStatus(object):
                 new = ['Build failed (see make output)'] + errors
                 self.issues[filename] = (warnings, new)
 
+    def __cmp__(self, other):
+        return cmp(self.testable, other.testable)
+
     def has_make_output(self):
         return (self.testable_results and
                 self.testable_results.make_results)
@@ -752,7 +768,7 @@ class Testable(BasicBase, Base):
                                     cascade='all, delete-orphan')
 
     def __cmp__(self, other):
-        return cmp(self.name, other.name)
+        return cmp(alphanum_key(self.name), alphanum_key(other.name))
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the testable."""
@@ -841,7 +857,7 @@ class User(UserMixin, BasicBase, Base):
     def classes_can_admin(self):
         """Return all the classes (sorted) that this user can admin."""
         if self.is_admin:
-            return Session().query(Class).order_by(Class.name).all()
+            return sorted(Session().query(Class).all())
         else:
             return sorted(self.admin_for)
 

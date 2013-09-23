@@ -13,7 +13,6 @@ from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
 from zipfile import ZipFile
 from .exceptions import InvalidId
-from .models import BuildFile, File, FileVerifier, Session, Submission
 
 
 class DummyTemplateAttr(object):
@@ -392,3 +391,4 @@ def zip_response(request, filename, files):
 
 # Avoid cyclic import
 from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo, ImageOutput
+from .models import BuildFile, File, FileVerifier, Session, Submission

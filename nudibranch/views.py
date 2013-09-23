@@ -1243,7 +1243,7 @@ def user_list(request):
 def user_view(request, user):
     return {'page_title': 'User Page',
             'name': user.name,
-            'classes_taking': user.classes,
+            'classes_taking': sorted(user.classes),
             'admin_classes': user.classes_can_admin()}
 
 
