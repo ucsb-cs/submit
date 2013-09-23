@@ -255,7 +255,9 @@ def file_item_view(request, file_, filename, raw):
 
 @view_config(route_name='file_verifier', request_method='PUT',
              permission='authenticated', renderer='json')
-@validate(filename=String('filename', min_length=1),
+@validate(copy_to_execution=TextNumber('copy_to_execution', min_value=0,
+                                       max_value=1, optional=True),
+          filename=String('filename', min_length=1),
           min_size=TextNumber('min_size', min_value=0),
           max_size=TextNumber('max_size', min_value=0, optional=True),
           min_lines=TextNumber('min_lines', min_value=0),
@@ -265,14 +267,16 @@ def file_item_view(request, file_, filename, raw):
           project=EditableDBThing('project_id', Project),
           warning_regex=RegexString('warning_regex', optional=True))
 @file_verifier_verification
-def file_verifier_create(request, filename, min_size, max_size, min_lines,
-                         max_lines, optional, project, warning_regex):
+def file_verifier_create(request, copy_to_execution, filename, min_size,
+                         max_size, min_lines, max_lines, optional, project,
+                         warning_regex):
     # Check for build-file conflict
     if not optional and BuildFile.fetch_by(project=project, filename=filename):
         msg = ('A build file already exists with that name. '
                'Provide a different name, or mark as optional.')
         raise HTTPBadRequest(msg)
-    filev = FileVerifier(filename=filename, min_size=min_size,
+    filev = FileVerifier(copy_to_execution=bool(copy_to_execution),
+                         filename=filename, min_size=min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, optional=bool(optional),
                          project=project, warning_regex=warning_regex)
@@ -299,7 +303,9 @@ def file_verifier_delete(request, file_verifier):
 
 @view_config(route_name='file_verifier_item', request_method='POST',
              permission='authenticated', renderer='json')
-@validate(file_verifier=EditableDBThing('file_verifier_id', FileVerifier,
+@validate(copy_to_execution=TextNumber('copy_to_execution', min_value=0,
+                                       max_value=1, optional=True),
+          file_verifier=EditableDBThing('file_verifier_id', FileVerifier,
                                         source=MATCHDICT),
           filename=String('filename', min_length=1),
           min_size=TextNumber('min_size', min_value=0),
@@ -310,15 +316,17 @@ def file_verifier_delete(request, file_verifier):
                               optional=True),
           warning_regex=RegexString('warning_regex', optional=True))
 @file_verifier_verification
-def file_verifier_update(request, file_verifier, filename, min_size, max_size,
-                         min_lines, max_lines, optional, warning_regex):
+def file_verifier_update(request, copy_to_execution, file_verifier, filename,
+                         min_size, max_size, min_lines, max_lines, optional,
+                         warning_regex):
     # Check for build-file conflict
     if not optional and BuildFile.fetch_by(project=file_verifier.project,
                                            filename=filename):
         msg = ('A build file already exists with that name. '
                'Provide a different name, or mark as optional.')
         raise HTTPBadRequest(msg)
-    if not file_verifier.update(filename=filename, min_size=min_size,
+    if not file_verifier.update(copy_to_execution=bool(copy_to_execution),
+                                filename=filename, min_size=min_size,
                                 max_size=max_size, min_lines=min_lines,
                                 max_lines=max_lines, optional=bool(optional),
                                 warning_regex=warning_regex):

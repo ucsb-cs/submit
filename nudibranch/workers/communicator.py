@@ -218,6 +218,12 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
         destination = os.path.join('execution_files', execution_file.filename)
         source = File.file_path(BASE_FILE_PATH, execution_file.file.sha1)
         os.symlink(source, destination)
+    # Symlink sumbitted files that should be in the execution environment
+    for filev in testable.file_verifiers:
+        if filev.copy_to_execution and filev.filename in submitted:
+            destination = os.path.join('execution_files', filev.filename)
+            source = File.file_path(BASE_FILE_PATH, submitted[filev.filename])
+            os.symlink(source, destination)
 
     # Generate data dictionary
     data = {'executable': testable.executable,

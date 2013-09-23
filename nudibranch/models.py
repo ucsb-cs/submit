@@ -205,6 +205,8 @@ class File(BasicBase, Base):
 
 class FileVerifier(BasicBase, Base):
     __table_args__ = (UniqueConstraint('filename', 'project_id'),)
+    copy_to_execution = Column(Boolean, server_default='0', default=False,
+                               nullable=False)
     filename = Column(Unicode, nullable=False)
     min_size = Column(Integer, nullable=False)
     max_size = Column(Integer)

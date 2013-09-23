@@ -288,6 +288,9 @@
       <input type="text" name="warning_regex" id="warning_regex_new"
              class="form_optional" placeholder="accept everything" value="" />
       <br/>
+      <label for="copy_to_execution_new"><span class="help" title="When checked, the file will be available relative to the present working directory during test execution. This is useful if you want the students to submit input files or test-cases.">Copy to Execution Environment</span></label>
+      <input type="checkbox" name="copy_to_execution" id="copy_to_execution_new" value="1" />
+      <br/>
       <label for="optional_new">Optional</label>
       <input type="checkbox" name="optional" id="optional_new" value="1" />
       <input type="hidden" name="project_id" value="${project.id}" />
@@ -327,6 +330,9 @@
         <input type="text" name="warning_regex" id="warning_regex_${fv.id}"
                class="form_optional" placeholder="accept everything" value="${fv.warning_regex}" />
         <br/>
+      <label for="copy_to_execution_${fv.id}"><span class="help" title="When checked, the file will be available relative to the present working directory during test execution. This is useful if you want the students to submit input files or test-cases.">Copy to Execution Environment</span></label>
+      <input type="checkbox" name="copy_to_execution" id="copy_to_execution_${fv.id}" value="1" tal:attributes="checked 'checked' if fv.copy_to_execution else None"/>
+      <br/>
         <label for="optional_${fv.id}">Optional</label>
         <input type="checkbox" name="optional" id="optional_${fv.id}"
                value="1" tal:attributes="checked 'checked' if fv.optional else None"/>
