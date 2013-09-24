@@ -19,6 +19,8 @@
     </div>
   </p>
 
+  <p><a href="${request.route_path('class.admins', class_name=class_.name)}">Add/view class admins</a></p>
+
   <p>Projects</p>
   <ul>
     <div tal:repeat="project sorted(class_.projects)" tal:omit-tag="">

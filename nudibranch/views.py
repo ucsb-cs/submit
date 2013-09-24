@@ -122,6 +122,41 @@ def class_admin_view(request):
     return {'page_title': 'Class Administrator Utilities'}
 
 
+@view_config(route_name='class.admins', renderer='json', request_method='PUT')
+@validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
+                                 validator=String('class_name'),
+                                 source=MATCHDICT),
+          user=AnyDBThing('email', User, fetch_by='username',
+                          validator=String('email')))
+def class_admins_add(request, class_, user):
+    if user in class_.admins:
+        raise HTTPConflict('That user is already an admin for the class.')
+    session = Session()
+    user.admin_for.append(class_)
+    session.add(user)
+    try:
+        session.flush()
+    except IntegrityError:
+        transaction.abort()
+        raise HTTPConflict('The user could not be added.')
+    request.session.flash('Added {} as an admin to the class.'.format(user))
+    transaction.commit()
+    return http_ok(request, redir_location=request.url)
+
+
+@view_config(route_name='class.admins', request_method='GET',
+             permission='authenticated',
+             renderer='templates/class_admins.pt')
+@validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
+                                 validator=String('class_name'),
+                                 source=MATCHDICT))
+@site_layout('nudibranch:templates/layout.pt',
+             'nudibranch:templates/macros.pt')
+def class_admins_view(request, class_):
+    return {'page_title': 'Class Admins', 'class_': class_,
+            'flash': request.session.pop_flash()}
+
+
 @view_config(route_name='class', request_method='PUT', permission='admin',
              renderer='json')
 @validate(name=String('name', min_length=3))

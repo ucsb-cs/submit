@@ -24,6 +24,7 @@ def add_routes(config):
     config.add_route('build_file', '/build_file')
     config.add_route('build_file_item', '/build_file/{build_file_id}')
     config.add_route('class', '/class')
+    config.add_route('class.admins', '/class/{class_name}/admins'),
     config.add_route('class_join_list', '/class_join_list')
     config.add_route('class_item', '/class/{class_name}')
     config.add_route('execution_file', '/execution_file')

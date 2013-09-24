@@ -1,0 +1,30 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+  <div class="header">Admin management for ${class_.name}</div>
+  <div metal:use-macro="_MACROS['js_test']"></div>
+
+  <fieldset tal:condition="flash">
+    <legend>Status Messages</legend>
+    <p tal:repeat="msg flash">${msg}</p>
+  </fieldset>
+
+  <div>
+    <h3>Add a class admin</h3>
+    <p>Enter the email of a user in the system to add them as an admin for the
+      class. Note that they will be able to add other admins as well.</p>
+    <form name="input" action="${request.route_path('class.admins', class_name=class_.name)}"
+          method="POST" onsubmit="return form_request(this, 'put', true);">
+      <p>
+        <label for="email">Email</label>
+        <input type="text" name="email" id="email"/>
+        <input type="submit" name="submit" value="Submit"/>
+      </p>
+    </form>
+  </div>
+
+  <h3>Existing Admins</h3>
+  <ul>
+    <li tal:repeat="user sorted(class_.admins)">${user}</li>
+  </ul>
+</div>
+</div>
