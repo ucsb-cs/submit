@@ -423,6 +423,7 @@
           <label for="testable_${testable.id}_tc_expected_${tc.id}">Select a new expected output file: </label>
           <input name="expected_id" id="testable_${testable.id}_tc_expected_${tc.id}" type="file"
                  tal:attributes="disabled 'disabled' if tc.output_type != 'diff' else None" />
+          <br/>
           <input id="testable_${testable.id}_tc_expected_id_${tc.id}" type="hidden"
                  name="expected_id" value="${tc.expected_id}" />
           <input type="checkbox" name="hide_expected" id="testable_${testable.id}_tc_hide_expected_${tc.id}" value="1"
@@ -494,6 +495,7 @@
           <legend>Diff settings</legend>
           <label for="testable_${testable.id}_tc_expected_new">Select the expected output file: </label>
           <input name="expected_id" id="testable_${testable.id}_tc_expected_new" type="file" />
+          <br/>
           <input id="testable_${testable.id}_tc_expected_id_new" type="hidden"
                  name="expected_id" value="" />
           <input type="checkbox" name="hide_expected" id="testable_${testable.id}_tc_hide_expected_new" value="1"/>
