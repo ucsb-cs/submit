@@ -902,7 +902,7 @@ class User(UserMixin, BasicBase, Base):
                 assoc.group = to_assoc.group
             session.delete(old_group)
         else:  # Add the user to the group
-            from_assoc = UserToGroup(group=assoc.group, project=project,
+            from_assoc = UserToGroup(group=to_assoc.group, project=project,
                                      user=from_user)
             session.add(from_assoc)
 

@@ -615,7 +615,7 @@ def project_group_request_create(request, project, username):
     message = Message(subject='{}: {} "{}" Group Request'
                       .format(site_name, project.class_.name, project.name),
                       recipients=[user.username], body=body)
-    #get_mailer(request).send(message)
+    get_mailer(request).send(message)
     request.session.flash('Request to {} sent via email.'.format(user))
     transaction.commit()
     return http_ok(request, redir_location=request.url)
