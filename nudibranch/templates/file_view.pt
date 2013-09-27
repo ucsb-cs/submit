@@ -5,7 +5,7 @@
     hljs.initHighlightingOnLoad();
   </script>
   <noscript>Enable javascript to see a syntax highlighted version.</noscript>
-  <h3>${filename}</h3>
+  <h3>${filename} (<a href="${url}">Download</a>)</h3>
   <pre><code>${contents}</code></pre>
 </div>
 </div>

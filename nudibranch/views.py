@@ -280,12 +280,17 @@ def file_item_view(request, file_, filename, raw):
                             file_.sha1)
     if raw:
         return FileResponse(source, request)
-    contents = codecs.open(source, encoding='utf-8').read()
+    try:
+        contents = codecs.open(source, encoding='utf-8').read()
+    except UnicodeDecodeError as exc:
+        contents = 'File contents could not be displayed: {}'.format(exc)
     return {'page_title': filename,
             'contents': contents,
             'filename': filename,
             'css_files': ['highlight_github.css'],
-            'javascripts': ['highlight.pack.js']}
+            'javascripts': ['highlight.pack.js'],
+            'url': request.route_path('file_item', sha1sum=file_.sha1,
+                                      filename=filename, _query={'raw': '1'})}
 
 
 @view_config(route_name='file_verifier', request_method='PUT',
