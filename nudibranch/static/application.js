@@ -165,6 +165,7 @@ UploadApp.prototype.add_file = function(e) {
     e.stopPropagation();
     e.preventDefault();
     this.db.attr('class', '');
+    var event = e.originalEvent;
     var files = event.target.files || event.dataTransfer.files;
     for (var i = 0; i < files.length; ++i) {
         if (files[i].size < 1024)
