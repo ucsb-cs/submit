@@ -73,6 +73,7 @@ def add_routes(config):
     config.add_route('class_edit', '/form/class/{class_name}')
     config.add_route('project_new', '/form/class/{class_name}/project')
     config.add_route('project_edit', '/form/project/{project_id}')
+    config.add_route('submission_new', '/form/submit/{project_id}')
     config.add_route('user_new', '/form/user')
     config.add_route('user_edit', '/form/user/{username}')
 

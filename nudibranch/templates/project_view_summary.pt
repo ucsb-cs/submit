@@ -4,7 +4,7 @@
   <p>Info for <a href="${_R('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
 
-  <p>Make a submission via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
+  <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
 
   <p tal:condition="recent_submissions"><a href="${_R('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
 
