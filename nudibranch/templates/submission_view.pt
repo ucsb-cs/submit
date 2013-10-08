@@ -37,11 +37,11 @@
   </fieldset>
 
   <h3>Submission</h3>
-  <p tal:condition="submission_admin"><a href="?as_user=1">View this page from the student's perspective</a></p>
-
   <div>Student(s): ${submission.group.users_str}
-    <a tal:condition="not submission_admin and request.user.can_join_group(submission.project)"
-       href="${_R('project_group', project_id=submission.project.id)}">(Join Group)</a>
+    <span tal:condition="submission_admin">(<a href="?as_user=1">View this page from the student's perspective</a>)</span>
+    <span tal:condition="not submission_admin and
+    request.user.can_join_group(submission.project)">(<a href="${_R('project_group',
+    project_id=submission.project.id)}">Join Group</a>)</span>
   </div>
   <div>Class: <a href="${_R('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
   <div tal:condition="submission_admin">Project: <a href="${_R('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
@@ -49,8 +49,9 @@
     Project: <a href="${_R('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
   </div>
   <div>Submitted: ${submission.created_at}</div>
+  <input tal:condition="submission_admin" type="button" value="requeue" class="requeue" />
 
-  <h4>Submission Files</h4>
+  <h4>Submission Files<span tal:condition="submission_admin"> (<a href="${_R('zipfile_download', submission_id=submission.id)}">Download submission zipfile</a>)</span></h4>
   <ul tal:condition="submission.files">
     <li tal:repeat="f sorted(submission.files)">
       <a href="${_R('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
@@ -131,12 +132,6 @@
 	${file}
       </li>
     </ul>
-  </div>
-
-  <div tal:condition="submission_admin">
-    <input type="button" value="requeue" class="requeue" />
-    <!-- Download a submission -->
-    <a href="${_R('zipfile_download', submission_id=submission.id)}">Download submission zipfile</a>
   </div>
 </div>
 </div>
