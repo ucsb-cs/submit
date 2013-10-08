@@ -14,7 +14,7 @@ from sqlalchemy import (Binary, Boolean, Column, DateTime, Enum, ForeignKey,
                         UnicodeText, func)
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, scoped_session, sessionmaker
+from sqlalchemy.orm import backref, relationship, scoped_session, sessionmaker
 from sqlalchemy.schema import UniqueConstraint
 from zope.sqlalchemy import ZopeTransactionExtension
 from .exceptions import GroupWithException
@@ -483,7 +483,7 @@ class ProjectView(Base):
     __tablename__ = 'projectview'
     created_at = Column(DateTime(timezone=True), default=func.now(),
                         nullable=False)
-    group = relationship(Group)
+    group = relationship(Group, backref=backref('project_view', uselist=False))
     group_id = Column(Integer, ForeignKey('group.id'), primary_key=True,
                       nullable=False)
     project = relationship(Project)
@@ -902,6 +902,16 @@ class User(UserMixin, BasicBase, Base):
                 submission.group = to_assoc.group
             for assoc in from_assoc.group.group_assocs[:]:
                 assoc.group = to_assoc.group
+            # Update to the most recent project view
+            from_pv = old_group.project_view
+            to_pv = to_assoc.group.project_view
+            if from_pv:
+                if to_pv:
+                    if from_pv.created_at > to_pv.created_at:
+                        to_pv.created_at = from_pv.created_at
+                    session.delete(from_pv)
+                else:
+                    from_pv.group = to_assoc.group
             session.delete(old_group)
         else:  # Add the user to the group
             from_assoc = UserToGroup(group=to_assoc.group, project=project,
