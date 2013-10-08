@@ -883,6 +883,8 @@ class User(UserMixin, BasicBase, Base):
             from_assoc, to_assoc = to_assoc, from_assoc
             from_user, to_user = to_user, from_user
             from_count = 1
+        elif not from_assoc:
+            from_count = 1
         elif to_assoc.user_count > from_assoc.user_count:
             from_assoc, to_assoc = to_assoc, from_assoc
             from_user, to_user = to_user, from_user
