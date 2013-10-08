@@ -820,12 +820,12 @@ class User(UserMixin, BasicBase, Base):
         return value if isinstance(value, cls) else None
 
     @staticmethod
-    def login(username, password):
+    def login(username, password, development_mode=False):
         """Return the user if successful, None otherwise"""
         retval = None
         try:
             user = User.fetch_by(username=username)
-            if user and user.verify_password(password):
+            if user and (development_mode or user.verify_password(password)):
                 retval = user
         except OperationalError:
             pass

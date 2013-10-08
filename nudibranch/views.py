@@ -845,7 +845,8 @@ def project_view_summary(request, class_name, project):
 @validate(username=String('email'), password=WhiteSpaceString('password'),
           dst=String('dst', optional=True))
 def session_create(request, username, password, dst):
-    user = User.login(username, password)
+    development_mode = request.registry.settings.get('development_mode', False)
+    user = User.login(username, password, development_mode=development_mode)
     if not user:
         raise HTTPConflict('Invalid login')
     headers = remember(request, user.id)
