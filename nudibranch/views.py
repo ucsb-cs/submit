@@ -599,7 +599,8 @@ def project_group_request_create(request, project, username):
         raise HTTPConflict('That user cannot join your group.')
     self_assoc = request.user.fetch_group_assoc(project)
     user_assoc = user.fetch_group_assoc(project)
-    if self_assoc == user_assoc and self_assoc is not None:
+    if request.user == user or \
+            self_assoc == user_assoc and self_assoc is not None:
         raise HTTPConflict('You are already in a group with that student.')
 
     session = Session()
