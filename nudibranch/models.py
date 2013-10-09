@@ -376,7 +376,8 @@ class Project(BasicBase, Base):
     makefile = relationship(File, backref='makefile_for_projects')
     makefile_id = Column(Integer, ForeignKey('file.id'), nullable=True)
     name = Column(Unicode, nullable=False)
-    is_ready = Column(Boolean, default=False, nullable=False)
+    status = Column(Enum('locked', 'notready', 'ready', name='status'),
+                    nullable=False, server_default='notready')
     submissions = relationship('Submission', backref='project',
                                cascade='all, delete-orphan')
     testables = relationship('Testable', backref='project',
@@ -385,6 +386,10 @@ class Project(BasicBase, Base):
     @property
     def delay(self):
         return timedelta(minutes=self.delay_minutes)
+
+    @property
+    def is_ready(self):
+        return self.status == 'ready'
 
     def __cmp__(self, other):
         return cmp(alphanum_key(self.name), alphanum_key(other.name))
@@ -400,7 +405,7 @@ class Project(BasicBase, Base):
 
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the project."""
-        return self.class_.can_edit(user)
+        return self.class_.can_edit(user) and self.status != u'locked'
 
     def can_view(self, user):
         """Return whether or not `user` can view the project's settings."""

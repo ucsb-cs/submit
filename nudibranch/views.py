@@ -470,10 +470,15 @@ def password_reset_item(request, username, password, reset):
 @validate(class_=EditableDBThing('class_id', Class),
           src_project=ViewableDBThing('project_id', Project))
 def project_clone(request, class_, src_project):
+    # Additional check as we can clone projects whose classes are locked,
+    # but we cannot clone projects that are locked
+    if src_project.status not in (u'notready', u'ready'):
+        raise HTTPConflict('Cannot clone a project with status: {}'
+                           .format(src_project.status))
     # Build a copy of the project settings
     name = '(cloned) {0}: {1}'.format(src_project.class_.name,
                                       src_project.name)
-    update = {'class_': class_, 'is_ready': False, 'name': name}
+    update = {'class_': class_, 'status': 'notready', 'name': name}
     project = clone(src_project, ('class_id',), update)
 
     session = Session()
@@ -725,7 +730,7 @@ def project_update(request, name, makefile, is_ready, class_name,
     if not project.update(name=name, makefile=makefile,
                           delay_minutes=delay_minutes,
                           group_max=group_max,
-                          is_ready=bool(is_ready)):
+                          status=u'ready' if bool(is_ready) else u'notready'):
         return http_ok(request, message='Nothing to change')
     project_id = project.id
     session = Session()
