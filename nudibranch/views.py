@@ -825,6 +825,10 @@ def project_view_stats(request, class_name, project):
 def project_view_summary(request, class_name, project):
     submissions = {}
     group_truncated = set()
+    perfect = set()
+    for submission in project.submissions:
+        if submission.points >= submission.points_possible:
+            perfect.add(submission.group)
     for group in project.groups:
         newest = (Submission.query_by(project=project, group=group)
                   .order_by(Submission.created_at.desc()).limit(4).all())
@@ -836,6 +840,7 @@ def project_view_summary(request, class_name, project):
                           .limit(10).all())
     return {'page_title': 'Admin Project Page',
             'project': project,
+            'perfect': perfect,
             'group_truncated': group_truncated,
             'recent_submissions': recent_submissions,
             'submissions': sorted(submissions.items())}

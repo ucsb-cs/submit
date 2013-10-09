@@ -8,7 +8,13 @@
 
   <p tal:condition="recent_submissions"><a href="${_R('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
 
-  <div tal:condition="recent_submissions"><h3>Most recent submissions</h3>
+  <div tal:condition="recent_submissions">
+    <h3>Stats</h3>
+    <div>Total Submissions: ${len(project.submissions)}</div>
+    <div>Groups submitted: ${len([x for x in submissions if x[1]])}</div>
+    <div>Groups with 100%: ${len(perfect)}</div>
+
+    <h3>Most recent submissions</h3>
     <ul>
       <li tal:repeat="submission recent_submissions">
 	<a href="${_R('submission_item', submission_id=submission.id)}">
