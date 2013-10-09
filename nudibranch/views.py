@@ -827,7 +827,7 @@ def project_view_summary(request, class_name, project):
     group_truncated = set()
     perfect = set()
     for submission in project.submissions:
-        if submission.points >= submission.points_possible:
+        if 0 < submission.points >= submission.points_possible:
             perfect.add(submission.group)
     for group in project.groups:
         newest = (Submission.query_by(project=project, group=group)
