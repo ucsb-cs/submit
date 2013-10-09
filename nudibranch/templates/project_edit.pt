@@ -44,8 +44,8 @@
             }
         });
         $(".requeue").on("click", function(event) {
-            if (confirm("Are you sure you want to requeue this submission?")) {
-                $.ajax({url: window.url, type: 'put', complete: handle_response});
+            if (confirm("Are you sure you want to requeue all the latest submissions?")) {
+                $.ajax({url: window.location.href, type: 'put', complete: handle_response});
             }
         });
     });
