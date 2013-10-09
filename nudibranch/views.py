@@ -842,7 +842,7 @@ def project_view_summary(request, class_name, project):
         submissions[group] = newest[:3]
     recent_submissions = (Submission.query_by(project=project)
                           .order_by(Submission.created_at.desc())
-                          .limit(10).all())
+                          .limit(16).all())
     return {'page_title': 'Admin Project Page',
             'project': project,
             'perfect': perfect,
