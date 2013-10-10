@@ -1,3 +1,4 @@
+import dateutil.parser
 import json
 import pickle
 import pika
@@ -21,6 +22,21 @@ class DummyTemplateAttr(object):
 
     def __getattr__(self, attr):
         return self.default
+
+
+class TextDate(Validator):
+
+    """A validator that converts a string into a tz-enabled datetime object."""
+
+    def run(self, value, errors, _):
+        if not isinstance(value, unicode):
+            self.add_error(errors, 'must be a unicode string')
+            return value
+        try:
+            return dateutil.parser.parse(value)
+        except ValueError:
+            self.add_error(errors, 'is not a valid datetime format')
+            return value
 
 
 class DBThing(Validator):

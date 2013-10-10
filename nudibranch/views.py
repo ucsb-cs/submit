@@ -24,7 +24,7 @@ from .diff_render import HTMLDiff
 from .exceptions import GroupWithException, InvalidId
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
-    EditableDBThing, ViewableDBThing, clone, fetch_request_ids,
+    EditableDBThing, TextDate, ViewableDBThing, clone, fetch_request_ids,
     file_verifier_verification, format_points, get_submission_stats,
     prepare_renderable, prev_next_submission, prev_next_group,
     project_file_create, project_file_delete, test_case_verification,
@@ -621,8 +621,8 @@ def project_group_request_create(request, project, username):
     url = request.route_url('project_group', project_id=project.id)
     body = ('Your fellow {} student, {}, has requested you join their '
             'group for "{}". Please visit the following link to confirm or '
-            'deny the request:\n\n{}'.format(
-            project.class_.name, request.user, project.name, url))
+            'deny the request:\n\n{}'
+            .format(project.class_.name, request.user, project.name, url))
     message = Message(subject='{}: {} "{}" Group Request'
                       .format(site_name, project.class_.name, project.name),
                       recipients=[user.username], body=body)
@@ -719,15 +719,16 @@ def project_requeue(request, project):
           is_ready=TextNumber('is_ready', min_value=0, max_value=1,
                               optional=True),
           class_name=String('class_name', source=MATCHDICT),
+          deadline=TextDate('deadline', optional=True),
           delay_minutes=TextNumber('delay_minutes', min_value=0,
                                    optional=True, default=0),
           group_max=TextNumber('group_max', min_value=1),
           project=EditableDBThing('project_id', Project, source=MATCHDICT))
-def project_update(request, name, makefile, is_ready, class_name,
+def project_update(request, name, makefile, is_ready, class_name, deadline,
                    delay_minutes, group_max, project):
     if project.class_.name != class_name:
         raise HTTPNotFound()
-    if not project.update(name=name, makefile=makefile,
+    if not project.update(name=name, makefile=makefile, deadline=deadline,
                           delay_minutes=delay_minutes,
                           group_max=group_max,
                           status=u'ready' if bool(is_ready) else u'notready'):

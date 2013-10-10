@@ -366,6 +366,7 @@ class Project(BasicBase, Base):
     build_files = relationship(BuildFile, backref='project',
                                cascade='all, delete-orphan')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
+    deadline = Column(DateTime(timezone=True), nullable=True)
     delay_minutes = Column(Integer, nullable=False, default=0,
                            server_default='0')
     execution_files = relationship(ExecutionFile, backref='project',
@@ -521,6 +522,11 @@ class Submission(BasicBase, Base):
     @property
     def extra_filenames(self):
         return self.verification_results._extra_filenames
+
+    @property
+    def is_late(self):
+        return self.project.deadline \
+            and self.created_at >= self.project.deadline
 
     @staticmethod
     def earlier_submission_for_group(submission):

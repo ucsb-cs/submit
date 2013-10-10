@@ -17,9 +17,10 @@
     <h3>Most recent submissions</h3>
     <ul>
       <li tal:repeat="submission recent_submissions">
-	<a href="${_R('submission_item', submission_id=submission.id)}">
-	  ${submission.created_at}</a> by ${submission.group.users_str}
-          (${submission.points} / ${submission.points_possible})
+        <a href="${_R('submission_item', submission_id=submission.id)}">
+          ${submission.created_at}</a> by ${submission.group.users_str}
+        (${submission.points} / ${submission.points_possible})
+        <span tal:condition="submission.is_late">[late]</span>
       </li>
     </ul>
   </div>
@@ -27,29 +28,30 @@
   <div tal:condition="submissions">
     <table border="1">
       <tr>
-	<th>Student(s)</th>
-	<th>Submissions (Most Recent Three Shown)</th>
+        <th>Student(s)</th>
+        <th>Submissions (Most Recent Three Shown)</th>
       </tr>
       <tr tal:repeat="(group, group_submissions) submissions">
-	<td>
+        <td>
           <div tal:repeat="user sorted(group.users)">
-	    <a href="${_R('user_item', username=user.username)}">
-	      ${user.name}</a>
+            <a href="${_R('user_item', username=user.username)}">
+              ${user.name}</a>
           </div>
-	</td>
-	<td>
-	  <ul tal:condition="group_submissions">
-	    <li tal:repeat="group_submission group_submissions">
-	      <a href="${_R('submission_item', submission_id=group_submission.id)}">
-		${group_submission.created_at}</a>
-                (${group_submission.points} / ${group_submission.points_possible})
-	    </li>
+        </td>
+        <td>
+          <ul tal:condition="group_submissions">
+            <li tal:repeat="group_submission group_submissions">
+              <a href="${_R('submission_item', submission_id=group_submission.id)}">
+                ${group_submission.created_at}</a>
+              (${group_submission.points} / ${group_submission.points_possible})
+              <span tal:condition="group_submission.is_late">[late]</span>
+            </li>
             <li tal:condition="group in group_truncated">
               <a href="${_R('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}">
                 See all submissions...</a>
             </li>
-	  </ul>
-	</td>
+          </ul>
+        </td>
       </tr>
     </table>
   </div>

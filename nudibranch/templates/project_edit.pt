@@ -84,12 +84,16 @@
       <br/>
       <input type="text" name="group_max" id="group_max" value="${project.group_max}" />
       <br/>
+      <label for="deadline">Deadline (Empty or YYYY-MM-DD HH:MM)</label>
+      <br/>
+      <input type="text" name="deadline" id="deadline" value="${project.deadline}" />
+      <br/>
       <label for="delay_minutes">Submission Results Delay (in minutes)</label>
       <br/>
       <input type="text" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}" />
       <br/>
-      <label for="is_ready_new">Ready for Submission</label>
-      <input type="checkbox" name="is_ready" id="is_ready_new" value="1" tal:attributes="checked 'checked' if project.is_ready else None"/>
+      <label for="is_ready">Ready for Submission</label>
+      <input type="checkbox" name="is_ready" id="is_ready" value="1" tal:attributes="checked 'checked' if project.is_ready else None"/>
       <br/>
       <div tal:condition="project.makefile">
         <a href="${_R('file_item', sha1sum=project.makefile.sha1, filename='Makefile')}">Existing Makefile</a></div>

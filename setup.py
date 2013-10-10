@@ -15,6 +15,7 @@ requires = [
     'pyramid_mailer>=0.10',
     'pyramid_tm>=0.5',
     'python-daemon>=1.5.5',
+    'python-dateutil>=2.1',
     'sqla_mixins>=0.6',
     'sqlalchemy>=0.7.8',
     'zope.sqlalchemy>=0.7.1']
