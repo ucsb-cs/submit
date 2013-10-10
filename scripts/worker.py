@@ -62,7 +62,7 @@ class SubmissionHandler(object):
         args = command.split()
         # allow some programs
         if args[0] not in ('bash', 'python', 'python2', 'python3', 'sh',
-                           'valgrind'):
+                           'spim', 'valgrind'):
             args[0] = os.path.join(os.getcwd(), SRC_PATH, args[0])
             if not os.path.isfile(args[0]):
                 raise NonexistentExecutable()
