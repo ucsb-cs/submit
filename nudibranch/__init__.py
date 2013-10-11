@@ -97,7 +97,6 @@ def main(global_config, **settings):
     config = Configurator(settings=settings, authentication_policy=authen,
                           authorization_policy=author, root_factory=Root,
                           session_factory=session_factory)
-    config.include('pyramid_mailer')
     config.add_static_view('static', 'static', cache_max_age=3600)
     # Add attributes to request
     config.add_request_method(get_user, 'user', reify=True)

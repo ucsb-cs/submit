@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 import sys
 import transaction
 import unittest
-from chameleon.zpt.template import Macro
 from nudibranch import add_routes
 from nudibranch.models import (BuildFile, Class, File, FileVerifier, Project,
                                Session, Submission, SubmissionToFile, TestCase,
@@ -133,7 +132,6 @@ class BasicTests(BaseAPITest):
         from nudibranch.views import home
         request = self.make_request()
         info = home(request)
-        self.assertIsInstance(info['_LAYOUT'], Macro)
         self.assertRaises(ValueError, info['_S'], 'favicon.ico')
 
     def test_home(self):
