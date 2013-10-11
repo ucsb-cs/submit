@@ -743,8 +743,13 @@ class TestableStatus(object):
         if had_build_errors:  # Add a build error message
             self.issues = {}
             for filename, (warnings, errors) in verification_issues.items():
-                new = ['Build failed (see make output)'] + errors
-                self.issues[filename] = (warnings, new)
+                if self.testable.requires_file(filename):
+                    new = ['Build failed (see make output)'] + errors
+                    self.issues[filename] = (warnings, new)
+            for fv in self.testable.file_verifiers:
+                if not fv.optional and fv.filename not in self.issues:
+                    self.issues[fv.filename] = (
+                        [], ['Build failed (see make output)'])
 
     def __cmp__(self, other):
         return cmp(self.testable, other.testable)
