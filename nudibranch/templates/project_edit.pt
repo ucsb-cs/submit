@@ -84,9 +84,9 @@
       <br/>
       <input type="text" name="group_max" id="group_max" value="${project.group_max}" />
       <br/>
-      <label for="deadline">Deadline (Empty or YYYY-MM-DD HH:MM)</label>
+      <label for="deadline">Deadline (Empty or valid date/time format such as YYYY-MM-DD HH:MM)</label>
       <br/>
-      <input type="text" name="deadline" id="deadline" value="${project.deadline}" />
+      <input type="text" name="deadline" id="deadline" value="${project.deadline}" style="width:200px" />
       <br/>
       <label for="delay_minutes">Submission Results Delay (in minutes)</label>
       <br/>

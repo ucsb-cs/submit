@@ -727,6 +727,9 @@ def project_update(request, name, makefile, is_ready, class_name, deadline,
                    delay_minutes, group_max, project):
     if project.class_.name != class_name:
         raise HTTPNotFound()
+    # Fix timezone if it doesn't exist
+    if project.deadline and deadline and not deadline.tzinfo:
+        deadline = deadline.replace(tzinfo=project.deadline.tzinfo)
     if not project.update(name=name, makefile=makefile, deadline=deadline,
                           delay_minutes=delay_minutes,
                           group_max=group_max,
