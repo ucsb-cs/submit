@@ -139,9 +139,8 @@ class File(BasicBase, Base):
         file_ = File.fetch_by(sha1=sha1sum)
         if not file_:
             file_ = File(base_path=base_path, data=data, sha1=sha1sum)
-            session = Session()
-            session.add(file_)
-            session.flush()  # Cannot commit the transaction here
+            Session.add(file_)
+            Session.flush()
         return file_
 
     @staticmethod
@@ -343,10 +342,9 @@ class PasswordReset(Base):
 
     @classmethod
     def fetch_by(cls, **kwargs):
-        session = Session()
         if 'reset_token' in kwargs:
             kwargs['reset_token'] = uuid.UUID(kwargs['reset_token']).bytes
-        return session.query(cls).filter_by(**kwargs).first()
+        return Session.query(cls).filter_by(**kwargs).first()
 
     @classmethod
     def generate(cls, user):
@@ -498,8 +496,7 @@ class ProjectView(Base):
 
     @classmethod
     def fetch_by(cls, **kwargs):
-        session = Session()
-        return session.query(cls).filter_by(**kwargs).first()
+        return Session.query(cls).filter_by(**kwargs).first()
 
 
 class Submission(BasicBase, Base):
@@ -573,7 +570,7 @@ class Submission(BasicBase, Base):
 
     def file_mapping(self):
         """Return a mapping of filename to File object for the submission."""
-        results = Session().query(SubmissionToFile).filter_by(
+        results = Session.query(SubmissionToFile).filter_by(
             submission_id=self.id)
         return dict((x.filename, x.file) for x in results)
 
@@ -589,13 +586,11 @@ class Submission(BasicBase, Base):
         if delay <= zero:
             # Never delay longer than the project's delay time
             return None
-        session = Session()
         pv = ProjectView.fetch_by(project=self.project, group=self.group)
         if not pv:  # Don't delay
             if update:
                 pv = ProjectView(project=self.project, group=self.group)
-                session.add(pv)
-                session.flush()  # What if this fails?
+                Session.add(pv)
             return None
         elif self.created_at <= pv.created_at:  # Always show older results
             return None
@@ -603,8 +598,6 @@ class Submission(BasicBase, Base):
         if pv_delay <= zero:
             if update:  # Update the counter
                 pv.created_at = func.now()
-                session.add(pv)
-                session.flush()  # What if this fails?
             return None
         return min(delay, pv_delay).total_seconds() / 60
 
@@ -723,8 +716,7 @@ class TestCaseResult(Base):
 
     @classmethod
     def fetch_by_ids(cls, submission_id, test_case_id):
-        session = Session()
-        return session.query(cls).filter_by(
+        return Session.query(cls).filter_by(
             submission_id=submission_id, test_case_id=test_case_id).first()
 
     def update(self, data):
@@ -881,7 +873,7 @@ class User(UserMixin, BasicBase, Base):
     def classes_can_admin(self):
         """Return all the classes (sorted) that this user can admin."""
         if self.is_admin:
-            return sorted(Session().query(Class).all())
+            return sorted(Session.query(Class).all())
         else:
             return sorted(self.admin_for)
 
@@ -891,15 +883,13 @@ class User(UserMixin, BasicBase, Base):
         from_assoc = from_user.fetch_group_assoc(project)
         to_assoc = to_user.fetch_group_assoc(project)
 
-        session = Session()
-
         if from_user == to_user or from_assoc == to_assoc and from_assoc:
             raise GroupWithException('You are already part of that group.')
 
         if not from_assoc and not to_assoc:
             to_assoc = UserToGroup(group=Group(project=project),
                                    project=project, user=to_user)
-            session.add(to_assoc)
+            Session.add(to_assoc)
             from_count = 1
         elif not to_assoc:
             from_assoc, to_assoc = to_assoc, from_assoc
@@ -931,14 +921,14 @@ class User(UserMixin, BasicBase, Base):
                 if to_pv:
                     if from_pv.created_at > to_pv.created_at:
                         to_pv.created_at = from_pv.created_at
-                    session.delete(from_pv)
+                    Session.delete(from_pv)
                 else:
                     from_pv.group = to_assoc.group
-            session.delete(old_group)
+            Session.delete(old_group)
         else:  # Add the user to the group
             from_assoc = UserToGroup(group=to_assoc.group, project=project,
                                      user=from_user)
-            session.add(from_assoc)
+            Session.add(from_assoc)
 
     def fetch_group_assoc(self, project):
         return (Session.query(UserToGroup)

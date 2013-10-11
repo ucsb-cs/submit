@@ -131,16 +131,12 @@ def class_admin_view(request):
 def class_admins_add(request, class_, user):
     if user in class_.admins:
         raise HTTPConflict('That user is already an admin for the class.')
-    session = Session()
     user.admin_for.append(class_)
-    session.add(user)
     try:
-        session.flush()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('The user could not be added.')
     request.session.flash('Added {} as an admin to the class.'.format(user))
-    transaction.commit()
     return http_ok(request, redir_location=request.url)
 
 
@@ -161,13 +157,11 @@ def class_admins_view(request, class_):
              renderer='json')
 @validate(name=String('name', min_length=3))
 def class_create(request, name):
-    session = Session()
     class_ = Class(name=name)
-    session.add(class_)
+    Session.add(class_)
     try:
-        transaction.commit()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('Class \'{0}\' already exists'.format(name))
     return http_created(request, redir_location=request.route_path('class'))
 
@@ -196,8 +190,7 @@ def class_join_list(request):
              permission='authenticated', renderer='templates/class_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def class_list(request):
-    session = Session()
-    classes = session.query(Class).all()
+    classes = Class.query_by().all()
     return {'page_title': 'Login', 'classes': classes}
 
 
@@ -248,15 +241,9 @@ def file_create(request, b64data, sha1sum):
     # fetch or create (and save to disk) the file
     base_path = request.registry.settings['file_directory']
     file_ = File.fetch_or_create(data, base_path, sha1sum=sha1sum)
-
     # associate user with the file
     request.user.files.append(file_)
-    session = Session()
-    session.add(request.user)
-
-    file_id = file_.id
-    transaction.commit()
-    return {'file_id': file_id}
+    return {'file_id': file_.id}
 
 
 @view_config(route_name='file_item_info', request_method='GET',
@@ -320,16 +307,13 @@ def file_verifier_create(request, copy_to_execution, filename, min_size,
                          max_size=max_size, min_lines=min_lines,
                          max_lines=max_lines, optional=bool(optional),
                          project=project, warning_regex=warning_regex)
-    session = Session()
-    session.add(filev)
+    Session.add(filev)
     try:
-        session.flush()  # Cannot commit the transaction here
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That filename already exists for the project')
-
+    request.session.flash('Added expected file: {}'.format(filename))
     redir_location = request.route_path('project_edit', project_id=project.id)
-    transaction.commit()
     return http_created(request, redir_location=redir_location)
 
 
@@ -372,14 +356,14 @@ def file_verifier_update(request, copy_to_execution, file_verifier, filename,
                                 warning_regex=warning_regex):
         return http_ok(request, message='Nothing to change')
 
-    session = Session()
-    session.add(file_verifier)
     try:
-        transaction.commit()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That filename already exists for the project')
-    return http_ok(request, message='updated')
+    request.session.flash('Updated expected file: {}'.format(filename))
+    redir_location = request.route_path('project_edit',
+                                        project_id=file_verifier.project.id)
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='home', renderer='templates/home.pt',
@@ -404,12 +388,10 @@ def password_reset_create(request, username):
     password_reset = PasswordReset.generate(user)
     failure_message = 'You were already sent a password reset email.'
     if password_reset:
-        session = Session()
-        session.add(password_reset)
+        Session.add(password_reset)
         try:
-            session.flush()
+            Session.flush()
         except IntegrityError:
-            transaction.abort()
             raise HTTPConflict(failure_message)
         site_name = request.registry.settings['site_name']
         reset_url = request.route_url('password_reset_item',
@@ -419,7 +401,6 @@ def password_reset_create(request, username):
         message = Message(subject='{0} password reset email'.format(site_name),
                           recipients=[user.username], body=body)
         get_mailer(request).send(message)
-        transaction.commit()
         return http_ok(request,
                        message='A password reset link will be emailed to you.')
     else:
@@ -457,11 +438,9 @@ def password_reset_item(request, username, password, reset):
     if reset.user.username != username:
         raise HTTPConflict('The reset token and username '
                            'combination is not valid.')
-    session = Session()
     reset.user.password = password
-    session.add(reset.user)
-    session.delete(reset)
-    transaction.commit()
+    Session.delete(reset)
+    Session.flush()
     return http_ok(request, message='Your password was changed successfully.')
 
 
@@ -481,8 +460,7 @@ def project_clone(request, class_, src_project):
     update = {'class_': class_, 'status': 'notready', 'name': name}
     project = clone(src_project, ('class_id',), update)
 
-    session = Session()
-    session.autoflush = False  # Don't flush while testing for changes
+    Session.autoflush = False  # Don't flush while testing for changes
 
     # Copy project "files" keeping a mapping between src and dst objects
     mapping = {'build_files': {}, 'execution_files': {}, 'file_verifiers': {}}
@@ -503,15 +481,13 @@ def project_clone(request, class_, src_project):
         # Copy test cases
         testable.test_cases = [clone(x, ('testable_id',))
                                for x in src_testable.test_cases]
-    session.add(project)
+    Session.add(project)
     try:
-        session.flush()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('The name `{0}` already exists for the class.'
                            .format(name))
     redir_location = request.route_path('project_edit', project_id=project.id)
-    transaction.commit()
     return http_created(request, redir_location=redir_location)
 
 
@@ -522,15 +498,12 @@ def project_clone(request, class_, src_project):
           makefile=ViewableDBThing('makefile_id', File, optional=True))
 def project_create(request, name, class_, makefile):
     project = Project(name=name, class_=class_, makefile=makefile)
-    session = Session()
-    session.add(project)
+    Session.add(project)
     try:
-        session.flush()  # Cannot commit the transaction here
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That project name already exists for the class')
     redir_location = request.route_path('project_edit', project_id=project.id)
-    transaction.commit()
     return http_created(request, redir_location=redir_location)
 
 
@@ -576,9 +549,8 @@ def project_group_request_confirm(request, project, group_request):
     except GroupWithException as exc:
         request.session.flash(exc.args[0])
         failed = True
-
+    Session.delete(group_request)
     try:
-        Session.delete(group_request)
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('Could not join the group at this time.')
@@ -608,13 +580,11 @@ def project_group_request_create(request, project, username):
             self_assoc == user_assoc and self_assoc is not None:
         raise HTTPConflict('You are already in a group with that student.')
 
-    session = Session()
-    session.add(GroupRequest(from_user=request.user, project=project,
+    Session.add(GroupRequest(from_user=request.user, project=project,
                              to_user=user))
     try:
-        session.flush()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('Could not create your group request.')
 
     site_name = request.registry.settings['site_name']
@@ -628,7 +598,6 @@ def project_group_request_create(request, project, username):
                       recipients=[user.username], body=body)
     get_mailer(request).send(message)
     request.session.flash('Request to {} sent via email.'.format(user))
-    transaction.commit()
     return http_ok(request, redir_location=request.url)
 
 
@@ -735,17 +704,12 @@ def project_update(request, name, makefile, is_ready, class_name, deadline,
                           group_max=group_max,
                           status=u'ready' if bool(is_ready) else u'notready'):
         return http_ok(request, message='Nothing to change')
-    project_id = project.id
-    session = Session()
-    session.add(project)
     try:
-        transaction.commit()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That project name already exists for the class')
     request.session.flash('Project updated')
-    redir_location = request.route_path('project_edit',
-                                        project_id=project_id)
+    redir_location = request.route_path('project_edit', project_id=project.id)
     return http_ok(request, redir_location=redir_location)
 
 
@@ -918,13 +882,12 @@ def submission_create(request, project, file_ids, filenames):
     for file_id, filename in zip(file_ids, filenames):
         assoc.append(SubmissionToFile(file_id=file_id, filename=filename))
     submission.files.extend(assoc)
-    session = Session()
-    session.add(submission)
-    session.add_all(assoc)
-    session.flush()
+    Session.add(submission)
+    Session.add_all(assoc)
+    Session.flush()
     submission_id = submission.id
+    # We must commit the transaction before queueing the job.
     transaction.commit()
-    # Create the verification job
     request.queue(submission_id=submission_id)
     # Redirect to submission result page
     redir_location = request.route_path('submission_item',
@@ -1006,23 +969,8 @@ def submission_view(request, submission, as_user):
     # Update the session if necessary
     if points != submission.points \
             or points_possible != submission.points_possible:
-        session = Session()
         submission.points = points
         submission.points_possible = points_possible
-        session.add(submission)
-        # Free items from the session that won't be modified
-        session.expunge(request.user)
-        for testable in submission.project.testables:
-            session.expunge(testable)
-        for testable_result in submission.testable_results:
-            session.expunge(testable_result)
-        try:
-            transaction.commit()
-        except IntegrityError:
-            transaction.abort()
-        # Re-associate objects with the new session
-        session = Session()
-        session.add(submission)
 
     # Do this after we've potentially updated the session
     if submission_admin:
@@ -1073,16 +1021,13 @@ def test_case_create(request, name, args, expected, hide_expected,
                          output_filename=output_filename,
                          output_type=output_type, points=points,
                          source=output_source, stdin=stdin, testable=testable)
-    session = Session()
-    session.add(test_case)
+    Session.add(test_case)
     try:
-        session.flush()  # Cannot commit the transaction here
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That name already exists for the testable')
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
-    transaction.commit()
     return http_created(request, redir_location=redir_location)
 
 
@@ -1094,9 +1039,7 @@ def test_case_delete(request, test_case):
     redir_location = request.route_path(
         'project_edit', project_id=test_case.testable.project.id)
     request.session.flash('Deleted TestCase {0}.'.format(test_case.name))
-    session = Session()
-    session.delete(test_case)
-    transaction.commit()
+    Session.delete(test_case)
     return http_ok(request, redir_location=redir_location)
 
 
@@ -1124,14 +1067,14 @@ def test_case_update(request, name, args, expected, hide_expected,
                             output_type=output_type, points=points,
                             source=output_source, stdin=stdin):
         return http_ok(request, message='Nothing to change')
-    session = Session()
-    session.add(test_case)
     try:
-        transaction.commit()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That name already exists for the testable')
-    return http_ok(request, message='Test case updated')
+    request.session.flash('Updated TestCase {0}.'.format(test_case.name))
+    redir_location = request.route_path(
+        'project_edit', project_id=test_case.testable.project.id)
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='testable', request_method='PUT',
@@ -1171,17 +1114,13 @@ def testable_create(request, name, make_target, executable, build_file_ids,
                         execution_files=execution_files,
                         file_verifiers=file_verifiers)
     redir_location = request.route_path('project_edit', project_id=project.id)
-    session = Session()
-    session.add(testable)
+    Session.add(testable)
     try:
-        session.flush()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That name already exists for the project')
-    testable_id = testable.id
-    transaction.commit()
     return http_created(request, redir_location=redir_location,
-                        testable_id=testable_id)
+                        testable_id=testable.id)
 
 
 @view_config(route_name='testable_item', request_method='POST',
@@ -1215,8 +1154,7 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
     except InvalidId as exc:
         raise HTTPBadRequest('Invalid {0}'.format(exc.message))
 
-    session = Session()
-    session.autoflush = False  # Don't flush while testing for changes
+    Session.autoflush = False  # Don't flush while testing for changes
     if not testable.update(_ignore_order=True, name=name,
                            make_target=make_target,
                            executable=executable,
@@ -1224,13 +1162,14 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
                            execution_files=execution_files,
                            file_verifiers=file_verifiers):
         return http_ok(request, message='Nothing to change')
-    session.add(testable)
     try:
-        transaction.commit()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That name already exists for the project')
-    return http_ok(request, message='Testable updated')
+    request.session.flash('Updated Testable {0}.'.format(testable.name))
+    redir_location = request.route_path('project_edit',
+                                        project_id=testable.project.id)
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='testable_item', request_method='DELETE',
@@ -1240,9 +1179,7 @@ def testable_delete(request, testable):
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
     request.session.flash('Deleted Testable {0}.'.format(testable.name))
-    session = Session()
-    session.delete(testable)
-    transaction.commit()
+    Session.delete(testable)
     return http_ok(request, redir_location=redir_location)
 
 
@@ -1260,9 +1197,6 @@ def user_class_join(request, class_, username):
     request.user.classes.append(class_)
     redir_location = request.route_path('class_join_list',
                                         _query={'last_class': class_.name})
-    session = Session()
-    session.add(request.user)
-    transaction.commit()
     return http_created(request, redir_location=redir_location)
 
 
@@ -1273,16 +1207,14 @@ def user_class_join(request, class_, username):
           admin_for=List('admin_for', EditableDBThing('', Class),
                          optional=True))
 def user_create(request, name, username, password, admin_for):
-    session = Session()
     user = User(name=name, username=username, password=password,
                 is_admin=False)
     if admin_for:
         user.admin_for.extend(admin_for)
-    session.add(user)
+    Session.add(user)
     try:
-        transaction.commit()
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('User \'{0}\' already exists'.format(username))
     redir_location = request.route_path('session',
                                         _query={'username': username})
@@ -1303,8 +1235,7 @@ def user_edit(request):
              renderer='templates/user_list.pt')
 @site_layout('nudibranch:templates/layout.pt')
 def user_list(request):
-    session = Session()
-    users = session.query(User).all()
+    users = sorted(User.query_by().all())
     return {'page_title': 'User List', 'users': users}
 
 

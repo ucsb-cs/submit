@@ -4,7 +4,6 @@ import pickle
 import pika
 import re
 import traceback
-import transaction
 from pyramid_addons.helpers import http_created, http_ok
 from pyramid_addons.validation import SOURCE_MATCHDICT, TextNumber, Validator
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict,
@@ -293,15 +292,12 @@ def project_file_create(request, file_, filename, project, cls):
         msg = 'A required expected file already exists with that name.'
         raise HTTPBadRequest(msg)
     cls_file = cls(file=file_, filename=filename, project=project)
-    session = Session()
-    session.add(cls_file)
+    Session.add(cls_file)
     try:
-        session.flush()  # Cannot commit the transaction here
+        Session.flush()
     except IntegrityError:
-        transaction.abort()
         raise HTTPConflict('That filename already exists for the project')
     redir_location = request.route_path('project_edit', project_id=project.id)
-    transaction.commit()
     request.session.flash('Added {0} {1}.'.format(cls.__name__, filename))
     return http_created(request, redir_location=redir_location)
 
@@ -313,9 +309,7 @@ def project_file_delete(request, project_file):
                           .format(project_file.__class__.__name__,
                                   project_file.filename))
     # Delete the file
-    session = Session()
-    session.delete(project_file)
-    transaction.commit()
+    Session.delete(project_file)
     return http_ok(request, redir_location=redir_location)
 
 
