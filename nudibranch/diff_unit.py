@@ -175,8 +175,11 @@ class DiffWithMetadata(DiffRenderable):
             self.extra_info.should_show_table()
 
     def wrong_things(self):
-        '''Returns a list of strings describing everything that's wrong'''
-        return self._diff.wrong_things() + self.extra_info.wrong_things()
+        """Returns a list of strings describing everything that's wrong"""
+        extra_wrong = self.extra_info.wrong_things()
+        if extra_wrong:
+            return extra_wrong
+        return self._diff.wrong_things()
 
 
 class ImageOutput(DiffRenderable):
@@ -202,20 +205,70 @@ class ImageOutput(DiffRenderable):
 
 
 class Diff(object):
-    '''Represents a saved diff file.  Can be pickled safely.'''
+    """Represents a saved diff file.  Can be pickled safely."""
 
     def __init__(self, correct, given):
         self._tabsize = 8
         self._correct_empty = correct == ""
         self._given_empty = given == ""
+        self._correct_newline = correct.endswith('\n')
+        self._given_newline = given.endswith('\n')
         self._diff = self._make_diff(correct, given) \
             if correct != given else None
 
-    def is_correct_empty(self):
+    @property
+    def correct_empty(self):
         return self._correct_empty
 
-    def is_given_empty(self):
+    @property
+    def correct_newline(self):
+        if hasattr(self, '_correct_newline'):
+            return self._correct_newline
+        if not self._diff:
+            return False
+        try:
+            last_data = None
+            for (line, data), _, differs in self._diff:
+                if line:
+                    last_data = data, differs
+            data, differs = last_data
+            if differs:
+                assert data.endswith('\x01')
+                return data.endswith('\n\x01')
+            else:
+                return data.endswith('\n')
+        except:
+            print('correct Invalid data format')
+            import pprint
+            pprint.pprint(self._diff)
+            return None
+
+    @property
+    def given_empty(self):
         return self._given_empty
+
+    @property
+    def given_newline(self):
+        if hasattr(self, '_given_newline'):
+            return self._given_newline
+        if not self._diff:
+            return False
+        try:
+            last_data = None
+            for _, (line, data), differs in self._diff:
+                if line:
+                    last_data = data, differs
+            data, differs = last_data
+            if differs:
+                assert data.endswith('\x01')
+                return data.endswith('\n\x01')
+            else:
+                return data.endswith('\n')
+        except:
+            print('given Invalid data format')
+            import pprint
+            pprint.pprint(self._diff)
+            return None
 
     def outputs_match(self):
         return self._diff is None
@@ -225,15 +278,20 @@ class Diff(object):
         should be made.  This is whenever the results didn't match and
         the student at least attempted to produce output'''
         return not self.outputs_match() and not \
-            (self.is_given_empty() and not self.is_correct_empty())
+            (self.given_empty and not self.correct_empty)
 
     def wrong_things(self):
         retval = []
-        if self.is_correct_empty() and not self.is_given_empty():
-            retval.append('Your program should not have produced output')
-        elif self.is_given_empty() and not self.is_correct_empty():
-            retval.append('Your program should have produced output')
-        if not self.outputs_match():
+        if self.correct_empty and not self.given_empty:
+            retval.append('Your program should not have produced output.')
+        elif self.given_empty and not self.correct_empty:
+            retval.append('Your program should have produced output.')
+        elif self.correct_newline and self.given_newline is False:
+            retval.append('Your program\'s output should end with a newline.')
+        elif self.correct_newline is False and self.given_newline:
+            retval.append('Your program\'s output should not end '
+                          'with a newline.')
+        elif not self.outputs_match():
             retval.append('Your program\'s output did not match the expected.')
         return retval
 
