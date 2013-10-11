@@ -756,8 +756,8 @@ class TestableStatus(object):
     def is_error(self):
         if self.had_build_errors:
             return True
-        for _, errors in self.issues.values():
-            if errors:
+        for filename, (_, errors) in self.issues.items():
+            if errors and self.testable.requires_file(filename):
                 return True
         return False
 
@@ -789,6 +789,12 @@ class Testable(BasicBase, Base):
 
     def points(self):
         return sum([test_case.points for test_case in self.test_cases])
+
+    def requires_file(self, filename):
+        for fv in self.file_verifiers:
+            if filename == fv.filename and not fv.optional:
+                return True
+        return False
 
 
 class TestableResult(BasicBase, Base):
