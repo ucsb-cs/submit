@@ -704,11 +704,10 @@ def project_new(request, class_):
              request_method='PUT', permission='authenticated')
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
 def project_requeue(request, project):
-    count = 0
     for count, submission in enumerate(project.recent_submissions()):
         request.queue(submission_id=submission.id, _priority=2)
     request.session.flash('Requeued the most recent submissions ({0} items).'
-                          .format(count))
+                          .format(count + 1))
     return http_ok(request, redir_location=request.url)
 
 
