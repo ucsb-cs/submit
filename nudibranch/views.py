@@ -1248,17 +1248,22 @@ def user_list(request):
 def user_view(request, user):
     user_groups = [x.group_id for x in Session.query(UserToGroup)
                    .filter(UserToGroup.user == user).all()]
-    user_subs = (Submission.query_by()
-                 .filter(Submission.group_id.in_(user_groups))
-                 .order_by(Submission.created_at.desc()).limit(10).all())
+    admin_subs = user_subs = None
+    if user_groups:
+        user_subs = (Submission.query_by()
+                     .filter(Submission.group_id.in_(user_groups))
+                     .order_by(Submission.created_at.desc()).limit(10).all())
     admin_classes = user.classes_can_admin()
-    from pprint import pprint
-    class_projs = [x.id for x in Project.query_by()
-                   .filter(Project.class_id.in_([x.id for x in admin_classes]))
-                   .all()]
-    admin_subs = (Submission.query_by()
-                  .filter(Submission.project_id.in_(class_projs))
-                  .order_by(Submission.created_at.desc()).limit(10).all())
+    if admin_classes:
+        class_ids = [x.id for x in admin_classes]
+        class_projs = [x.id for x in Project.query_by()
+                       .filter(Project.class_id.in_(class_ids))
+                       .all()]
+        if class_projs:
+            admin_subs = (Submission.query_by()
+                          .filter(Submission.project_id.in_(class_projs))
+                          .order_by(Submission.created_at.desc()).limit(10)
+                          .all())
     return {'page_title': 'User Page',
             'name': user.name,
             'user_subs': user_subs,
