@@ -180,7 +180,7 @@
         <legend>Test Cases</legend>
         <ul>
           <li tal:repeat="tc sorted(testable.test_cases)">
-            <span class="faulink" onclick="$('#update_tc_${tc.id}').dialog('open');">${tc.name}</span>
+            <span class="faulink" onclick="$('#update_tc_${tc.id}').dialog('open');">${tc.name}</span> (${tc.points} pts) [${tc.source}]
           </li>
           <li>(<span class="faulink" onclick="$('#testable_${testable.id}_tc_new').dialog('open');">add new test case</span>)</li>
         </ul>
