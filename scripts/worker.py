@@ -22,6 +22,7 @@ EXECUTION_FILES_PATH = 'execution_files'
 SYNC_FILE = 'sync_files'
 
 MAX_FILE_SIZE = 81920
+TIME_LIMIT = 4
 
 
 class SubmissionHandler(object):
@@ -46,8 +47,8 @@ class SubmissionHandler(object):
             time.sleep(0.1)
 
     @staticmethod
-    def execute(command, stderr=None, stdin=None, stdout=None, time_limit=2,
-                files=None, save=None):
+    def execute(command, stderr=None, stdin=None, stdout=None, files=None,
+                save=None):
         if not stderr:
             stderr = open('/dev/null', 'w')
         if not stdout:
@@ -74,10 +75,11 @@ class SubmissionHandler(object):
                     shutil.copy(src, os.path.join(tmp_dir, arg))
 
         # Hacks to give more time to some scripts:
+        time_limit = TIME_LIMIT
         if args[0] in ('valgrind',):
-            time_limit = 4
+            time_limit *= 2
         elif len(args) > 2 and args[1] == 'turtle_capture.sh':
-            time_limit = 16  # How can we run this faster?
+            time_limit *= 4  # How can we run this faster?
 
         # Run command with a timelimit
         # TODO: Do we only get partial output with stdout?
