@@ -31,7 +31,8 @@ from .helpers import (
     zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
-                     Submission, SubmissionToFile, TestCase, Testable, User)
+                     Submission, SubmissionToFile, TestCase, Testable, User,
+                     UserToGroup)
 
 
 # A few reoccuring validators
@@ -1245,10 +1246,25 @@ def user_list(request):
                                validator=String('username'), source=MATCHDICT))
 @site_layout('nudibranch:templates/layout.pt')
 def user_view(request, user):
+    user_groups = [x.group_id for x in Session.query(UserToGroup)
+                   .filter(UserToGroup.user == user).all()]
+    user_subs = (Submission.query_by()
+                 .filter(Submission.group_id.in_(user_groups))
+                 .order_by(Submission.created_at.desc()).limit(10).all())
+    admin_classes = user.classes_can_admin()
+    from pprint import pprint
+    class_projs = [x.id for x in Project.query_by()
+                   .filter(Project.class_id.in_([x.id for x in admin_classes]))
+                   .all()]
+    admin_subs = (Submission.query_by()
+                  .filter(Submission.project_id.in_(class_projs))
+                  .order_by(Submission.created_at.desc()).limit(10).all())
     return {'page_title': 'User Page',
             'name': user.name,
+            'user_subs': user_subs,
             'classes_taking': sorted(user.classes),
-            'admin_classes': user.classes_can_admin()}
+            'admin_subs': admin_subs,
+            'admin_classes': admin_classes}
 
 
 @view_config(route_name='zipfile_download', request_method='GET',
