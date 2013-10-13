@@ -7,13 +7,13 @@
       able to make any changes.</h3>
     <div tal:condition="not class_.is_locked">
       <p><a href="${_R('project_new', class_name=class_.name)}">Create new project</a></p>
-      <form tal:condition="projects" name="input" action="${_R('project_clone')}"
+      <form tal:condition="clone_projects" name="input" action="${_R('project_clone')}"
 	    onsubmit="return form_request(this, 'PUT');">
         <input type="submit" value="clone selected project" />
         <input type="hidden" name="class_id" value="${class_.id}" />
         <select name="project_id">
           <option value="">--Select a project to clone--</option>
-          <option tal:repeat="project projects" value="${project.id}">${project.class_.name}: ${project.name}</option>
+          <option tal:repeat="project clone_projects" value="${project.id}">${project.class_.name}: ${project.name}</option>
         </select>
       </form>
     </div>
@@ -36,5 +36,20 @@
       </li>
     </div>
   </ul>
+  <div tal:condition="recent_subs">
+    <h4>Classes' recent submissions</h4>
+    <table>
+      <tr><th>Project</th><th tal:condition="class_admin">Group</th><th>Sub Info</th></tr>
+      <tr tal:repeat="sub recent_subs">
+        <td><a href="${_R('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a></td>
+        <td tal:condition="class_admin">${sub.group.users_str}</td>
+        <td>
+          <a href="${_R('submission_item', submission_id=sub.id)}">${str(sub.created_at)}</a>
+          (${sub.points} / ${sub.points_possible})
+          <span tal:condition="sub.is_late">[late]</span>
+        </td>
+      </tr>
+    </table>
+  </div>
 </div>
 </div>
