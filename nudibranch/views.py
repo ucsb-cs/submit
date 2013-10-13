@@ -689,6 +689,34 @@ def project_requeue(request, project):
     return http_ok(request, redir_location=request.url)
 
 
+@view_config(route_name='submission_item_gen', renderer='json',
+             request_method='PUT', permission='authenticated')
+@validate(submission=EditableDBThing('submission_id', Submission,
+                                     source=MATCHDICT))
+def project_test_case_generate(request, submission):
+    project = submission.project
+    # Mark the project and its testables as locked
+    project.status = u'locked'
+    for testable in project.testables:
+        testable.is_locked = True
+
+    # Saved attributes
+    submission_id = submission.id
+    project_id = project.id
+
+    try:
+        transaction.commit()  # Need to commit before queuing the job.
+    except IntegrityError:
+        transaction.abort()
+        raise
+    # Schedule a task to generate the expected outputs
+    request.queue(submission_id=submission_id, update_project=True,
+                  _priority=0)
+    request.session.flash('Rebuilding the project\'s expected outputs.')
+    redir_location = request.route_url('project_edit', project_id=project_id)
+    return http_ok(request, redir_location=redir_location)
+
+
 @view_config(route_name='project_item_summary', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=2),

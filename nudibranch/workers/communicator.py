@@ -21,17 +21,26 @@ class OutOfSync(Exception):
     """Indicate the worker is out of sync."""
 
 
+class HandledError(Exception):
+
+    """Indicate that the system state is invalid."""
+
+
 def complete_file(func):
     @wraps(func)
     def wrapped(complete_file, host, remote_dir, submission_id, testable_id,
-                user):
+                user, **kwargs):
         prev_cwd = os.getcwd()
         new_cwd = tempfile.mkdtemp()
         os.chdir(new_cwd)
         try:
-            retval = func(submission_id, testable_id, user, host, remote_dir)
+            retval = func(submission_id, testable_id, user, host, remote_dir,
+                          **kwargs)
         except OutOfSync as exc:
             print('Out of Sync: {0}'.format(exc))
+            return
+        except HandledError as exc:
+            print('Other handled error: {0}'.format(exc))
             return
         finally:
             shutil.rmtree(new_cwd)
@@ -53,14 +62,44 @@ def fetch_results():
     start_communicator('fetch_results', fetch_results_worker)
 
 
+def set_expected_files(testable, results):
+    # Update the expected output of each test case
+    for test_case in testable.test_cases:
+        if test_case.id not in results:
+            print('Missing test case result in project update: {0}'
+                  .format(test_case.id))
+            transaction.abort()
+            return
+        if test_case.output_type == 'diff':
+            output_file = 'tc_{0}'.format(test_case.id)
+            test_case.expected = File.fetch_or_create(
+                open(output_file).read(), BASE_FILE_PATH)
+            Session.add(test_case)
+    testable.is_locked = False
+    if not any(x.is_locked for x in testable.project.testables):
+        testable.project.status = u'notready'
+    try:
+        transaction.commit()
+    except:
+        transaction.abort()
+        raise
+
+
 @complete_file
-def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
+def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
+                         update_project=False):
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
-        raise Exception('Invalid submission id: {0}'.format(submission_id))
+        raise HandledError('Invalid submission id: {0}'.format(submission_id))
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
-        raise Exception('Invalid testable id: {0}'.format(testable_id))
+        raise HandledError('Invalid testable id: {0}'.format(testable_id))
+    if update_project and submission.project.status != u'locked':
+        raise HandledError('Rejecting update to unlocked project: {0}'
+                           .format(submission.project.id))
+    if update_project and not testable.is_locked:
+        raise HandledError('Rejecting update to unlocked testable: {0}'
+                           .format(testable_id))
 
     # Rsync to retrieve results
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3} .'.format(
@@ -69,19 +108,11 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
 
     # Verify the results are for the correct submission and testable. If they
     # are not raise an exception so we don't put the "complete" file.
-    ids = [int(x) for x in open('sync_files').read().split('.')]
-    if [submission_id, testable_id] != ids:
-        raise OutOfSync('Fetch results: {0}.{1}'.format(submission_id,
-                                                        testable_id))
-
-    session = Session()
-
-    # Store Makefile results
-    if os.path.isfile('make'):
-        testable_result = TestableResult.fetch_or_create(
-            testable=testable, submission=submission,
-            make_results=open('make').read().decode('utf-8'))
-        session.add(testable_result)
+    expected_ids = [int(submission_id), testable_id]
+    actual_ids = [int(x) for x in open('sync_files').read().split('.')]
+    if expected_ids != actual_ids:
+        raise OutOfSync('Fetch reulsts: Expected {0} Received {1}'
+                        .format(expected_ids, actual_ids))
 
     # Create dictionary of completed test_cases
     if os.path.isfile('test_cases'):
@@ -90,13 +121,25 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
     else:
         results = {}
 
+    if update_project:
+        set_expected_files(testable, results)
+        return
+
+
+    # Store Makefile results
+    if os.path.isfile('make'):
+        testable_result = TestableResult.fetch_or_create(
+            testable=testable, submission=submission,
+            make_results=open('make').read().decode('utf-8'))
+        Session.add(testable_result)
+
     # Set or update relevant test case results
     for test_case in testable.test_cases:
         test_case_result = TestCaseResult.fetch_by_ids(submission_id,
                                                        test_case.id)
         if test_case.id not in results:
             if test_case_result:  # Delete existing result
-                session.delete(test_case_result)
+                Session.delete(test_case_result)
         else:
             if test_case_result:
                 test_case_result.update(results[test_case.id])
@@ -111,7 +154,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir):
                 if os.path.isfile(output_file):  # Store the file as the diff
                     test_case_result.diff = File.fetch_or_create(
                         open(output_file).read(), BASE_FILE_PATH)
-            session.add(test_case_result)
+            Session.add(test_case_result)
     try:
         transaction.commit()
     except:
@@ -163,20 +206,25 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
     # Verify a clean working directory and that the worker wants files for the
     # submission and testable. If they are not raise an exception so we don't
     # put the "complete" file.
-    if os.listdir('.') != ['sync_verification']:
-        raise OutOfSync('Sync files: {0}.{1}'.format(submission_id,
-                                                     testable_id))
-    ids = [int(x) for x in open('sync_verification').read().split('.')]
-    if [submission_id, testable_id] != ids:
-        raise OutOfSync('Sync files: {0}.{1}'.format(submission_id,
-                                                     testable_id))
+    expected_files = set(['sync_verification'])
+    actual_files = set(os.listdir('.'))
+    if expected_files != actual_files:
+        msg = 'Unexpected files: {0}'.format(actual_files - expected_files)
+        raise OutOfSync('Sync files: {0}.{1} {2}'.format(submission_id,
+                                                         testable_id,
+                                                         msg))
+    expected_ids = [int(submission_id), testable_id]
+    actual_ids = [int(x) for x in open('sync_verification').read().split('.')]
+    if expected_ids != actual_ids:
+        raise OutOfSync('Sync files: Expected {0} Received {1}'
+                        .format(expected_ids, actual_ids))
 
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
-        raise Exception('Invalid submission id: {0}'.format(submission_id))
+        raise HandledError('Invalid submission id: {0}'.format(submission_id))
     testable = Testable.fetch_by_id(testable_id)
     if not testable:
-        raise Exception('Invalid testable id: {0}'.format(testable_id))
+        raise HandledError('Invalid testable id: {0}'.format(testable_id))
     project = submission.project
     submitted = dict((x.filename, x.file.sha1) for x in submission.files)
     build_files = dict((x.filename, x.file.sha1) for x in testable.build_files)
@@ -190,8 +238,8 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
             if filev.filename in build_files:
                 del build_files[filev.filename]
         elif not filev.optional:
-            raise Exception('File verifier not satisfied: {0}'
-                            .format(filev.filename))
+            raise HandledError('File verifier not satisfied: {0}'
+                               .format(filev.filename))
     for name, sha1 in build_files.items():  # Symlink remaining build files
         source = File.file_path(BASE_FILE_PATH, sha1)
         os.symlink(source, os.path.join('src', name))

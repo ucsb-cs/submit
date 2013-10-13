@@ -126,12 +126,15 @@ class SubmissionHandler(object):
             log_file=settings['log_file'], pid_file=settings['pid_file'])
         self.settings = settings
 
-    def communicate(self, queue, complete_file, submission_id, testable_id):
+    def communicate(self, queue, complete_file, submission_id, testable_id,
+                    update_project=False):
         hostname = socket.gethostbyaddr(socket.gethostname())[0]
         username = pwd.getpwuid(os.getuid())[0]
         data = {'complete_file': complete_file, 'remote_dir': os.getcwd(),
                 'user': username, 'host': hostname,
                 'submission_id': submission_id, 'testable_id': testable_id}
+        if update_project:
+            data['update_project'] = update_project
         self.worker.channel.queue_declare(queue=queue, durable=True)
         self.worker.channel.basic_publish(
             exchange='', body=json.dumps(data), routing_key=queue,
@@ -139,7 +142,7 @@ class SubmissionHandler(object):
         self._file_wait(complete_file,
                         '{0}.{1}'.format(submission_id, testable_id))
 
-    def do_work(self, submission_id, testable_id):
+    def do_work(self, submission_id, testable_id, update_project=False):
         self._cleanup()
         print('Got job: {0}.{1}'.format(submission_id, testable_id))
         # sync_files worker will verify the request using this file
@@ -157,7 +160,8 @@ class SubmissionHandler(object):
         os.rename(SYNC_FILE, os.path.join(RESULTS_PATH, SYNC_FILE))
         self.communicate(queue=self.settings['queue_fetch_results'],
                          complete_file='results_fetched',
-                         submission_id=submission_id, testable_id=testable_id)
+                         submission_id=submission_id, testable_id=testable_id,
+                         update_project=update_project)
         print('\tResults fetched: {0}.{1}'.format(submission_id, testable_id))
 
     def make_project(self, executable, make_target):

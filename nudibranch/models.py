@@ -438,7 +438,7 @@ class Project(BasicBase, Base):
                 required.append(file_verifier.filename)
         return ' '.join(sorted(required) + sorted(optional))
 
-    def verify_submission(self, base_path, submission):
+    def verify_submission(self, base_path, submission, update):
         """Return list of testables that can be built."""
         results = VerificationResults()
         valid_files = set()
@@ -474,12 +474,13 @@ class Project(BasicBase, Base):
             elif testable.file_verifiers:
                 retval.append(testable)
 
-        # Reset existing attributes
-        submission.test_case_results = []
-        submission.testable_results = []
-        # Set new information
-        submission.verification_results = results
-        submission.verified_at = func.now()
+        if update:
+            # Reset existing attributes
+            submission.test_case_results = []
+            submission.testable_results = []
+            # Set new information
+            submission.verification_results = results
+            submission.verified_at = func.now()
         return retval
 
 
@@ -636,9 +637,9 @@ class Submission(BasicBase, Base):
         return (self.testables_completed() -
                 set(x.test_case.testable for x in self.test_case_results))
 
-    def verify(self, base_path):
+    def verify(self, base_path, update=False):
         """Verify the submission and return testables that can be executed."""
-        return self.project.verify_submission(base_path, self)
+        return self.project.verify_submission(base_path, self, update=update)
 
 
 class SubmissionToFile(Base):
@@ -769,6 +770,8 @@ class Testable(BasicBase, Base):
                                    secondary=testable_to_execution_file)
     file_verifiers = relationship(FileVerifier, backref='testables',
                                   secondary=testable_to_file_verifier)
+    is_locked = Column(Boolean, default=False, nullable=False,
+                       server_default='0')
     make_target = Column(Unicode)  # When None, no make is required
     name = Column(Unicode, nullable=False)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)

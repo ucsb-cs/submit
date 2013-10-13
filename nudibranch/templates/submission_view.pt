@@ -9,11 +9,28 @@
                 $.ajax({url: window.location.href, type: 'put', complete: handle_response});
             }
         });
+        $(".gen-expected").on("click", function(event) {
+            $("#dialog-confirm").dialog("open");
+        });
+        $("#dialog-confirm").dialog({
+            autoOpen: false,
+            resizable: false,
+            width: 540,
+            modal: true,
+            buttons: {
+                Cancel: function() { $(this).dialog("close"); },
+                "regenerate expected output": function() {
+                    $.ajax({url: window.location.href + '/gen', type: 'put', complete: handle_response});
+                }
+            }
+        });
     });
   </script>
 
-
   <div tal:condition="submission_admin">
+    <div id="dialog-confirm" title="Regenerate Expected Output?">
+      <p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span>The expected outputs will be updated making the project unavailable until you mark it as ready again. Are you sure?</p>
+    </div>
     <p class="floatleft nospace" tal:condition="prev_group">Previous group:
       <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
     </p>
@@ -50,6 +67,7 @@
   </div>
   <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
   <input tal:condition="submission_admin" type="button" value="requeue" class="requeue" />
+  <input tal:condition="submission_admin" type="button" value="generate expected" class="gen-expected" />
 
   <h4>Submission Files<span tal:condition="submission_admin"> (<a href="${_R('zipfile_download', submission_id=submission.id)}">Download submission zipfile</a>)</span></h4>
   <ul tal:condition="submission.files">

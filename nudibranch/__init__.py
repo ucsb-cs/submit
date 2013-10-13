@@ -55,6 +55,7 @@ def add_routes(config):
     config.add_route('session', '/session')
     config.add_route('submission', '/submission')
     config.add_route('submission_item', '/submission/{submission_id}')
+    config.add_route('submission_item_gen', '/submission/{submission_id}/gen')
     config.add_route('test_case', '/test_case')
     config.add_route('test_case_item', '/test_case/{test_case_id}')
     config.add_route('testable', '/testable')
