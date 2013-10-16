@@ -274,7 +274,7 @@ def prev_next_group(project, group):
 
     """
     # TODO: Profile and optimize this query if necessary
-    groups = sorted(project.groups)
+    groups = sorted(x for x in project.groups if x.submissions)
     try:
         index = groups.index(group)
     except ValueError:

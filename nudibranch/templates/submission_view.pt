@@ -32,10 +32,10 @@
       <p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span>The expected outputs will be updated making the project unavailable until you mark it as ready again. Are you sure?</p>
     </div>
     <p class="floatleft nospace" tal:condition="prev_group">Previous group:
-      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
+      <a href="${_R('submission_item', submission_id=sorted(prev_group.submissions)[-1].id)}">${prev_group.users_str}</a>
     </p>
     <p class="floatright nospace" tal:condition="next_group">Next group:
-      <a href="${_R('project_item_detailed', class_name=submission.project.class_.name, project_id=submission.project.id, group_id=next_group.id)}">${next_group.users_str}</a>
+      <a href="${_R('submission_item', submission_id=sorted(next_group.submissions)[-1].id)}">${next_group.users_str}</a>
     </p>
     <div class="clear"></div>
     <p class="floatleft nospace" tal:condition="prev_sub">Group's previous submission:

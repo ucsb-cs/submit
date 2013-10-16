@@ -561,6 +561,9 @@ class Submission(BasicBase, Base):
         return (Submission.query_by(project=project, group=group)
                 .order_by(Submission.created_at.desc()).first())
 
+    def __cmp__(self, other):
+        return cmp(self.created_at, other.created_at)
+
     def can_edit(self, user):
         """Return whether or not `user` can edit the submission."""
         return self.project.can_edit(user)
