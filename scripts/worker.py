@@ -5,6 +5,7 @@ import json
 import os
 import pika
 import pwd
+import shlex
 import shutil
 import select
 import signal
@@ -60,12 +61,14 @@ class SubmissionHandler(object):
             shutil.copy(os.path.join(EXECUTION_FILES_PATH, filename),
                         os.path.join(tmp_dir, filename))
 
-        args = command.split()
+        args = shlex.split(command)
         # allow some programs
+        executable = None
         if args[0] not in ('bash', 'python', 'python2', 'python3', 'sh',
                            'spim', 'valgrind'):
-            args[0] = os.path.join(os.getcwd(), SRC_PATH, args[0])
-            if not os.path.isfile(args[0]):
+            executable = os.path.normpath(os.path.join(os.getcwd(), SRC_PATH,
+                                                       args[0]))
+            if not os.path.isfile(executable):
                 raise NonexistentExecutable()
         else:
             # Need to copy the script(s) if they are listed on the command line
@@ -86,7 +89,8 @@ class SubmissionHandler(object):
         try:
             poll = select.epoll()
             main_pipe = Popen(args, stdin=stdin, stdout=PIPE, stderr=stderr,
-                              cwd=tmp_dir, preexec_fn=os.setsid)
+                              cwd=tmp_dir, preexec_fn=os.setsid,
+                              executable=executable)
             poll.register(main_pipe.stdout, select.EPOLLIN | select.EPOLLHUP)
             do_poll = True
             start = time.time()
@@ -203,6 +207,7 @@ class SubmissionHandler(object):
                 stdin = None
             result = {'extra': None}
 
+            max_file_size = MAX_FILE_SIZE
             # Mange output file
             if tc['source'] != 'file':
                 with open(output_file, 'wb') as output:
@@ -214,7 +219,6 @@ class SubmissionHandler(object):
                         stderr = output
                     execute(tc['args'], stderr=stderr, stdin=stdin,
                             stdout=stdout)
-                max_file_size = MAX_FILE_SIZE
             else:
                 execute(tc['args'], save=(tc['output_filename'], output_file))
                 if tc['output_filename'].endswith('.png'):
