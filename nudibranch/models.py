@@ -97,6 +97,9 @@ class Class(BasicBase, Base):
         return 'Class Name: {0}'.format(self.name)
 
     def __cmp__(self, other):
+        locked = cmp(self.is_locked, other.is_locked)
+        if locked:
+            return locked
         return cmp(alphanum_key(self.name), alphanum_key(other.name))
 
     def can_edit(self, user):
