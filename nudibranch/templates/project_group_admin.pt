@@ -1,0 +1,29 @@
+<div metal:use-macro="_LAYOUT">
+<div metal:fill-slot="content">
+  <div class="header">Group management for ${project.name}</div>
+  <div metal:use-macro="_MACROS['js_test']"></div>
+
+  <fieldset tal:condition="flash">
+    <legend>Status Messages</legend>
+    <p tal:repeat="msg flash">${msg}</p>
+  </fieldset>
+
+  <div>
+    Project: <a href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+  </div>
+  <div>Max Group Members: ${project.group_max}</div>
+
+  <p>The following will allow you to manually join students in a group
+  bypassing the maximum set group size. The result of joining students in a
+  group cannot be undone.</p>
+
+  <p><strong>Note</strong>: You can only merge two items at a time.</p>
+
+  <h3>Select students to join into a group</h3>
+  <form name="input" action="${_R('project_group_admin', project_id=project.id)}"
+        method="PUT" onsubmit="return form_request(this, 'put', true);">
+    <div tal:repeat="(name, id) sorted(selectable)"><input type="checkbox" name="user_ids[]" id="selection_${id}" value="${id}"/> <label for="selection_${id}">${name}</label></div>
+    <input type="submit" name="submit" value="Join"/>
+  </form>
+</div>
+</div>

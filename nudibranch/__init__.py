@@ -40,6 +40,8 @@ def add_routes(config):
     config.add_route('project', '/project')
     config.add_route('project_clone', '/project/clone')
     config.add_route('project_group', '/project/{project_id}/group')
+    config.add_route('project_group_admin',
+                     '/project/{project_id}/group_admin')
     config.add_route('project_group_item',
                      '/project/{project_id}/group/{group_request_id}')
     config.add_route('project_info', '/project/{project_id}')

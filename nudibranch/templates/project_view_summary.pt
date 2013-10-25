@@ -7,6 +7,7 @@
   <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
 
   <p tal:condition="recent_submissions"><a href="${_R('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
+  <p><a href="${request.route_path('project_group_admin', project_id=project.id)}">Manually join groups</a></p>
 
   <div tal:condition="recent_submissions">
     <h3>Stats</h3>

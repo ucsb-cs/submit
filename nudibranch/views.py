@@ -546,6 +546,46 @@ def project_edit(request, project):
             'flash': request.session.pop_flash()}
 
 
+@view_config(route_name='project_group_admin', request_method='PUT',
+             permission='authenticated', renderer='json')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT),
+          users=List('user_ids', ViewableDBThing('', User), min_elements=2,
+                     max_elements=2))
+def project_group_admin_join(request, project, users):
+    try:
+        group = users[0].group_with(users[1], project, bypass_limit=True)
+    except GroupWithException as exc:
+        request.session.flash(exc.args[0])
+        group = None
+    try:
+        Session.flush()
+    except IntegrityError:
+        raise HTTPConflict('Could not join the users at this time.')
+    if not group:
+        return http_gone(request, redir_location=request.url)
+    request.session.flash('Made group: {}'.format(group.users_str))
+    return http_ok(request, redir_location=request.url)
+
+
+@view_config(route_name='project_group_admin',
+             renderer='templates/project_group_admin.pt',
+             request_method='GET', permission='authenticated')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
+@site_layout('nudibranch:templates/layout.pt',
+             'nudibranch:templates/macros.pt')
+def project_group_admin_view(request, project):
+    students = set(project.class_.users)
+    selectable = []
+    for group in project.groups:
+        students = students - set(group.users)
+        selectable.append((group.users_str, group.group_assocs[0].user.id))
+    selectable.extend((x.name, x.id) for x in students)
+
+    return {'page_title': 'Group Admin', 'project': project,
+            'selectable': selectable,
+            'flash': request.session.pop_flash()}
+
+
 @view_config(route_name='project_group_item', renderer='json',
              request_method='PUT')
 @validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),

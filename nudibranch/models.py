@@ -886,7 +886,7 @@ class User(UserMixin, BasicBase, Base):
         else:
             return sorted(self.admin_for)
 
-    def group_with(self, to_user, project):
+    def group_with(self, to_user, project, bypass_limit=False):
         """Join the users in a group."""
         from_user = self
         from_assoc = from_user.fetch_group_assoc(project)
@@ -913,7 +913,8 @@ class User(UserMixin, BasicBase, Base):
         else:
             from_count = from_assoc.user_count
 
-        if project.group_max < to_assoc.user_count + from_count:
+        if not bypass_limit and \
+                project.group_max < to_assoc.user_count + from_count:
             raise GroupWithException('There are too many users to join that '
                                      'group.')
 
@@ -938,6 +939,7 @@ class User(UserMixin, BasicBase, Base):
             from_assoc = UserToGroup(group=to_assoc.group, project=project,
                                      user=from_user)
             Session.add(from_assoc)
+        return to_assoc.group
 
     def fetch_group_assoc(self, project):
         return (Session.query(UserToGroup)
