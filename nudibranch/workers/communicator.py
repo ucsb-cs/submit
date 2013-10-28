@@ -125,11 +125,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
         set_expected_files(testable, results)
         return
 
-    # Create or update Testable
-    testable_data = json.load(open('testable'))
-    TestableResult.fetch_or_create(
-        make_results=testable_data.get('make'), status=testable_data['status'],
-        testable=testable, submission=submission)
+    points = 0
 
     # Set or update relevant test case results
     for test_case in testable.test_cases:
@@ -148,11 +144,19 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
                 Session.add(test_case_result)
             output_file = 'tc_{0}'.format(test_case.id)
             if test_case.output_type == 'diff':
-                compute_diff(test_case, test_case_result, output_file)
+                if compute_diff(test_case, test_case_result, output_file):
+                    points += test_case.points
             else:
                 if os.path.isfile(output_file):  # Store the file as the diff
                     test_case_result.diff = File.fetch_or_create(
                         open(output_file).read(), BASE_FILE_PATH)
+
+    # Create or update Testable
+    testable_data = json.load(open('testable'))
+    TestableResult.fetch_or_create(
+        make_results=testable_data.get('make'), points=points,
+        status=testable_data['status'], testable=testable,
+        submission=submission)
     try:
         transaction.commit()
     except:
@@ -161,6 +165,11 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
 
 
 def compute_diff(test_case, test_case_result, output_file):
+    """Associate the diff (if exists) with the TestCaseResult.
+
+    Return whether or not the outputs match.
+
+    """
     expected_output = open(File.file_path(BASE_FILE_PATH,
                                           test_case.expected.sha1)).read()
     if os.path.isfile(output_file):
@@ -171,6 +180,8 @@ def compute_diff(test_case, test_case_result, output_file):
     if not unit.outputs_match():
         test_case_result.diff = File.fetch_or_create(pickle.dumps(unit),
                                                      BASE_FILE_PATH)
+        return False
+    return True
 
 
 def start_communicator(conf_prefix, work_func):

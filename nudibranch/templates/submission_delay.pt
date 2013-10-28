@@ -1,10 +1,19 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <h3>Submission</h3>
-  <div>Student(s): ${submission.group.users_str}</div>
-  <div>Class: ${submission.project.class_.name}</div>
-  <div>Project: ${submission.project.name}</div>
-  <div>Submitted: ${submission.created_at}</div>
+
+
+  <div>Student(s): ${submission.group.users_str}
+    <span tal:condition="not submission_admin and
+    request.user.can_join_group(submission.project)">(<a href="${_R('project_group',
+    project_id=submission.project.id)}">Join Group</a>)</span>
+  </div>
+  <div>Class: <a href="${_R('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
+  <div tal:condition="submission_admin">Project: <a href="${_R('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
+  <div tal:condition="not submission_admin">
+    Project: <a href="${_R('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
+  </div>
+  <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
 
   <h4>Submission Files</h4>
   <ul tal:condition="submission.files">

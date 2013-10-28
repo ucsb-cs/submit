@@ -876,7 +876,7 @@ def project_view_summary(request, class_name, project):
     group_truncated = set()
     perfect = set()
     for submission in project.submissions:
-        if 0 < submission.points >= submission.points_possible:
+        if 0 < submission.points() >= submission.project.points_possible():
             perfect.add(submission.group)
     for group in project.groups:
         newest = (Submission.query_by(project=project, group=group)
@@ -1001,8 +1001,8 @@ def submission_requeue(request, submission):
                              optional=True, source=SOURCE_GET))
 @site_layout('nudibranch:templates/layout.pt')
 def submission_view(request, submission, as_user):
-    submission_admin = (not bool(as_user) and
-                        submission.project.can_edit(request.user))
+    actual_admin = submission.project.can_edit(request.user)
+    submission_admin = not bool(as_user) and actual_admin
     if not submission_admin:  # Only check delay for user view
         delay = submission.get_delay(
             update=request.user in submission.group.users)
@@ -1010,7 +1010,8 @@ def submission_view(request, submission, as_user):
             request.override_renderer = 'templates/submission_delay.pt'
             return {'_pd': pretty_date,
                     'delay': '{0:.1f} minutes'.format(delay),
-                    'submission': submission}
+                    'submission': submission,
+                    'submission_admin': actual_admin}
 
     points_possible = submission.project.points_possible()
     if submission_admin:
@@ -1023,13 +1024,17 @@ def submission_view(request, submission, as_user):
         diff_renderer.add_renderable(prepare_renderable(request,
                                                         test_case_result,
                                                         submission_admin))
+    points = 0
     if submission.verification_results:
         extra_files = submission.extra_filenames
         verification_issues = submission.verification_results.issues()
         pending = submission.testables_pending()
 
         # Testable statuses
-        by_testable = {x.testable: x for x in submission.testable_results}
+        by_testable = {}
+        for testable_result in submission.testable_results:
+            by_testable[testable_result.testable] = testable_result
+            points += testable_result.points
         testable_statuses = [
             TestableStatus(testable, by_testable.get(testable),
                            verification_issues)
@@ -1043,16 +1048,8 @@ def submission_view(request, submission, as_user):
     if submission.testables_succeeded():
         # Decode utf-8 and ignore errors until the data is diffed in unicode.
         diff_table = diff_renderer.make_whole_file().decode('utf-8', 'ignore')
-        points, _, _ = diff_renderer.tentative_score()
     else:
-        points = 0
         diff_table = None
-
-    # Update the session if necessary
-    if points != submission.points \
-            or points_possible != submission.points_possible:
-        submission.points = points
-        submission.points_possible = points_possible
 
     # Do this after we've potentially updated the session
     if submission_admin:
@@ -1121,7 +1118,10 @@ def test_case_delete(request, test_case):
     redir_location = request.route_path(
         'project_edit', project_id=test_case.testable.project.id)
     request.session.flash('Deleted TestCase {0}.'.format(test_case.name))
+    testable = test_case.testable
     Session.delete(test_case)
+    # Update the testable point score
+    testable.update_points()
     return http_ok(request, redir_location=redir_location)
 
 
@@ -1153,6 +1153,8 @@ def test_case_update(request, name, args, expected, hide_expected,
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('That name already exists for the testable')
+    # Update the testable point score
+    test_case.testable.update_points()
     request.session.flash('Updated TestCase {0}.'.format(test_case.name))
     redir_location = request.route_path(
         'project_edit', project_id=test_case.testable.project.id)

@@ -11,7 +11,7 @@ from pyramid_addons.helpers import UTC
 from sqla_mixins import BasicBase, UserMixin
 from sqlalchemy import (Binary, Boolean, Column, DateTime, Enum, ForeignKey,
                         Integer, PickleType, String, Table, Unicode,
-                        UnicodeText, func)
+                        UnicodeText, and_, func)
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, relationship, scoped_session, sessionmaker
@@ -411,8 +411,7 @@ class Project(BasicBase, Base):
 
     def points_possible(self):
         """Return the total points possible for this project."""
-        return sum([test_case.points
-                    for testable in self.testables
+        return sum([test_case.points for testable in self.testables
                     for test_case in testable.test_cases])
 
     def recent_submissions(self):
@@ -506,9 +505,6 @@ class Submission(BasicBase, Base):
     group = relationship(Group, backref='submissions')
     group_id = Column(Integer, ForeignKey('group.id'), nullable=False)
     files = relationship('SubmissionToFile', backref='submission')
-    points = Column(Integer, default=0, nullable=False, server_default='0')
-    points_possible = Column(Integer, default=0, nullable=False,
-                             server_default='0')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_case_results = relationship('TestCaseResult', backref='submission',
                                      cascade='all, delete-orphan')
@@ -605,6 +601,10 @@ class Submission(BasicBase, Base):
             return None
         return min(delay, pv_delay).total_seconds() / 60
 
+    def points(self):
+        """Return the number of points awarded to this submission."""
+        return sum(x.points for x in self.testable_results)
+
     def testables_pending(self):
         """Return the set of testables that _can_ execute and have yet to."""
         return (set(self.project.testables)
@@ -615,6 +615,21 @@ class Submission(BasicBase, Base):
         """Return the testables which have successfully executed."""
         return set(x.testable for x in self.testable_results
                    if x.status == 'success')
+
+    def time_score(self, request, group=False, delay=True):
+        url = request.route_path('submission_item', submission_id=self.id)
+        fmt = '<a href="{url}">{created}</a>{name} ({score}){late}'
+        if self.testables_pending():
+            score = '<strong>waiting for results</strong>'
+        elif delay and self.get_delay(update=False):
+            score = '<strong>waiting for delay to expire</strong>'
+        else:
+            score = '{} / {}'.format(self.points(),
+                                     self.project.points_possible())
+        name = ' by {}'.format(self.group.users_str) if group else ''
+        return fmt.format(url=url, created=self.created_at,
+                          name=name, score=score,
+                          late=' [late]' if self.is_late else '')
 
     def verify(self, base_path, update=False):
         """Verify the submission and return testables that can be executed."""
@@ -741,10 +756,23 @@ class Testable(BasicBase, Base):
                 return True
         return False
 
+    def update_points(self):
+        """Recompute the points for all TestableResults."""
+        tc_ids = [x.id for x in self.test_cases]
+        for result in self.testable_results:
+            points = 0
+            for tcr in (Session.query(TestCaseResult).filter(
+                    and_(TestCaseResult.submission == result.submission,
+                         TestCaseResult.test_case_id.in_(tc_ids))).all()):
+                if tcr.status == 'success' and tcr.diff is None:
+                    points += tcr.test_case.points
+            result.points = points
+
 
 class TestableResult(BasicBase, Base):
     __table_args__ = (UniqueConstraint('submission_id', 'testable_id'),)
     make_results = Column(UnicodeText, nullable=True)
+    points = Column(Integer, nullable=False)
     status = Column(Enum('make_failed', 'nonexistent_executable', 'success',
                          name='make_status'), nullable=False)
     submission_id = Column(Integer, ForeignKey('submission.id'),
