@@ -28,7 +28,7 @@
   </script>
 
   <div tal:condition="submission_admin">
-    <div id="dialog-confirm" title="Regenerate Expected Output?">
+    <div style="display:None" id="dialog-confirm" title="Regenerate Expected Output?">
       <p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span>The expected outputs will be updated making the project unavailable until you mark it as ready again. Are you sure?</p>
     </div>
     <p class="floatleft nospace" tal:condition="prev_group">Previous group:
@@ -119,20 +119,18 @@
 
   <!-- For each test group, reasons for failure (if applicable) -->
   <div tal:repeat="status sorted(testable_statuses)">
-    <div tal:condition="status.is_error()">
+    <div tal:condition="status.issue" style="border:1px solid">
       <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
-      <pre tal:condition="status.has_make_output()" class="make_output">${status.testable_results.make_results}</pre>
-      <p tal:condition="not status.issues">
-	There are no files in this test group
-      </p>
+      <p><strong>Reason</strong>: ${status.issue}</p>
+      <pre tal:condition="status.show_make_output" class="make_output">${status.testable_result.make_results}</pre>
       <ul tal:condition="status.issues">
-	<li tal:repeat="(file, warnerr) sorted(status.issues.items())">
+	<li tal:repeat="(file, grouped) sorted(status.issues.items())">
 	  <b>${file}</b>
 	  <ul>
-	    <li style="color:orange" tal:repeat="warning warnerr[0]">
+	    <li style="color:orange" tal:repeat="warning grouped[0]">
 	      ${warning}
 	    </li>
-	    <li style="color:red" tal:repeat="error warnerr[1]">
+	    <li style="color:red" tal:repeat="error grouped[1]">
 	      ${error}
 	    </li>
 	  </ul>

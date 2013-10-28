@@ -158,8 +158,21 @@ class SubmissionHandler(object):
         print('\tFiles synced: {0}.{1}'.format(submission_id, testable_id))
         data = json.load(open('post_sync_data'))
         os.mkdir(RESULTS_PATH)
-        if self.make_project(data['executable'], data['make_target']):
+        result = {}
+        try:
+            if data['make_target']:
+                result['make'] = self.make_project(data['executable'],
+                                                   data['make_target'])
             self.run_tests(data['test_cases'])
+            result['status'] = 'success'
+        except (MakeFailed, NonexistentExecutable) as exc:
+            result['make'] = exc.message
+            result['status'] = 'make_failed' if isinstance(exc, MakeFailed) \
+                else 'nonexistent_executable'
+
+        with open(os.path.join(RESULTS_PATH, 'testable'), 'w') as fp:
+            json.dump(result, fp)
+
         # Move SYNC_FILE for fetch_result verification worker
         os.rename(SYNC_FILE, os.path.join(RESULTS_PATH, SYNC_FILE))
         self.communicate(queue=self.settings['queue_fetch_results'],
@@ -168,21 +181,16 @@ class SubmissionHandler(object):
                          update_project=update_project)
         print('\tResults fetched: {0}.{1}'.format(submission_id, testable_id))
 
-    def make_project(self, executable, make_target):
-        """Build the project and return True if the executable exists."""
-        with open(os.path.join(RESULTS_PATH, 'make'), 'w') as fp:
-            if make_target:
-                command = 'make -f ../Makefile -C {0} {1}'.format(
-                    SRC_PATH, make_target)
-                pipe = Popen(command, shell=True, stdout=fp, stderr=STDOUT)
-                pipe.wait()
-                if pipe.returncode != 0:
-                    return False
-            if not os.path.isfile(os.path.join(SRC_PATH, executable)):
-                fp.write('Expected executable `{0}` does not exist\n'
-                         .format(executable))
-                return False
-            return True
+    def make_project(self, executable, target):
+        """Build the project and verify the executable exists."""
+        command = 'make -f ../Makefile -C {0} {1}'.format(SRC_PATH, target)
+        pipe = Popen(command, shell=True, stdout=PIPE, stderr=STDOUT)
+        output = pipe.communicate()[0]
+        if pipe.returncode != 0:
+            raise MakeFailed(output)
+        if not os.path.isfile(os.path.join(SRC_PATH, executable)):
+            raise NonexistentExecutable(output)
+        return output
 
     def run_tests(self, test_cases):
         def execute(*args, **kwargs):
@@ -241,6 +249,10 @@ class SubmissionHandler(object):
             results[tc['id']] = result
         with open(os.path.join(RESULTS_PATH, 'test_cases'), 'w') as fp:
             json.dump(results, fp)
+
+
+class MakeFailed(Exception):
+    """Indicate that the make process failed."""
 
 
 class NonexistentExecutable(Exception):

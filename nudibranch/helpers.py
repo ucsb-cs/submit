@@ -15,6 +15,29 @@ from zipfile import ZipFile
 from .exceptions import InvalidId
 
 
+class TestableStatus(object):
+    def __init__(self, testable, testable_result, verification_issues):
+        self.issue = None
+        self.issues = {x: y for (x, y) in verification_issues.items()
+                       if testable.requires_file(x)}
+        self.show_make_output = False
+        self.testable = testable
+        self.testable_result = testable_result
+
+        if testable_result:
+            if testable_result.status == 'make_failed':
+                self.issue = 'Build failed (see make output)'
+                self.show_make_output = True
+            elif testable_result.status == 'nonexistent_executable':
+                self.issue = ('The expected executable was not created during '
+                              'the build process')
+        else:
+            self.issue = 'At least one of your files was invalid (see below)'
+
+    def __cmp__(self, other):
+        return cmp(self.testable, other.testable)
+
+
 class DummyTemplateAttr(object):
     def __init__(self, default=None):
         self.default = default

@@ -303,10 +303,6 @@ class VerificationResults(object):
         import pprint
         return pprint.pformat(vars(self))
 
-    def add_testable_id_for_missing_files(self, testable_id, missing_files):
-        self._missing_to_testable_ids.setdefault(
-            missing_files, set()).add(testable_id)
-
     def issues(self):
         """Return a mapping of filename to (warnings, errors) pairs"""
         errors = self._errors_by_filename
@@ -473,7 +469,8 @@ class Project(BasicBase, Base):
             missing = frozenset(x.filename for x in testable.file_verifiers
                                 if not x.optional) - valid_files
             if missing:
-                results.add_testable_id_for_missing_files(testable.id, missing)
+                results._missing_to_testable_ids.setdefault(
+                    missing, set()).add(testable.id)
             elif testable.file_verifiers:
                 retval.append(testable)
 
@@ -608,40 +605,16 @@ class Submission(BasicBase, Base):
             return None
         return min(delay, pv_delay).total_seconds() / 60
 
-    def testable_statuses(self):
-        """Return Status objects for non-pending Testables."""
-        issues = self.verification_results.issues()
-        with_build_errors = self.testables_with_build_errors()
-        by_testable = {x.testable: x for x in self.testable_results}
-        return [TestableStatus(testable, by_testable.get(testable),
-                               issues, testable in with_build_errors)
-                for testable in (set(self.project.testables)
-                                 - self.testables_pending())]
-
-    def testables_completed(self):
-        """Return the set of testables that are done processing."""
-        return set(x.testable for x in self.testable_results)
-
     def testables_pending(self):
         """Return the set of testables that _can_ execute and have yet to."""
-        missing_testables = self.verification_results.missing_testables()
-        return (set(self.project.testables) - missing_testables
-                - self.testables_completed())
+        return (set(self.project.testables)
+                - self.verification_results.missing_testables()
+                - set(x.testable for x in self.testable_results))
 
     def testables_succeeded(self):
         """Return the testables which have successfully executed."""
-        return self.testables_completed() - self.testables_with_build_errors()
-
-    def testables_with_build_errors(self):
-        """Return the testables that had build errors.
-
-        Build errors are indicated by testables which have TestableResult
-        objects set (stores the Make output) and do not have TestCaseResults
-        since these associations are updated at the same time.
-
-        """
-        return (self.testables_completed() -
-                set(x.test_case.testable for x in self.test_case_results))
+        return set(x.testable for x in self.testable_results
+                   if x.status == 'success')
 
     def verify(self, base_path, update=False):
         """Verify the submission and return testables that can be executed."""
@@ -732,40 +705,6 @@ class TestCaseResult(Base):
         self.created_at = func.now()
 
 
-class TestableStatus(object):
-    def __init__(self, testable, testable_results, verification_issues,
-                 had_build_errors):
-        self.testable = testable
-        self.testable_results = testable_results
-        self.issues = verification_issues
-        self.had_build_errors = had_build_errors
-        if had_build_errors:  # Add a build error message
-            self.issues = {}
-            for filename, (warnings, errors) in verification_issues.items():
-                if self.testable.requires_file(filename):
-                    new = ['Build failed (see make output)'] + errors
-                    self.issues[filename] = (warnings, new)
-            for fv in self.testable.file_verifiers:
-                if not fv.optional and fv.filename not in self.issues:
-                    self.issues[fv.filename] = (
-                        [], ['Build failed (see make output)'])
-
-    def __cmp__(self, other):
-        return cmp(self.testable, other.testable)
-
-    def has_make_output(self):
-        return (self.testable_results and
-                self.testable_results.make_results)
-
-    def is_error(self):
-        if self.had_build_errors:
-            return True
-        for filename, (_, errors) in self.issues.items():
-            if errors and self.testable.requires_file(filename):
-                return True
-        return False
-
-
 class Testable(BasicBase, Base):
     """Represents a set of properties for a single program to test."""
     __table_args__ = (UniqueConstraint('name', 'project_id'),)
@@ -805,19 +744,23 @@ class Testable(BasicBase, Base):
 
 class TestableResult(BasicBase, Base):
     __table_args__ = (UniqueConstraint('submission_id', 'testable_id'),)
-    make_results = Column(UnicodeText)
+    make_results = Column(UnicodeText, nullable=True)
+    status = Column(Enum('make_failed', 'nonexistent_executable', 'success',
+                         name='make_status'), nullable=False)
     submission_id = Column(Integer, ForeignKey('submission.id'),
                            nullable=False)
     testable_id = Column(Integer, ForeignKey('testable.id'), nullable=False)
 
     @staticmethod
-    def fetch_or_create(make_results, **kwargs):
+    def fetch_or_create(make_results, status, **kwargs):
         tr = TestableResult.fetch_by(**kwargs)
         if tr:
             tr.created_at = func.now()
         else:
             tr = TestableResult(**kwargs)
+            Session.add(tr)
         tr.make_results = make_results
+        tr.status = status
         return tr
 
 

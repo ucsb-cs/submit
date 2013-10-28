@@ -125,13 +125,11 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
         set_expected_files(testable, results)
         return
 
-
-    # Store Makefile results
-    if os.path.isfile('make'):
-        testable_result = TestableResult.fetch_or_create(
-            testable=testable, submission=submission,
-            make_results=open('make').read().decode('utf-8'))
-        Session.add(testable_result)
+    # Create or update Testable
+    testable_data = json.load(open('testable'))
+    TestableResult.fetch_or_create(
+        make_results=testable_data.get('make'), status=testable_data['status'],
+        testable=testable, submission=submission)
 
     # Set or update relevant test case results
     for test_case in testable.test_cases:

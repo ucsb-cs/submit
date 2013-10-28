@@ -28,7 +28,7 @@ from .helpers import (
     file_verifier_verification, format_points, get_submission_stats,
     prepare_renderable, prev_next_submission, prev_next_group,
     project_file_create, project_file_delete, test_case_verification,
-    zip_response)
+    zip_response, TestableStatus)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -1027,15 +1027,20 @@ def submission_view(request, submission, as_user):
         extra_files = submission.extra_filenames
         verification_issues = submission.verification_results.issues()
         pending = submission.testables_pending()
-        testable_statuses = submission.testable_statuses()
+
+        # Testable statuses
+        by_testable = {x.testable: x for x in submission.testable_results}
+        testable_statuses = [
+            TestableStatus(testable, by_testable.get(testable),
+                           verification_issues)
+            for testable in (set(submission.project.testables) - pending)]
     else:
         extra_files = None
         verification_issues = None
         pending = None
         testable_statuses = []
 
-    if submission.testables_completed() \
-            - submission.testables_with_build_errors():
+    if submission.testables_succeeded():
         # Decode utf-8 and ignore errors until the data is diffed in unicode.
         diff_table = diff_renderer.make_whole_file().decode('utf-8', 'ignore')
         points, _, _ = diff_renderer.tentative_score()
