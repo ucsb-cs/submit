@@ -145,6 +145,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
                 results[test_case.id]['submission_id'] = submission_id
                 results[test_case.id]['test_case_id'] = test_case.id
                 test_case_result = TestCaseResult(**results[test_case.id])
+                Session.add(test_case_result)
             output_file = 'tc_{0}'.format(test_case.id)
             if test_case.output_type == 'diff':
                 compute_diff(test_case, test_case_result, output_file)
@@ -152,7 +153,6 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
                 if os.path.isfile(output_file):  # Store the file as the diff
                     test_case_result.diff = File.fetch_or_create(
                         open(output_file).read(), BASE_FILE_PATH)
-            Session.add(test_case_result)
     try:
         transaction.commit()
     except:
@@ -168,8 +168,9 @@ def compute_diff(test_case, test_case_result, output_file):
     else:
         actual_output = ''
     unit = Diff(expected_output, actual_output)
-    test_case_result.diff = File.fetch_or_create(pickle.dumps(unit),
-                                                 BASE_FILE_PATH)
+    if not unit.outputs_match():
+        test_case_result.diff = File.fetch_or_create(pickle.dumps(unit),
+                                                     BASE_FILE_PATH)
 
 
 def start_communicator(conf_prefix, work_func):

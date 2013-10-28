@@ -375,6 +375,8 @@ def prepare_renderable(request, test_case_result, is_admin):
     elif test_case.output_type == 'text':
         msg = 'Text output is not completely handled\n'
         diff = Diff('', msg)
+    elif not test_case_result.diff:  # Outputs match
+        diff = Diff('', '')
     if diff:  # Hack for unhandled output:
         diff.hide_expected = False
         return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
