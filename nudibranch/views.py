@@ -876,7 +876,8 @@ def project_view_summary(request, class_name, project):
     group_truncated = set()
     perfect = set()
     for submission in project.submissions:
-        if 0 < submission.points() >= submission.project.points_possible():
+        if 0 < submission.points(include_hidden=True) >= \
+                submission.project.points_possible(include_hidden=True):
             perfect.add(submission.group)
     for group in project.groups:
         newest = (Submission.query_by(project=project, group=group)
@@ -1013,18 +1014,18 @@ def submission_view(request, submission, as_user):
                     'submission': submission,
                     'submission_admin': actual_admin}
 
-    points_possible = submission.project.points_possible()
+    points_possible = submission.project.points_possible(
+        include_hidden=submission_admin)
     if submission_admin:
         diff_renderer = HTMLDiff(num_reveal_limit=None,
                                  points_possible=points_possible)
     else:
         diff_renderer = HTMLDiff(points_possible=points_possible)
 
-    for test_case_result in submission.test_case_results:
-        diff_renderer.add_renderable(prepare_renderable(request,
-                                                        test_case_result,
-                                                        submission_admin))
-    points = 0
+    for tcr in submission.test_case_results:
+        if submission_admin or not tcr.test_case.testable.is_hidden:
+            diff_renderer.add_renderable(prepare_renderable(request, tcr,
+                                                            submission_admin))
     if submission.verification_results:
         extra_files = submission.extra_filenames
         verification_issues = submission.verification_results.issues()
@@ -1034,11 +1035,13 @@ def submission_view(request, submission, as_user):
         by_testable = {}
         for testable_result in submission.testable_results:
             by_testable[testable_result.testable] = testable_result
-            points += testable_result.points
         testable_statuses = [
             TestableStatus(testable, by_testable.get(testable),
                            verification_issues)
-            for testable in (set(submission.project.testables) - pending)]
+            for testable in (set(submission.project.testables) - pending)
+            if submission_admin or not testable.is_hidden]
+        # Prune pending
+        pending = [x for x in pending if submission_admin or not x.is_hidden]
     else:
         extra_files = None
         verification_issues = None
@@ -1164,6 +1167,8 @@ def test_case_update(request, name, args, expected, hide_expected,
 @view_config(route_name='testable', request_method='PUT',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
+          is_hidden=TextNumber('is_hidden', min_value=0, max_value=1,
+                               optional=True),
           make_target=String('make_target', min_length=1, optional=True),
           executable=String('executable', min_length=1),
           build_file_ids=List('build_file_ids', TextNumber('', min_value=0),
@@ -1173,8 +1178,9 @@ def test_case_update(request, name, args, expected, hide_expected,
           file_verifier_ids=List('file_verifier_ids',
                                  TextNumber('', min_value=0), optional=True),
           project=EditableDBThing('project_id', Project))
-def testable_create(request, name, make_target, executable, build_file_ids,
-                    execution_file_ids, file_verifier_ids, project):
+def testable_create(request, name, is_hidden, make_target, executable,
+                    build_file_ids, execution_file_ids, file_verifier_ids,
+                    project):
     if make_target and not project.makefile:
         msg = 'make_target cannot be specified without a make file'
         raise HTTPBadRequest(msg)
@@ -1192,7 +1198,8 @@ def testable_create(request, name, make_target, executable, build_file_ids,
     except InvalidId as exc:
         raise HTTPBadRequest('Invalid {0}'.format(exc.message))
 
-    testable = Testable(name=name, make_target=make_target,
+    testable = Testable(name=name, is_hidden=bool(is_hidden),
+                        make_target=make_target,
                         executable=executable, project=project,
                         build_files=build_files,
                         execution_files=execution_files,
@@ -1210,6 +1217,8 @@ def testable_create(request, name, make_target, executable, build_file_ids,
 @view_config(route_name='testable_item', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(name=String('name', min_length=1),
+          is_hidden=TextNumber('is_hidden', min_value=0, max_value=1,
+                               optional=True),
           make_target=String('make_target', min_length=1, optional=True),
           executable=String('executable', min_length=1),
           build_file_ids=List('build_file_ids', TextNumber('', min_value=0),
@@ -1219,8 +1228,9 @@ def testable_create(request, name, make_target, executable, build_file_ids,
           file_verifier_ids=List('file_verifier_ids',
                                  TextNumber('', min_value=0), optional=True),
           testable=EditableDBThing('testable_id', Testable, source=MATCHDICT))
-def testable_edit(request, name, make_target, executable, build_file_ids,
-                  execution_file_ids, file_verifier_ids, testable):
+def testable_edit(request, name, is_hidden, make_target, executable,
+                  build_file_ids, execution_file_ids, file_verifier_ids,
+                  testable):
     if make_target and not testable.project.makefile:
         msg = 'make_target cannot be specified without a make file'
         raise HTTPBadRequest(msg)
@@ -1239,8 +1249,8 @@ def testable_edit(request, name, make_target, executable, build_file_ids,
         raise HTTPBadRequest('Invalid {0}'.format(exc.message))
 
     Session.autoflush = False  # Don't flush while testing for changes
-    if not testable.update(_ignore_order=True, name=name,
-                           make_target=make_target,
+    if not testable.update(_ignore_order=True, is_hidden=bool(is_hidden),
+                           name=name, make_target=make_target,
                            executable=executable,
                            build_files=build_files,
                            execution_files=execution_files,

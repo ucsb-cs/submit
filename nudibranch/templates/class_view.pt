@@ -43,7 +43,7 @@
       <tr tal:repeat="sub recent_subs">
         <td><a href="${_R('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a></td>
         <td tal:condition="class_admin">${sub.group.users_str}</td>
-        <td>${structure: sub.time_score(request, delay=False)}</td>
+        <td>${structure: sub.time_score(request, admin=True)}</td>
       </tr>
     </table>
   </div>

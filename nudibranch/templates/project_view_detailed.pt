@@ -30,7 +30,7 @@
     These are the submissions for <strong>${name}</strong>:</p>
   <ul tal:condition="submissions">
     <li tal:repeat="submission submissions">
-      ${structure: submission.time_score(request, delay=not can_edit)}
+      ${structure: submission.time_score(request, admin=can_edit)}
     </li>
   </ul>
 </div>

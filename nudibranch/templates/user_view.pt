@@ -40,7 +40,7 @@
         <td><a href="${_R('class_item', class_name=sub.project.class_.name)}">${sub.project.class_.name}</a></td>
         <td><a href="${_R('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a></td>
         <td>${sub.group.users_str}</td>
-        <td>${structure: sub.time_score(request, delay=False)}</td>
+        <td>${structure: sub.time_score(request, admin=True)}</td>
       </tr>
     </table>
   </div>

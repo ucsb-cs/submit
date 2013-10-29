@@ -18,7 +18,7 @@
     <h3>Most recent submissions</h3>
     <ul>
       <li tal:repeat="submission recent_submissions">
-        ${structure: submission.time_score(request, group=True, delay=False)}
+        ${structure: submission.time_score(request, group=True, admin=True)}
       </li>
     </ul>
   </div>
@@ -39,7 +39,7 @@
         <td>
           <ul tal:condition="group_submissions">
             <li tal:repeat="group_submission group_submissions">
-              ${structure: group_submission.time_score(request, delay=False)}
+              ${structure: group_submission.time_score(request, admin=True)}
             </li>
             <li tal:condition="group in group_truncated">
               <a href="${_R('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}">

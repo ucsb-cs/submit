@@ -409,10 +409,11 @@ class Project(BasicBase, Base):
         """Return whether or not `user` can view the project's settings."""
         return self.class_.is_admin(user)
 
-    def points_possible(self):
+    def points_possible(self, include_hidden=False):
         """Return the total points possible for this project."""
         return sum([test_case.points for testable in self.testables
-                    for test_case in testable.test_cases])
+                    for test_case in testable.test_cases
+                    if include_hidden or not testable.is_hidden])
 
     def recent_submissions(self):
         """Generate a list of the most recent submissions for each user.
@@ -601,9 +602,10 @@ class Submission(BasicBase, Base):
             return None
         return min(delay, pv_delay).total_seconds() / 60
 
-    def points(self):
+    def points(self, include_hidden=False):
         """Return the number of points awarded to this submission."""
-        return sum(x.points for x in self.testable_results)
+        return sum(x.points for x in self.testable_results
+                   if include_hidden or not x.testable.is_hidden)
 
     def testables_pending(self):
         """Return the set of testables that _can_ execute and have yet to."""
@@ -616,16 +618,17 @@ class Submission(BasicBase, Base):
         return set(x.testable for x in self.testable_results
                    if x.status == 'success')
 
-    def time_score(self, request, group=False, delay=True):
+    def time_score(self, request, group=False, admin=False):
         url = request.route_path('submission_item', submission_id=self.id)
         fmt = '<a href="{url}">{created}</a>{name} ({score}){late}'
         if self.testables_pending():
             score = '<strong>waiting for results</strong>'
-        elif delay and self.get_delay(update=False):
+        elif not admin and self.get_delay(update=False):
             score = '<strong>waiting for delay to expire</strong>'
         else:
-            score = '{} / {}'.format(self.points(),
-                                     self.project.points_possible())
+            score = '{} / {}'.format(
+                self.points(include_hidden=admin),
+                self.project.points_possible(include_hidden=admin))
         name = ' by {}'.format(self.group.users_str) if group else ''
         return fmt.format(url=url, created=self.created_at,
                           name=name, score=score,
@@ -730,6 +733,8 @@ class Testable(BasicBase, Base):
                                    secondary=testable_to_execution_file)
     file_verifiers = relationship(FileVerifier, backref='testables',
                                   secondary=testable_to_file_verifier)
+    is_hidden = Column(Boolean, default=False, nullable=False,
+                       server_default='0')
     is_locked = Column(Boolean, default=False, nullable=False,
                        server_default='0')
     make_target = Column(Unicode)  # When None, no make is required

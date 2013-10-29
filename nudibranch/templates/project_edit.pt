@@ -161,6 +161,9 @@
           <label for="testable_name_${testable.id}">Name</label>
           <input type="text" name="name" id="testable_name_${testable.id}"
                  value="${testable.name}" />
+          <input type="checkbox" name="is_hidden" id="is_hidden_${testable.id}"
+                 value="1" tal:attributes="checked 'checked' if testable.is_hidden else None" />
+          <label for="is_hidden_${testable.id}"><span class="help" title="Testables which are hidden are excluded from the student view. They will not see any compilation errors, and diff output, nor will the score be included in the score they see.">Hidden</span></label>
           <br/>
           <div tal:condition="project.makefile_id">
             <label for="make_target_${testable.id}">Make target</label>
@@ -230,6 +233,8 @@
           <input type="hidden" name="project_id" value="${project.id}" />
 	  <label for="testable_name_new">Name</label>
           <input type="text" name="name" id="testable_name_new" />
+          <input type="checkbox" name="is_hidden" id="is_hidden_new" value="1" />
+          <label for="is_hidden_new"><span class="help" title="Testables which are hidden are excluded from the student view. They will not see any compilation errors, and diff output, nor will the score be included in the score they see.">Hidden</span></label>
           <br/>
           <div tal:condition="project.makefile_id">
             <label for="make_target_new">Make target</label>

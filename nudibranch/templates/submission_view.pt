@@ -103,9 +103,13 @@
     </ul>
   </div>
 
+  <div tal:condition="not pending and not diff_table">
+    It appears that there is nothing to do.
+  </div>
+
   <!-- Tests that are still pending -->
   <div tal:condition="pending">
-    <h3><span style="color:red">Note:</span>The following test groups are still pending: ${_fp(sum([t.points() for t in pending]))}</h3>
+    <h3><span style="color:red">Note:</span> The following test groups are still pending: ${_fp(sum([t.points() for t in pending]))}</h3>
     <ul>
       <li tal:repeat="testable sorted(pending)">
 	${testable.name} ${_fp(testable.points())}
