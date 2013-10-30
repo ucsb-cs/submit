@@ -103,7 +103,7 @@
     </ul>
   </div>
 
-  <div tal:condition="not pending and not diff_table">
+  <div tal:condition="submission.verified_at and not pending and not diff_table">
     It appears that there is nothing to do.
   </div>
 

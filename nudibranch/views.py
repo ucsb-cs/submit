@@ -1027,7 +1027,7 @@ def submission_view(request, submission, as_user):
             diff_renderer.add_renderable(prepare_renderable(request, tcr,
                                                             submission_admin))
     if submission.verification_results:
-        extra_files = submission.extra_filenames
+        extra_files = submission.verification_results.extra_filenames
         verification_issues = submission.verification_results.issues()
         pending = submission.testables_pending()
 

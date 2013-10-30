@@ -293,6 +293,10 @@ class VerificationResults(object):
 
     """
 
+    @property
+    def extra_filenames(self):
+        return self._extra_filenames
+
     def __init__(self):
         self._errors_by_filename = {}
         self._extra_filenames = None
@@ -515,10 +519,6 @@ class Submission(BasicBase, Base):
     verified_at = Column(DateTime(timezone=True), index=True)
 
     @property
-    def extra_filenames(self):
-        return self.verification_results._extra_filenames
-
-    @property
     def is_late(self):
         return self.project.deadline \
             and self.created_at >= self.project.deadline
@@ -621,7 +621,9 @@ class Submission(BasicBase, Base):
     def time_score(self, request, group=False, admin=False):
         url = request.route_path('submission_item', submission_id=self.id)
         fmt = '<a href="{url}">{created}</a>{name} ({score}){late}'
-        if self.testables_pending():
+        if not self.verification_results:
+            score = '<strong>waiting to verify submission</strong>'
+        elif self.testables_pending():
             score = '<strong>waiting for results</strong>'
         elif not admin and self.get_delay(update=False):
             score = '<strong>waiting for delay to expire</strong>'
