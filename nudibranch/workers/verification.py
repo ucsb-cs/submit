@@ -1,11 +1,10 @@
 import amqp_worker
-import transaction
 from nudibranch.models import Submission, configure_sql
+from nudibranch import workers
 from sqlalchemy import engine_from_config
 
-BASE_FILE_PATH = None
 
-
+@workers.transaction_wrapper
 def do_work(submission_id, update_project=False):
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
@@ -15,7 +14,7 @@ def do_work(submission_id, update_project=False):
         print('Project to update is not locked: {0}'.format(submission_id))
         return
     # Verify and update submission
-    valid_testables = submission.verify(BASE_FILE_PATH,
+    valid_testables = submission.verify(workers.BASE_FILE_PATH,
                                         update=not update_project)
 
     # All testables must be valid in order to update the project
@@ -43,19 +42,13 @@ def do_work(submission_id, update_project=False):
             for testable in submission.project.testables:
                 testable.is_locked = False
         retval = None
-    try:
-        transaction.commit()
-    except:
-        transaction.abort()
-        raise
     return retval
 
 
 def main():
-    global BASE_FILE_PATH
     parser = amqp_worker.base_argument_parser()
     args, settings = amqp_worker.parse_base_args(parser, 'app:main')
-    BASE_FILE_PATH = settings['file_directory']
+    workers.BASE_FILE_PATH = settings['file_directory']
 
     engine = engine_from_config(settings, 'sqlalchemy.')
     configure_sql(engine)

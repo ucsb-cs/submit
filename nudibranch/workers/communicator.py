@@ -1,61 +1,14 @@
 import amqp_worker
 import json
 import os
-import shutil
 import subprocess
-import tempfile
-import transaction
 import pickle
-from functools import wraps
+from .exceptions import HandledError, OutOfSync
+from nudibranch import workers
+from nudibranch.diff_unit import Diff
 from nudibranch.models import (File, Session, Submission, TestCaseResult,
                                Testable, TestableResult, configure_sql)
-from nudibranch.diff_unit import Diff
 from sqlalchemy import engine_from_config
-
-BASE_FILE_PATH = None
-PRIVATE_KEY_FILE = None
-
-
-class OutOfSync(Exception):
-
-    """Indicate the worker is out of sync."""
-
-
-class HandledError(Exception):
-
-    """Indicate that the system state is invalid."""
-
-
-def complete_file(func):
-    @wraps(func)
-    def wrapped(complete_file, host, remote_dir, submission_id, testable_id,
-                user, **kwargs):
-        prev_cwd = os.getcwd()
-        new_cwd = tempfile.mkdtemp()
-        os.chdir(new_cwd)
-        try:
-            retval = func(submission_id, testable_id, user, host, remote_dir,
-                          **kwargs)
-        except OutOfSync as exc:
-            print('Out of Sync: {0}'.format(exc))
-            return
-        except HandledError as exc:
-            print('Other handled error: {0}'.format(exc))
-            return
-        finally:
-            shutil.rmtree(new_cwd)
-            os.chdir(prev_cwd)
-            # Always abort
-            transaction.abort()
-        complete_file = os.path.join(remote_dir, complete_file)
-        cmd = 'echo -n {0}.{1} | ssh -i {2} {3}@{4} tee -a {5}'.format(
-            submission_id, testable_id, PRIVATE_KEY_FILE, user, host,
-            complete_file)
-        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
-        print('Success: submission: {0} testable: {1}'.format(submission_id,
-                                                              testable_id))
-        return retval
-    return wrapped
 
 
 def fetch_results():
@@ -66,26 +19,19 @@ def set_expected_files(testable, results):
     # Update the expected output of each test case
     for test_case in testable.test_cases:
         if test_case.id not in results:
-            print('Missing test case result in project update: {0}'
-                  .format(test_case.id))
-            transaction.abort()
-            return
+            raise Exception('Missing test case result in project update: {0}'
+                            .format(test_case.id))
         if test_case.output_type == 'diff':
             output_file = 'tc_{0}'.format(test_case.id)
             test_case.expected = File.fetch_or_create(
-                open(output_file).read(), BASE_FILE_PATH)
-            Session.add(test_case)
+                open(output_file).read(), workers.BASE_FILE_PATH)
     testable.is_locked = False
     if not any(x.is_locked for x in testable.project.testables):
         testable.project.status = u'notready'
-    try:
-        transaction.commit()
-    except:
-        transaction.abort()
-        raise
 
 
-@complete_file
+@workers.transaction_wrapper
+@workers.complete_file
 def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
                          update_project=False):
     submission = Submission.fetch_by_id(submission_id)
@@ -103,7 +49,8 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
 
     # Rsync to retrieve results
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3} .'.format(
-        PRIVATE_KEY_FILE, user, host, os.path.join(remote_dir, 'results/'))
+        workers.PRIVATE_KEY_FILE, user, host,
+        os.path.join(remote_dir, 'results/'))
     subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
 
     # Verify the results are for the correct submission and testable. If they
@@ -149,7 +96,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
             else:
                 if os.path.isfile(output_file):  # Store the file as the diff
                     test_case_result.diff = File.fetch_or_create(
-                        open(output_file).read(), BASE_FILE_PATH)
+                        open(output_file).read(), workers.BASE_FILE_PATH)
 
     # Create or update Testable
     testable_data = json.load(open('testable'))
@@ -157,11 +104,6 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
         make_results=testable_data.get('make'), points=points,
         status=testable_data['status'], testable=testable,
         submission=submission)
-    try:
-        transaction.commit()
-    except:
-        transaction.abort()
-        raise
 
 
 def compute_diff(test_case, test_case_result, output_file):
@@ -170,7 +112,7 @@ def compute_diff(test_case, test_case_result, output_file):
     Return whether or not the outputs match.
 
     """
-    expected_output = open(File.file_path(BASE_FILE_PATH,
+    expected_output = open(File.file_path(workers.BASE_FILE_PATH,
                                           test_case.expected.sha1)).read()
     if os.path.isfile(output_file):
         actual_output = open('tc_{0}'.format(test_case.id)).read()
@@ -179,17 +121,16 @@ def compute_diff(test_case, test_case_result, output_file):
     unit = Diff(expected_output, actual_output)
     if not unit.outputs_match():
         test_case_result.diff = File.fetch_or_create(pickle.dumps(unit),
-                                                     BASE_FILE_PATH)
+                                                     workers.BASE_FILE_PATH)
         return False
     return True
 
 
 def start_communicator(conf_prefix, work_func):
-    global BASE_FILE_PATH, PRIVATE_KEY_FILE
     parser = amqp_worker.base_argument_parser()
     args, settings = amqp_worker.parse_base_args(parser, 'app:main')
-    BASE_FILE_PATH = settings['file_directory']
-    PRIVATE_KEY_FILE = settings['ssh_priv_key']
+    workers.BASE_FILE_PATH = settings['file_directory']
+    workers.PRIVATE_KEY_FILE = settings['ssh_priv_key']
 
     engine = engine_from_config(settings, 'sqlalchemy.')
     configure_sql(engine)
@@ -206,11 +147,12 @@ def sync_files():
     start_communicator('sync_files', sync_files_worker)
 
 
-@complete_file
+@workers.transaction_wrapper
+@workers.complete_file
 def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
     # Rsync to pre-sync files
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3}/ .'.format(
-        PRIVATE_KEY_FILE, user, host, remote_dir)
+        workers.PRIVATE_KEY_FILE, user, host, remote_dir)
     subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
 
     # Verify a clean working directory and that the worker wants files for the
@@ -243,7 +185,8 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
     os.mkdir('src')
     for filev in testable.file_verifiers:
         if filev.filename in submitted:
-            source = File.file_path(BASE_FILE_PATH, submitted[filev.filename])
+            source = File.file_path(workers.BASE_FILE_PATH,
+                                    submitted[filev.filename])
             os.symlink(source, os.path.join('src', filev.filename))
             if filev.filename in build_files:
                 del build_files[filev.filename]
@@ -251,12 +194,12 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
             raise HandledError('File verifier not satisfied: {0}'
                                .format(filev.filename))
     for name, sha1 in build_files.items():  # Symlink remaining build files
-        source = File.file_path(BASE_FILE_PATH, sha1)
+        source = File.file_path(workers.BASE_FILE_PATH, sha1)
         os.symlink(source, os.path.join('src', name))
 
     # Symlink Makefile to current directory if necessary
     if project.makefile and testable.make_target:
-        source = File.file_path(BASE_FILE_PATH, project.makefile.sha1)
+        source = File.file_path(workers.BASE_FILE_PATH, project.makefile.sha1)
         os.symlink(source, 'Makefile')
 
     # Symlink test inputs and copy build test case specifications
@@ -267,20 +210,23 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
         if test_case.stdin:
             destination = os.path.join('inputs', test_case.stdin.sha1)
             if not os.path.isfile(destination):
-                source = File.file_path(BASE_FILE_PATH, test_case.stdin.sha1)
+                source = File.file_path(workers.BASE_FILE_PATH,
+                                        test_case.stdin.sha1)
                 os.symlink(source, destination)
 
     # Copy execution files
     os.mkdir('execution_files')
     for execution_file in testable.execution_files:
         destination = os.path.join('execution_files', execution_file.filename)
-        source = File.file_path(BASE_FILE_PATH, execution_file.file.sha1)
+        source = File.file_path(workers.BASE_FILE_PATH,
+                                execution_file.file.sha1)
         os.symlink(source, destination)
     # Symlink sumbitted files that should be in the execution environment
     for filev in testable.file_verifiers:
         if filev.copy_to_execution and filev.filename in submitted:
             destination = os.path.join('execution_files', filev.filename)
-            source = File.file_path(BASE_FILE_PATH, submitted[filev.filename])
+            source = File.file_path(workers.BASE_FILE_PATH,
+                                    submitted[filev.filename])
             os.symlink(source, destination)
 
     # Generate data dictionary
@@ -294,5 +240,5 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
 
     # Rsync files
     cmd = 'rsync -e \'ssh -i {0}\' -rLpv . {1}@{2}:{3}'.format(
-        PRIVATE_KEY_FILE, user, host, remote_dir)
+        workers.PRIVATE_KEY_FILE, user, host, remote_dir)
     subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
