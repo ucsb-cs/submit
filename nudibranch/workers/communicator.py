@@ -91,7 +91,8 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
                 Session.add(test_case_result)
             output_file = 'tc_{0}'.format(test_case.id)
             if test_case.output_type == 'diff':
-                if compute_diff(test_case, test_case_result, output_file):
+                if compute_diff(test_case, test_case_result, output_file) and \
+                        test_case_result.status == 'success':
                     points += test_case.points
             else:
                 if os.path.isfile(output_file):  # Store the file as the diff
