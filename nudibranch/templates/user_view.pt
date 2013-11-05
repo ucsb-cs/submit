@@ -18,7 +18,10 @@
       <tr><th>Class</th><th>Project</th><th>Sub Info</th></tr>
       <tr tal:repeat="sub user_subs">
         <td><a href="${_R('class_item', class_name=sub.project.class_.name)}">${sub.project.class_.name}</a></td>
-        <td><a href="${_R('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a></td>
+        <td tal:define="class_admin sub.project.class_.is_admin(request.user)">
+          <a tal:condition="class_admin" href="${_R('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a>
+          <a tal:condition="not class_admin" href="${_R('project_item_detailed_user', class_name=sub.project.class_.name, project_id=sub.project.id, username=request.user.username)}">${sub.project.name}</a>
+        </td>
         <td>${structure: sub.time_score(request)}</td>
       </tr>
     </table>
