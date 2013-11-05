@@ -917,6 +917,13 @@ class User(UserMixin, BasicBase, Base):
             from_assoc = UserToGroup(group=to_assoc.group, project=project,
                                      user=from_user)
             Session.add(from_assoc)
+
+        # Update the group's submissions' files' permissions
+        files = set(assoc.file for sub in to_assoc.group.submissions
+                    for assoc in sub.files)
+        for user in to_assoc.group.users:
+            user.files.extend(files - set(user.files))
+
         return to_assoc.group
 
     def fetch_group_assoc(self, project):

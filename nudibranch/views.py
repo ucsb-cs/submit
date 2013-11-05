@@ -948,14 +948,25 @@ def submission_create(request, project, file_ids, filenames):
 
     # Verify user permission on files
     msgs = []
-    user_file_ids = [x.id for x in request.user.files]
+    user_files = {x.id: x for x in request.user.files}
+    files = set()
     for i, file_id in enumerate(file_ids):
-        if file_id not in user_file_ids:
+        if file_id in user_files:
+            files.add(user_files[file_id])
+        else:
             msgs.append('Invalid file "{0}"'.format(filenames[i]))
     if msgs:
         raise HTTPBadRequest(msgs)
 
     submission = request.user.make_submission(project)
+
+    # Grant the files' permissions to the other members of the group
+    for user in submission.group.users:
+        if user == request.user:
+            continue
+        user.files.extend(files - set(user.files))
+
+    # Associate the files with the submissions by their submission name
     assoc = []
     for file_id, filename in zip(file_ids, filenames):
         assoc.append(SubmissionToFile(file_id=file_id, filename=filename))
