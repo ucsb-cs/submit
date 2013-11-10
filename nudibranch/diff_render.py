@@ -42,18 +42,23 @@ _legend = """
 
 MAX_NUM_REVEALS = 3
 MAX_DIFF_LINES = 512
+MAX_LINE_LENGTH = 128
 
 
 def limit_revealed_lines_to(diffs, limit, hide_expected):
     def truncate_line(todata):
-        if len(todata[1]) > 1024:
-            return todata[0], todata[1][:1024] + '...truncated'
+        if len(todata[1]) > MAX_LINE_LENGTH:
+            new = todata[1][:MAX_LINE_LENGTH] + '...truncated'
+            if todata[1].endswith('\n\x01'):
+                new += '\n\x01'
+            elif todata[1].endswith('\x01'):
+                new += '\x01'
+            return todata[0], new
         else:
             return todata
 
     num_reveals = 0
     different_lines = 0
-    retval = []
 
     obscured = '<<Expected output obscured by instructor.>>'
     for fromdata, todata, flag in diffs:
@@ -62,15 +67,14 @@ def limit_revealed_lines_to(diffs, limit, hide_expected):
             if '\0-' in fromdata[1] or '\0^' in fromdata[1]:
                 num_reveals += 1
         if different_lines > MAX_DIFF_LINES or limit and num_reveals > limit:
-            trun = ('...', '<<Remaining diff not shown>>')
-            retval.append((trun, trun, False))
+            trun = '...', '<<Remaining diff not shown>>'
+            yield trun, trun, False
             break
+        todata = truncate_line(todata)
         if hide_expected:
-            retval.append(((fromdata[0], obscured), todata, flag))
+            fromdata = fromdata[0], obscured
             obscured = ''
-        else:
-            retval.append((fromdata, truncate_line(todata), flag))
-    return retval
+        yield fromdata, todata, flag
 
 
 def change_same_starting_points(flaglist):
