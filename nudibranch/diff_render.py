@@ -42,13 +42,17 @@ _legend = """
 
 MAX_NUM_REVEALS = 3
 MAX_DIFF_LINES = 512
-MAX_LINE_LENGTH = 128
+LINE_WRAP = 64
+SOFT_MAX_LINE_LENGTH = 128
+HARD_MAX_LINE_LENGTH = 1024
 
 
 def limit_revealed_lines_to(diffs, limit, hide_expected):
-    def truncate_line(todata):
-        if len(todata[1]) > MAX_LINE_LENGTH:
-            new = todata[1][:MAX_LINE_LENGTH] + '...truncated'
+    def truncate_line(todata, expected_length):
+        max_length = min(max(expected_length, SOFT_MAX_LINE_LENGTH),
+                         HARD_MAX_LINE_LENGTH)
+        if len(todata[1]) > max_length:
+            new = todata[1][:max_length] + '...truncated'
             if todata[1].endswith('\n\x01'):
                 new += '\n\x01'
             elif todata[1].endswith('\x01'):
@@ -70,7 +74,7 @@ def limit_revealed_lines_to(diffs, limit, hide_expected):
             trun = '...', '<<Remaining diff not shown>>'
             yield trun, trun, False
             break
-        todata = truncate_line(todata)
+        todata = truncate_line(todata, len(fromdata[1]))
         if hide_expected:
             fromdata = fromdata[0], obscured
             obscured = ''
@@ -125,7 +129,7 @@ class HTMLDiff(difflib.HtmlDiff):
     def __init__(self, diffs=[], points_possible=0,
                  num_reveal_limit=MAX_NUM_REVEALS):
         """Set num_reveal_limit to None to not reveal"""
-        super(HTMLDiff, self).__init__(wrapcolumn=50)
+        super(HTMLDiff, self).__init__(wrapcolumn=LINE_WRAP)
         self._legend = _legend
         self._table_template = _table_template
         self._file_template = _file_template
