@@ -11,14 +11,24 @@
 
   <div tal:condition="recent_submissions">
     <h3>Stats (student submissions only)</h3>
-    <table>
+    <table style="text-align: center">
       <tr><td>Total Submissions</td><td>${len(project.student_submissions)}</td></tr>
       <div tal:condition="num_groups" tal:omit-tag="">
-        <tr><td>Groups submitted</td><td>${num_groups}</td></tr>
-        <tr><td>Groups with 100%</td><td>${perfect}</td></tr>
-        <tr><td>Max Score</td><td>${max}</td></tr>
-        <tr><td>Mean Score</td><td>${'{:.2f}'.format(mean)}</td></tr>
-        <tr><td>Median Score</td><td>${'{:.2f}'.format(median)}</td></tr>
+        <tr>
+          <td>Groups submitted</td><td>${num_groups}</td>
+          <td>Groups with 100%+</td><td>${hist[-1]}</td>
+          <td>Groups with 90%+</td><td>${sum(hist[-2:])}</td>
+        </tr>
+        <tr>
+          <td>Groups with 80%+</td><td>${sum(hist[-3:])}</td>
+          <td>Groups with 70%+</td><td>${sum(hist[-4:])}</td>
+          <td>Groups with 60%+</td><td>${sum(hist[-5:])}</td>
+        </tr>
+        <tr>
+          <td>Max Score</td><td>${max}</td>
+          <td>Mean Score</td><td>${'{:.2f}'.format(mean)}</td>
+          <td>Median Score</td><td>${'{:.2f}'.format(median)}</td>
+        </tr>
       </div>
     </table>
 

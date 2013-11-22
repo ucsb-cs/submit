@@ -878,17 +878,19 @@ def project_view_summary(request, class_name, project):
     group_truncated = set()
     best = defaultdict(int)
     # Compute student stats
+    possible = project.points_possible(include_hidden=True)
     for submission in project.student_submissions:
         best[submission.group] = max(submission.points(include_hidden=True),
                                      best[submission.group])
     if best:
+        normed = [min(x, possible) for x in best.values()]
         max_score = max(best.values())
         mean = numpy.mean(best.values())
         median = numpy.median(best.values())
-        perfect = len([x for x in best.values()
-                       if x >= project.points_possible(include_hidden=True)])
+        bins = [x * possible for x in [0, .6, .7, .8, .9, 1, 1]]
+        hist, _ = numpy.histogram(normed, range=(0, possible), bins=bins)
     else:
-        max_score = mean = median = perfect = None
+        hist = max_score = mean = median = perfect = None
 
     # Find most recent for each group
     for group in project.groups:
@@ -902,11 +904,11 @@ def project_view_summary(request, class_name, project):
                           .limit(16).all())
     return {'page_title': 'Admin Project Page',
             'group_truncated': group_truncated,
+            'hist': hist,
             'max': max_score,
             'mean': numpy.mean(best.values()),
             'median': numpy.median(best.values()),
             'num_groups': len(best),
-            'perfect': perfect,
             'project': project,
             'recent_submissions': recent_submissions,
             'submissions': sorted(submissions.items())}
