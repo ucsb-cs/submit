@@ -393,6 +393,11 @@ class Project(BasicBase, Base):
     def is_ready(self):
         return self.status == 'ready'
 
+    @property
+    def student_submissions(self):
+        admins = set(self.class_.admins)
+        return [x for x in self.submissions if not set(x.group.users) & admins]
+
     def __cmp__(self, other):
         return cmp(alphanum_key(self.name), alphanum_key(other.name))
 

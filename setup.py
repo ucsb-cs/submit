@@ -9,6 +9,7 @@ requires = [
     'alembic>=0.4.0',
     'amqp_worker>=0.0.9',
     'diff-match-patch==20120106',
+    'numpy>=1.8.0',
     'pastescript>=1.7.5',
     'pika>=0.9.6',
     'pyramid>=1.4',

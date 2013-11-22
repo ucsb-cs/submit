@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 import codecs
+import numpy
 import os
 import transaction
 from base64 import b64decode
+from collections import defaultdict
 from hashlib import sha1
 from pyramid_addons.helpers import (http_created, http_gone, http_ok,
                                     pretty_date, site_layout)
@@ -874,11 +876,20 @@ def project_view_stats(request, class_name, project):
 def project_view_summary(request, class_name, project):
     submissions = {}
     group_truncated = set()
-    perfect = set()
-    for submission in project.submissions:
-        if 0 < submission.points(include_hidden=True) >= \
-                submission.project.points_possible(include_hidden=True):
-            perfect.add(submission.group)
+    best = defaultdict(int)
+    # Compute student stats
+    for submission in project.student_submissions:
+        best[submission.group] = max(submission.points(include_hidden=True),
+                                     best[submission.group])
+    if best:
+        mean = numpy.mean(best.values())
+        median = numpy.median(best.values())
+        perfect = len([x for x in best.values()
+                       if x >= project.points_possible(include_hidden=True)])
+    else:
+        mean = median = perfect = None
+
+    # Find most recent for each group
     for group in project.groups:
         newest = (Submission.query_by(project=project, group=group)
                   .order_by(Submission.created_at.desc()).limit(4).all())
@@ -889,9 +900,12 @@ def project_view_summary(request, class_name, project):
                           .order_by(Submission.created_at.desc())
                           .limit(16).all())
     return {'page_title': 'Admin Project Page',
-            'project': project,
-            'perfect': perfect,
             'group_truncated': group_truncated,
+            'mean': numpy.mean(best.values()),
+            'median': numpy.median(best.values()),
+            'num_groups': len(best),
+            'perfect': perfect,
+            'project': project,
             'recent_submissions': recent_submissions,
             'submissions': sorted(submissions.items())}
 
