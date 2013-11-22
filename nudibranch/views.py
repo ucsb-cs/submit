@@ -882,12 +882,13 @@ def project_view_summary(request, class_name, project):
         best[submission.group] = max(submission.points(include_hidden=True),
                                      best[submission.group])
     if best:
+        max_score = max(best.values())
         mean = numpy.mean(best.values())
         median = numpy.median(best.values())
         perfect = len([x for x in best.values()
                        if x >= project.points_possible(include_hidden=True)])
     else:
-        mean = median = perfect = None
+        max_score = mean = median = perfect = None
 
     # Find most recent for each group
     for group in project.groups:
@@ -901,6 +902,7 @@ def project_view_summary(request, class_name, project):
                           .limit(16).all())
     return {'page_title': 'Admin Project Page',
             'group_truncated': group_truncated,
+            'max': max_score,
             'mean': numpy.mean(best.values()),
             'median': numpy.median(best.values()),
             'num_groups': len(best),

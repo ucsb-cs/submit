@@ -10,14 +10,15 @@
   <p><a href="${request.route_path('project_group_admin', project_id=project.id)}">Manually join groups</a></p>
 
   <div tal:condition="recent_submissions">
-    <h3>Stats</h3>
+    <h3>Stats (student submissions only)</h3>
     <table>
       <tr><td>Total Submissions</td><td>${len(project.student_submissions)}</td></tr>
       <div tal:condition="num_groups" tal:omit-tag="">
         <tr><td>Groups submitted</td><td>${num_groups}</td></tr>
         <tr><td>Groups with 100%</td><td>${perfect}</td></tr>
-        <tr><td>Mean</td><td>${'{:.2f}'.format(mean)}</td></tr>
-        <tr><td>Median</td><td>${'{:.2f}'.format(median)}</td></tr>
+        <tr><td>Max Score</td><td>${max}</td></tr>
+        <tr><td>Mean Score</td><td>${'{:.2f}'.format(mean)}</td></tr>
+        <tr><td>Median Score</td><td>${'{:.2f}'.format(median)}</td></tr>
       </div>
     </table>
 
