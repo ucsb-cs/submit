@@ -587,10 +587,11 @@ class Submission(BasicBase, Base):
 
         """
         now = datetime.now(UTC())
+        if self.project.deadline and self.project.deadline < now:
+            return None  # Don't delay after the project's deadline
         zero = timedelta(0)
         delay = self.project.delay - (now - self.created_at)
-        if delay <= zero:
-            # Never delay longer than the project's delay time
+        if delay <= zero:  # Never delay longer than the project's delay time
             return None
         pv = ProjectView.fetch_by(project=self.project, group=self.group)
         if not pv:  # Don't delay
