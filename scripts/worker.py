@@ -64,8 +64,8 @@ class SubmissionHandler(object):
         args = shlex.split(command)
         # allow some programs
         executable = None
-        if args[0] not in ('bash', 'python', 'python2', 'python3', 'sh',
-                           'spim', 'valgrind'):
+        if args[0] not in ('bash', 'head', 'python', 'python2', 'python3',
+                           'sh', 'spim', 'tail', 'valgrind'):
             executable = os.path.normpath(os.path.join(os.getcwd(), SRC_PATH,
                                                        args[0]))
             if not os.path.isfile(executable):
