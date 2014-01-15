@@ -92,11 +92,13 @@ def main(global_config, **settings):
         populate_database()
 
     # Configure the webapp
-    authen = AuthTktAuthenticationPolicy(secret='<PYRAMID_SECRET>',
-                                         callback=group_finder,
-                                         hashalg='sha512')
+    authen = AuthTktAuthenticationPolicy(secret=settings['auth_secret'],
+                                         callback=group_finder, secure=True,
+                                         include_ip=False, hashalg='sha512',
+                                         wild_domain=False)
     author = ACLAuthorizationPolicy()
-    session_factory = UnencryptedCookieSessionFactoryConfig('<COOKIE_SECRET>')
+    session_factory = UnencryptedCookieSessionFactoryConfig(
+        settings['cookie_secret'])
     config = Configurator(settings=settings, authentication_policy=authen,
                           authorization_policy=author, root_factory=Root,
                           session_factory=session_factory)
