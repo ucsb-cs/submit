@@ -724,10 +724,13 @@ def project_new(request, class_):
              request_method='PUT', permission='authenticated')
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
 def project_requeue(request, project):
-    for count, submission in enumerate(project.recent_submissions()):
+    count = 0
+    for count, submission in enumerate(project.recent_submissions(), start=1):
         request.queue(submission_id=submission.id, _priority=2)
+    if count == 0:
+        return http_ok(request, message='There are no submissions to requeue.')
     request.session.flash('Requeued the most recent submissions ({0} items).'
-                          .format(count + 1))
+                          .format(count))
     return http_ok(request, redir_location=request.url)
 
 
@@ -890,7 +893,7 @@ def project_view_summary(request, class_name, project):
         bins = [x * possible for x in [0, .6, .7, .8, .9, 1, 1]]
         hist, _ = numpy.histogram(normed, range=(0, possible), bins=bins)
     else:
-        hist = max_score = mean = median = perfect = None
+        hist = max_score = mean = median = None
 
     # Find most recent for each group
     for group in project.groups:
@@ -906,8 +909,8 @@ def project_view_summary(request, class_name, project):
             'group_truncated': group_truncated,
             'hist': hist,
             'max': max_score,
-            'mean': numpy.mean(best.values()),
-            'median': numpy.median(best.values()),
+            'mean': mean,
+            'median': median,
             'num_groups': len(best),
             'project': project,
             'recent_submissions': recent_submissions,
