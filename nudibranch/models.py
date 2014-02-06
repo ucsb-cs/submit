@@ -271,11 +271,13 @@ class Group(BasicBase, Base):
 class GroupRequest(BasicBase, Base):
     __table_args__ = (UniqueConstraint('from_user_id', 'project_id'),)
     from_user_id = Column(Integer, ForeignKey('user.id'), index=True)
-    from_user = relationship('User', foreign_keys=[from_user_id])
+    from_user = relationship('User', foreign_keys=[from_user_id],
+                             backref=backref('sent_requests', cascade='all'))
     project = relationship('Project')
     project_id = Column(Integer, ForeignKey('project.id'), index=True)
     to_user_id = Column(Integer, ForeignKey('user.id'), index=True)
-    to_user = relationship('User', foreign_keys=[to_user_id])
+    to_user = relationship('User', foreign_keys=[to_user_id],
+                           backref=backref('pending_requests', cascade='all'))
 
     def can_access(self, user):
         return user == self.from_user or user == self.to_user
@@ -340,7 +342,7 @@ class PasswordReset(Base):
                         nullable=False)
     reset_token = Column(Binary(length=16), primary_key=True)
     user = relationship('User', backref=backref('password_reset',
-                                                cascade='all,delete'))
+                                                cascade='all'))
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False,
                      unique=True)
 
