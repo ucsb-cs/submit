@@ -26,11 +26,11 @@ from .diff_render import HTMLDiff
 from .exceptions import GroupWithException, InvalidId
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
-    EditableDBThing, TextDate, ViewableDBThing, clone, fetch_request_ids,
-    file_verifier_verification, format_points, get_submission_stats,
-    prepare_renderable, prev_next_submission, prev_next_group,
-    project_file_create, project_file_delete, test_case_verification,
-    zip_response, TestableStatus)
+    EditableDBThing, TestableStatus, TextDate, ViewableDBThing, UmailAddress,
+    clone, fetch_request_ids, file_verifier_verification, format_points,
+    get_submission_stats, prepare_renderable, prev_next_submission,
+    prev_next_group, project_file_create, project_file_delete,
+    test_case_verification, zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -1327,12 +1327,12 @@ def user_class_join(request, class_, username):
 
 
 @view_config(route_name='user', renderer='json', request_method='PUT')
-@validate(name=String('name', min_length=3),
-          username=String('email', min_length=6, max_length=64),
+@validate(identity=UmailAddress('email', min_length=16, max_length=64),
           password=WhiteSpaceString('password', min_length=6),
           admin_for=List('admin_for', EditableDBThing('', Class),
                          optional=True))
-def user_create(request, name, username, password, admin_for):
+def user_create(request, identity, password, admin_for):
+    username, name = identity
     user = User(name=name, username=username, password=password,
                 is_admin=False)
     if admin_for:

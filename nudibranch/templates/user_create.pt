@@ -7,10 +7,7 @@
   <form name="input" action="${_R('user')}" method="POST"
         onsubmit="return form_request(this, 'put', true);">
     <p>
-      <label for="name">Name</label><br/>
-      <input type="text" name="name" id="name"/><br/>
-
-      <label for="email">Email</label><br/>
+      <label for="email">Umail Address</label><br/>
       <input type="text" name="email" id="email" /><br/>
 
       <label for="password">Password</label><br/>
@@ -27,6 +24,10 @@
 
     <input type="submit" name="submit" value="Create"/>
   </form>
+
+  <p>If you do not have a umail address please send an email to bboe _at_
+    cs.ucsb.edu from the email you wish to register from along with your full
+    name and the class you require the account for.</p>
 
   <br/><br/><a href="${_R('home')}">Home</a><br/>
 </div>

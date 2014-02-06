@@ -1,11 +1,13 @@
 import dateutil.parser
 import json
+import ldap
 import pickle
 import pika
 import re
 import traceback
 from pyramid_addons.helpers import http_created, http_ok
-from pyramid_addons.validation import SOURCE_MATCHDICT, TextNumber, Validator
+from pyramid_addons.validation import (SOURCE_MATCHDICT, String, TextNumber,
+                                       Validator)
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict,
                                     HTTPForbidden, HTTPNotFound)
 from pyramid.response import FileResponse
@@ -59,6 +61,28 @@ class TextDate(Validator):
         except ValueError:
             self.add_error(errors, 'is not a valid datetime format')
             return value
+
+
+class UmailAddress(String):
+
+    """A validator to verify that a umail address is correct."""
+
+    def __init__(self, *args, **kwargs):
+        super(UmailAddress, self).__init__(*args, lowercase=True, **kwargs)
+
+    def run(self, value, errors, *args):
+        retval = super(String, self).run(value.strip(), errors, *args)
+        if errors:
+            return retval
+        if not retval.endswith('@umail.ucsb.edu'):
+            self.add_error(errors, 'must end with @umail.ucsb.edu')
+            return retval
+        # Fetch name
+        name = fetch_name_by_umail(retval)
+        if not name:
+            self.add_error(errors, 'does not appear to be a valid umail email')
+            return retval
+        return (retval, name)
 
 
 class DBThing(Validator):
@@ -209,6 +233,31 @@ def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
             raise InvalidId(attr_name)
         items.append(item)
     return items
+
+
+def fetch_name_by_umail(umail):
+    def extract(item):
+        if len(data[item]) == 1:
+            return data[item][0]
+        raise Exception('Multiple values returned: {}'.format(data))
+
+    uid = umail.split('@')[0]
+
+    # connect to ldap
+    ldap_conn = ldap.initialize('ldaps://directory.ucsb.edu')
+    ldap_conn.protocol_version = ldap.VERSION3
+    results = ldap_conn.search_s(
+        'o=ucsb', ldap.SCOPE_ONELEVEL, filterstr='uid={}'.format(uid),
+        attrlist=('cn', 'sn', 'mail', 'uid', 'givenname', 'initials'))
+    if len(results) != 1:
+        return None
+    data = results[0][1]
+    if 'initials' in data:
+        fullname = '{} {} {}'.format(extract('givenname'), extract('initials'),
+                                     extract('sn'))
+    else:
+        fullname = extract('cn')
+    return fullname
 
 
 def file_verifier_verification(function):
