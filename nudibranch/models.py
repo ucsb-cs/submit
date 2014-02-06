@@ -339,7 +339,8 @@ class PasswordReset(Base):
     created_at = Column(DateTime(timezone=True), default=func.now(),
                         nullable=False)
     reset_token = Column(Binary(length=16), primary_key=True)
-    user = relationship('User', backref='password_reset')
+    user = relationship('User', backref=backref('password_reset',
+                                                cascade='all,delete'))
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False,
                      unique=True)
 
