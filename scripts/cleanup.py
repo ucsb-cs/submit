@@ -14,12 +14,14 @@ def usage(argv):
           '(example: "{} development.ini")'.format(cmd, cmd))
     sys.exit(1)
 
+
 def delete_inactive_users(session):
     # Delete inactive users
     for user in User.query_by().order_by(User.created_at).all():
         if not user.files and not user.groups_assocs:
             Session.delete(user)
     transaction.commit()
+
 
 def update_umail_users():
     ldap_conn = fbu.connect()
