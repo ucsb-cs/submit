@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from nudibranch.models import Session, Submission
 import ldap
 import os
 import sys
@@ -28,6 +29,27 @@ def connect():
     l = ldap.initialize('ldaps://directory.ucsb.edu')
     l.protocol_version = ldap.VERSION3
     return l
+
+
+def merge_users(merge_to, merge_from):
+    """Merge a non-umail account with a umail account."""
+    # Determine most active user based on most recently created group
+    assert(merge_to.username.endswith('umail.ucsb.edu'))
+
+    # Merge groups
+    for u2g in merge_from.groups_assocs[:]:
+        merge_to.group_with(merge_from, u2g.project, bypass_limit=True)
+
+    # merge classes and files
+    merge_to.classes.extend(merge_from.classes)
+    merge_to.files.extend(merge_from.files)
+
+    # update file ownership
+    for sub in Submission.query_by(created_by=merge_from).all():
+        sub.created_by = merge_to
+
+    # Delete the secondary user
+    Session.delete(merge_from)
 
 
 def main():

@@ -958,7 +958,8 @@ class UserToGroup(Base):
                       nullable=False)
     project = relationship('Project', backref='group_assocs')
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
-    user = relationship('User', backref='groups_assocs')
+    user = relationship('User',
+                        backref=backref('groups_assocs', cascade='all'))
     user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
 
     @property
