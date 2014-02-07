@@ -47,18 +47,6 @@ def main():
 
     delete_inactive_users(Session)
     update_umail_users()
-    return  # The following is not complete yet
-
-    # Find users with the same name
-    names = {}
-    for user in User.query_by().order_by(User.name).all():
-        name = user.name.lower()
-        if name in names:
-            print name, names[name]
-            user.merge(names[name])
-        names[name] = user
-
-    transaction.commit()
 
 
 if __name__ == '__main__':
