@@ -23,10 +23,12 @@ def fetch_name(ldap_conn, umail):
         fullname = extract('cn')
     return fullname
 
+
 def connect():
     l = ldap.initialize('ldaps://directory.ucsb.edu')
     l.protocol_version = ldap.VERSION3
     return l
+
 
 def main():
     for umail in ['bboe@umail.ucsb.edu', 'BBOE@umail.ucsb.edu']:

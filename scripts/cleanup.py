@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config
 import os
 import sys
 import transaction
-import fetch_by_umail as fbu
+import helper
 
 
 def usage(argv):
@@ -24,11 +24,11 @@ def delete_inactive_users(session):
 
 
 def update_umail_users():
-    ldap_conn = fbu.connect()
+    ldap_conn = helper.connect()
     for user in User.query_by().order_by(User.name).all():
         email = user.username
         if email.endswith('umail.ucsb.edu'):
-            name = fbu.fetch_name(ldap_conn, email)
+            name = helper.fetch_name(ldap_conn, email)
             if name and name != user.name:
                 user.name = name
             elif not name:
