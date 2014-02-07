@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 from nudibranch.models import Session, Submission
 import ldap
-import os
 import sys
 
 ATTRS = ('cn', 'sn', 'mail', 'uid', 'givenname', 'initials')
+
 
 def fetch_name(ldap_conn, umail):
     def extract(item):
@@ -53,9 +53,7 @@ def merge_users(merge_to, merge_from):
 
 
 def main():
-    for umail in ['bboe@umail.ucsb.edu', 'BBOE@umail.ucsb.edu']:
-        print fetch_name(l, umail)
-
+    pass
 
 if __name__ == '__main__':
     sys.exit(main())
