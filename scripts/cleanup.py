@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from nudibranch.models import User, Session
 from pyramid.paster import get_appsettings, setup_logging
-from sqlalchemy import engine_from_config
+from sqlalchemy import engine_from_config, not_
 import os
 import sys
 import transaction
@@ -36,6 +36,17 @@ def update_umail_users():
     transaction.commit()
 
 
+def match_to_umail():
+    ldap_conn = helper.connect()
+    for user in sorted(User.query_by().filter(not_(
+                User.username.contains('@umail.ucsb.edu'))).all()):
+        if user.admin_for or user.is_admin or '(' in user.name:
+            continue
+        match = helper.find_user(ldap_conn, user.name)
+        if match:
+            print match, user.username
+
+
 def main():
     if len(sys.argv) < 2:
         usage(sys.argv)
@@ -45,8 +56,10 @@ def main():
     engine = engine_from_config(settings, 'sqlalchemy.')
     Session.configure(bind=engine)
 
-    delete_inactive_users(Session)
-    update_umail_users()
+    #delete_inactive_users(Session)
+    #update_umail_users()
+
+    match_to_umail()
 
 
 if __name__ == '__main__':

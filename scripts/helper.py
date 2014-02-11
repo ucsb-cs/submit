@@ -31,6 +31,29 @@ def connect():
     return l
 
 
+def find_user(ldap_conn, name):
+    def extract(key='uid'):
+        tmp = results[0][1][key]
+        if len(tmp) == 1:
+            return tmp[0]
+        raise Exception('Multiple values returned')
+
+    parts = name.split()
+    if len(parts) < 2:
+        return None
+    results = ldap_conn.search_s('o=ucsb', ldap.SCOPE_ONELEVEL, attrlist=ATTRS,
+                                 filterstr='cn={} {}'
+                                 .format(parts[0], parts[-1]))
+    if len(results) != 1:
+        return None
+    else:
+        umail = extract() + '@umail.ucsb.edu'
+        email = extract('mail')
+        if umail != email:
+            return '{}\t{}'.format(umail, email)
+        return umail
+
+
 def merge_users(merge_to, merge_from):
     """Merge a non-umail account with a umail account."""
     # Determine most active user based on most recently created group
@@ -53,7 +76,10 @@ def merge_users(merge_to, merge_from):
 
 
 def main():
-    pass
+    ldap_conn = connect()
+    for arg in sys.argv[1:]:
+        print find_user(ldap_conn, arg)
+
 
 if __name__ == '__main__':
     sys.exit(main())
