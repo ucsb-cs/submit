@@ -38,8 +38,9 @@ def update_umail_users():
 
 def match_to_umail():
     ldap_conn = helper.connect()
-    for user in sorted(User.query_by().filter(not_(
-                User.username.contains('@umail.ucsb.edu'))).all()):
+    for user in sorted(
+        User.query_by().filter(
+            not_(User.username.contains('@umail.ucsb.edu'))).all()):
         if user.admin_for or user.is_admin or '(' in user.name:
             continue
         match = helper.find_user(ldap_conn, user.name)

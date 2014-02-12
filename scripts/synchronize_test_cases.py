@@ -166,8 +166,6 @@ class Synchronize(object):
         else:
             return None
 
-
-
     def synchronize(self, project, testables):
         tests = self.get_tests(testables)
         self.login()
@@ -224,7 +222,7 @@ class Synchronize(object):
 class readable_dir(Action):
     """Test for a readable directory.
 
-    Source: http://stackoverflow.com/questions/11415570/directory-path-types-with-argparse
+    Source: http://stackoverflow.com/questions/11415570/directory-path-types
 
     """
 
