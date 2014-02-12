@@ -251,6 +251,10 @@ class Group(BasicBase, Base):
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
 
     @property
+    def has_consent(self):
+        return all(x.consent_at for x in self.users)
+
+    @property
     def users(self):
         return (x.user for x in self.group_assocs)
 
@@ -812,12 +816,13 @@ class User(UserMixin, BasicBase, Base):
     """The UserMixin provides the `username` and `password` attributes.
     `password` is a write-only attribute and can be verified using the
     `verify_password` function."""
-    name = Column(Unicode, nullable=False)
-    is_admin = Column(Boolean, default=False, nullable=False)
-    classes = relationship(Class, secondary=user_to_class, backref='users')
-    files = relationship(File, secondary=user_to_file, backref='users')
     admin_for = relationship(Class, secondary=user_to_class_admin,
                              backref='admins')
+    classes = relationship(Class, secondary=user_to_class, backref='users')
+    consent_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    files = relationship(File, secondary=user_to_file, backref='users')
+    is_admin = Column(Boolean, default=False, nullable=False)
+    name = Column(Unicode, nullable=False)
 
     @staticmethod
     def get_value(cls, value):
