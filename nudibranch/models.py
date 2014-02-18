@@ -899,7 +899,8 @@ class User(UserMixin, BasicBase, Base):
                 submission.group = to_assoc.group
             for assoc in from_assoc.group.group_assocs[:]:
                 assoc.group = to_assoc.group
-            to_assoc.group = max(old_group.viewed_at, to_assoc.group.viewed_at)
+            to_assoc.group.viewed_at = max(old_group.viewed_at,
+                                           to_assoc.group.viewed_at)
             Session.delete(old_group)
         else:  # Add the user to the group
             from_assoc = UserToGroup(group=to_assoc.group, project=project,
