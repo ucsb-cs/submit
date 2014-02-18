@@ -249,6 +249,7 @@ class FileVerifier(BasicBase, Base):
 class Group(BasicBase, Base):
     project = relationship('Project', backref='groups')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    viewed_at = Column(DateTime(timezone=True), nullable=True)
 
     @property
     def has_consent(self):
@@ -500,22 +501,6 @@ class Project(BasicBase, Base):
         return retval
 
 
-class ProjectView(Base):
-    __tablename__ = 'projectview'
-    created_at = Column(DateTime(timezone=True), default=func.now(),
-                        nullable=False)
-    group = relationship(Group, backref=backref('project_view', uselist=False))
-    group_id = Column(Integer, ForeignKey('group.id'), primary_key=True,
-                      nullable=False)
-    project = relationship(Project)
-    project_id = Column(Integer, ForeignKey('project.id'), primary_key=True,
-                        nullable=False)
-
-    @classmethod
-    def fetch_by(cls, **kwargs):
-        return Session.query(cls).filter_by(**kwargs).first()
-
-
 class Submission(BasicBase, Base):
     created_by = relationship('User')
     created_by_id = Column(Integer, ForeignKey('user.id'), nullable=False)
@@ -600,18 +585,16 @@ class Submission(BasicBase, Base):
         delay = self.project.delay - (now - self.created_at)
         if delay <= zero:  # Never delay longer than the project's delay time
             return None
-        pv = ProjectView.fetch_by(project=self.project, group=self.group)
-        if not pv:  # Don't delay
+        if not self.group.viewed_at:  # Don't delay
             if update:
-                pv = ProjectView(project=self.project, group=self.group)
-                Session.add(pv)
+                self.group.viewed_at = func.now()
             return None
-        elif self.created_at <= pv.created_at:  # Always show older results
+        elif self.created_at <= self.group.viewed_at:  # Show older results
             return None
-        pv_delay = self.project.delay - (now - pv.created_at)
+        pv_delay = self.project.delay - (now - self.group.viewed_at)
         if pv_delay <= zero:
             if update:  # Update the counter
-                pv.created_at = func.now()
+                self.group.viewed_at = func.now()
             return None
         return min(delay, pv_delay).total_seconds() / 60
 
@@ -916,16 +899,7 @@ class User(UserMixin, BasicBase, Base):
                 submission.group = to_assoc.group
             for assoc in from_assoc.group.group_assocs[:]:
                 assoc.group = to_assoc.group
-            # Update to the most recent project view
-            from_pv = old_group.project_view
-            to_pv = to_assoc.group.project_view
-            if from_pv:
-                if to_pv:
-                    if from_pv.created_at > to_pv.created_at:
-                        to_pv.created_at = from_pv.created_at
-                    Session.delete(from_pv)
-                else:
-                    from_pv.group = to_assoc.group
+            to_assoc.group = max(old_group.viewed_at, to_assoc.group.viewed_at)
             Session.delete(old_group)
         else:  # Add the user to the group
             from_assoc = UserToGroup(group=to_assoc.group, project=project,
