@@ -253,7 +253,7 @@ def file_create(request, b64data, sha1sum):
     base_path = request.registry.settings['file_directory']
     file_ = File.fetch_or_create(data, base_path, sha1sum=sha1sum)
     # associate user with the file
-    request.user.files.append(file_)
+    request.user.files.add(file_)
     return {'file_id': file_.id}
 
 
@@ -985,7 +985,7 @@ def submission_create(request, project, file_ids, filenames):
     for user in submission.group.users:
         if user == request.user:
             continue
-        user.files.extend(files - set(user.files))
+        user.files.update(files)
 
     # Associate the files with the submissions by their submission name
     assoc = []

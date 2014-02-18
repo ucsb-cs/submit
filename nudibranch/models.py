@@ -803,7 +803,8 @@ class User(UserMixin, BasicBase, Base):
                              backref='admins')
     classes = relationship(Class, secondary=user_to_class, backref='users')
     consent_at = Column(DateTime(timezone=True), nullable=True, index=True)
-    files = relationship(File, secondary=user_to_file, backref='users')
+    files = relationship(File, secondary=user_to_file, backref='users',
+                         collection_class=set)
     is_admin = Column(Boolean, default=False, nullable=False)
     name = Column(Unicode, nullable=False)
 
@@ -911,7 +912,7 @@ class User(UserMixin, BasicBase, Base):
         files = set(assoc.file for sub in to_assoc.group.submissions
                     for assoc in sub.files)
         for user in to_assoc.group.users:
-            user.files.extend(files - set(user.files))
+            user.files.update(files)
 
         return to_assoc.group
 
