@@ -946,10 +946,19 @@ class User(UserMixin, BasicBase, Base):
                 .filter(UserToGroup.project == project)).first()
 
     def make_submission(self, project):
-        group_assoc = self.fetch_group_assoc(project)
-        if not group_assoc:
-            group_assoc = UserToGroup(group=Group(project=project),
-                                      project=project, user=self)
+        group_assoc = None
+        while not group_assoc:
+            group_assoc = self.fetch_group_assoc(project)
+            if not group_assoc:
+                sp = transaction.savepoint()
+                try:
+                    group_assoc = UserToGroup(group=Group(project=project),
+                                              project=project, user=self)
+                    Session.add(group_assoc)
+                    Session.flush()
+                except IntegrityError:
+                    group_assoc = None
+                    sp.rollback()
         return Submission(created_by=self, group=group_assoc.group,
                           project=project)
 
