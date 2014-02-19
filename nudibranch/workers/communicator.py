@@ -30,6 +30,19 @@ def set_expected_files(testable, results):
         testable.project.status = u'notready'
 
 
+def rsync(user, host, remote_dir, from_local=False):
+    src = '{}@{}:{}'.format(user, host, remote_dir)
+    dst = '.'
+    if from_local:
+        src, dst = dst, src
+    cmd = 'rsync -e \'ssh -i {}\' --timeout=16 -rLpv {} {}'.format(
+        workers.PRIVATE_KEY_FILE, src, dst)
+    try:
+        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
+    except subprocess.CalledProcessError:
+        raise HandledError('rsync failed')
+
+
 @workers.transaction_wrapper
 @workers.complete_file
 def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
@@ -48,10 +61,7 @@ def fetch_results_worker(submission_id, testable_id, user, host, remote_dir,
                            .format(testable_id))
 
     # Rsync to retrieve results
-    cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3} .'.format(
-        workers.PRIVATE_KEY_FILE, user, host,
-        os.path.join(remote_dir, 'results/'))
-    subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
+    rsync(user, host, os.path.join(remote_dir, 'results/'))
 
     # Verify the results are for the correct submission and testable. If they
     # are not raise an exception so we don't put the "complete" file.
@@ -152,9 +162,7 @@ def sync_files():
 @workers.complete_file
 def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
     # Rsync to pre-sync files
-    cmd = 'rsync -e \'ssh -i {0}\' -rLpv {1}@{2}:{3}/ .'.format(
-        workers.PRIVATE_KEY_FILE, user, host, remote_dir)
-    subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
+    rsync(user, host, remote_dir + '/')
 
     # Verify a clean working directory and that the worker wants files for the
     # submission and testable. If they are not raise an exception so we don't
@@ -240,6 +248,4 @@ def sync_files_worker(submission_id, testable_id, user, host, remote_dir):
         json.dump(data, fp)
 
     # Rsync files
-    cmd = 'rsync -e \'ssh -i {0}\' -rLpv . {1}@{2}:{3}'.format(
-        workers.PRIVATE_KEY_FILE, user, host, remote_dir)
-    subprocess.check_call(cmd, stdout=open(os.devnull, 'w'), shell=True)
+    rsync(user, host, remote_dir, from_local=True)
