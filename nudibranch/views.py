@@ -879,17 +879,39 @@ def project_view_stats(request, class_name, project):
 def project_view_summary(request, class_name, project):
     submissions = {}
     group_truncated = set()
-    best = defaultdict(int)
+    # Fetch recent submissions
+    recent_submissions = (Submission.query_by(project=project)
+                          .order_by(Submission.created_at.desc())
+                          .limit(16).all())
+
     # Compute student stats
+    by_group = {}
+    best_ontime = {}
+    best = {}
+    admins = set(project.class_.admins)
     possible = project.points_possible(include_hidden=True)
-    for submission in project.student_submissions:
-        best[submission.group] = max(submission.points(include_hidden=True),
-                                     best[submission.group])
+    for sub in sorted(project.submissions, key=lambda x: x.created_at):
+        is_student = not set(sub.group.users) & admins
+        points = sub.points(include_hidden=True)
+        if sub.group in by_group:
+            by_group[sub.group].append(sub)
+            if is_student:
+                if points > best[sub.group][1]:
+                    best[sub.group] = sub, points
+                if not sub.is_late and points > best_ontime[sub.group][1]:
+                    best_ontime[sub.group] = sub, points
+        else:
+            by_group[sub.group] = [sub]
+            if is_student:
+                best[sub.group] = sub, points
+                if not sub.is_late:
+                    best_ontime[sub.group] = sub, points
     if best:
-        normed = [min(x, possible) for x in best.values()]
-        max_score = max(best.values())
-        mean = numpy.mean(best.values())
-        median = numpy.median(best.values())
+        best_scores = numpy.array([x[1] for x in best.values()])
+        normed = [min(x[1], possible) for x in best.values()]
+        max_score = max(best_scores)
+        mean = numpy.mean(best_scores)
+        median = numpy.median(best_scores)
         bins = [x * possible for x in [0, .6, .7, .8, .9, 1, 1]]
         hist, _ = numpy.histogram(normed, range=(0, possible), bins=bins)
     else:
@@ -897,14 +919,22 @@ def project_view_summary(request, class_name, project):
 
     # Find most recent for each group
     for group in project.groups:
-        newest = (Submission.query_by(project=project, group=group)
-                  .order_by(Submission.created_at.desc()).limit(4).all())
-        if len(newest) == 4:
-            group_truncated.add(group)
-        submissions[group] = newest[:3]
-    recent_submissions = (Submission.query_by(project=project)
-                          .order_by(Submission.created_at.desc())
-                          .limit(16).all())
+        if group in by_group:
+            newest = by_group[group][:-4:-1]
+            if group in best:
+                best[group][0]._is_best = True
+                if best[group][0] not in newest:
+                    newest.append(best[group][0])
+            if group in best_ontime:
+                best_ontime[group][0]._is_best = True
+                if best_ontime[group][0] not in newest:
+                    newest.append(best_ontime[group][0])
+            if len(newest) < len(by_group[group]):
+                group_truncated.add(group)
+            submissions[group] = newest
+
+        else:
+            submissions[group] = []
     return {'page_title': 'Admin Project Page',
             'group_truncated': group_truncated,
             'hist': hist,

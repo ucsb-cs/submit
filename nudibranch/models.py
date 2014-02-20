@@ -616,7 +616,7 @@ class Submission(BasicBase, Base):
 
     def time_score(self, request, group=False, admin=False):
         url = request.route_path('submission_item', submission_id=self.id)
-        fmt = '<a href="{url}">{created}</a>{name} ({score}){late}'
+        fmt = '<a href="{url}">{created}</a>{name} ({score}){modifier}'
         if not self.verification_results:
             score = '<strong>waiting to verify submission</strong>'
         elif self.testables_pending():
@@ -628,9 +628,18 @@ class Submission(BasicBase, Base):
                 self.points(include_hidden=admin),
                 self.project.points_possible(include_hidden=admin))
         name = ' by {}'.format(self.group.users_str) if group else ''
+        if self.is_late:
+            if getattr(self, '_is_best', False):
+                modifier = ' [late] *best'
+            else:
+                modifier = ' [late]'
+        elif getattr(self, '_is_best', False):
+            modifier = ' *best'
+        else:
+            modifier = ''
+
         return fmt.format(url=url, created=self.created_at,
-                          name=name, score=score,
-                          late=' [late]' if self.is_late else '')
+                          name=name, score=score, modifier=modifier)
 
     def verify(self, base_path, update=False):
         """Verify the submission and return testables that can be executed."""
