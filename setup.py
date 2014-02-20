@@ -16,6 +16,7 @@ requires = [
     'pyramid>=1.4',
     'pyramid_addons>=0.17',
     'pyramid_exclog>=0.7',
+    'pyramid_layout>=0.8',
     'pyramid_mailer>=0.10',
     'pyramid_tm>=0.5',
     'python-daemon>=1.5.5',

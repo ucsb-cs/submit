@@ -1,0 +1,9 @@
+<noscript>
+  <div class="alert alert-error">Note: JavaScript is required to successfully
+    submit this form.</div>
+</noscript>
+
+<!--[if (lt IE 8)]><div class="alert alert-error">Note: A more recent browser
+    is required to successfully submit this
+    form. <a href="https://www.google.com/intl/en/chrome/browser/">Google
+    Chrome</a> is recommended.</div><![endif]-->

@@ -1,0 +1,4 @@
+<div tal:repeat="msg errors" class="alert alert-error">${msg}</div>
+<div tal:repeat="msg warnings" class="alert">${msg}</div>
+<div tal:repeat="msg successes" class="alert alert-success">${msg}</div>
+<div tal:repeat="msg infos" class="alert alert-info">${msg}</div>

@@ -76,7 +76,7 @@ def forbidden_view(context, request):
         return context
     request.session.flash('You must be logged in to do that.')
     return HTTPSeeOther(request.route_path('session',
-                                           _query={'dst': request.path}))
+                                           _query={'next': request.path}))
 
 
 @notfound_view_config()
@@ -377,18 +377,17 @@ def file_verifier_update(request, copy_to_execution, file_verifier, filename,
     return http_ok(request, redir_location=redir_location)
 
 
-@view_config(route_name='home', renderer='templates/home.pt',
-             request_method='GET')
-@site_layout('nudibranch:templates/layout.pt')
+@view_config(route_name='home', request_method='GET')
 def home(request):
     if request.user:
         url = request.route_path('user_item', username=request.user.username)
-        raise HTTPFound(location=url)
-    return {'page_title': 'Home'}
+    else:
+        url = request.route_path('session')
+    raise HTTPFound(location=url)
 
 
-@view_config(route_name='password_reset', renderer='json',
-             request_method='PUT')
+@view_config(route_name='password_reset', request_method='PUT',
+             renderer='json')
 @validate(username=String('email'))
 def password_reset_create(request, username):
     if username == 'admin':
@@ -418,13 +417,10 @@ def password_reset_create(request, username):
         raise HTTPConflict(failure_message)
 
 
-@view_config(route_name='password_reset',
-             renderer='templates/password_reset.pt',
-             request_method='GET')
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
+@view_config(route_name='password_reset', request_method='GET',
+             renderer='templates/forms/password_reset.pt')
 def password_reset_edit(request):
-    return {'page_title': 'Password Reset'}
+    return {}
 
 
 @view_config(route_name='password_reset_item',
@@ -947,23 +943,21 @@ def project_view_summary(request, class_name, project):
             'submissions': sorted(submissions.items())}
 
 
-@view_config(route_name='session', renderer='json', request_method='PUT')
+@view_config(route_name='session', request_method='PUT', renderer='json')
 @validate(username=String('email'), password=WhiteSpaceString('password'),
-          dst=String('dst', optional=True))
-def session_create(request, username, password, dst):
+          next_path=String('next', optional=True))
+def session_create(request, username, password, next_path):
     development_mode = request.registry.settings.get('development_mode', False)
     user = User.login(username, password, development_mode=development_mode)
     if not user:
         raise HTTPConflict('Invalid login')
     headers = remember(request, user.id)
-    if dst:
-        url = dst
-    else:
-        url = request.route_path('user_item', username=user.username)
+    request.session.flash('Welcome {}!'.format(user.name), 'successes')
+    url = next_path or request.route_path('user_item', username=user.username)
     return http_created(request, headers=headers, redir_location=url)
 
 
-@view_config(route_name='session', renderer='json', request_method='DELETE',
+@view_config(route_name='session', request_method='DELETE', renderer='json',
              permission='authenticated')
 def session_destroy(request):
     headers = forget(request)
@@ -971,15 +965,13 @@ def session_destroy(request):
                      redir_location=request.route_path('home'))
 
 
-@view_config(route_name='session', renderer='templates/login.pt',
-             request_method='GET')
+@view_config(route_name='session', request_method='GET',
+             renderer='templates/forms/login.pt')
 @validate(username=String('username', optional=True, source=SOURCE_GET),
-          dst=String('dst', optional=True, source=SOURCE_GET))
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
-def session_edit(request, username, dst):
-    return {'page_title': 'Login', 'username': username, 'dst': dst,
-            'flash': request.session.pop_flash()}
+          next_path=String('next', optional=True, source=SOURCE_GET))
+def session_edit(request, username, next_path):
+    next_path = next_path or request.route_url('home')
+    return {'next': next_path, 'username': username}
 
 
 @view_config(route_name='submission', renderer='json', request_method='PUT',
