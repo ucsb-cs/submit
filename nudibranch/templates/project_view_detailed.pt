@@ -1,37 +1,45 @@
-<div metal:use-macro="_LAYOUT">
-<div metal:fill-slot="content">
-  <div tal:condition="can_edit">
-    <p class="floatleft nospace" tal:condition="prev_group">Previous group:
-      <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
-    </p>
-    <p class="floatright nospace" tal:condition="next_group">Next group:
-      <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=next_group.id)}">${next_group.users_str}</a>
-    </p>
-    <div class="clear"></div>
-  </div>
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1 tal:condition="can_edit">
+      <a href="${request.route_path('project_edit', project_id=project.id)}"
+         class="btn btn-warning btn-large">edit</a>
+      <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+    </h1>
+    <h1 tal:condition="not can_edit"><a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}</h1>
 
-  <p tal:condition="can_edit">
-     Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
-     (<a href="${request.route_path('project_edit', project_id=project.id)}">edit</a>)
-  </p>
-  <div tal:condition="not can_edit">
-    <p>Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}</p>
-    <div tal:condition="request.user.can_join_group(project)">
-      <a href="${request.route_path('project_group', project_id=project.id)}">Join Group</a>
+    <div tal:condition="can_edit" class="alert alert-info">
+      <div class="pull-left" tal:condition="prev_group">Previous group:
+        <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
+      </div>
+      <div class="pull-right clearfix" tal:condition="next_group">Next group:
+        <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=next_group.id)}">${next_group.users_str}</a>
+      </div>
+      <div class="clearfix"></div>
     </div>
+
+    <div tal:condition="request.user in group.users" tal:omit-tag="">
+      <a class="btn btn-info"
+         href="${request.route_path('submission_new', project_id=project.id)}">Make a Submission</a>
+      <a tal:condition="request.user.can_join_group(project)" class="btn btn-info"
+         href="${request.route_path('project_group', project_id=project.id)}">Join Group</a>
+      <div class="alert">You can also submit through a csil machine via
+        <code>~bboe/bin/submit -p ${project.class_.name}:${project.id}
+          ${project.submit_string()}</code>
+        <div><strong>Note</strong>: Files in brackets indicate partial
+          submissions can be made without those files. However, omitting these
+          files does not necessarily mean you will receive partial credit for
+          such submissions.</div>
+      </div>
+    </div>
+
+    <div tal:condition="not submissions" class="alert alert-warning">
+      There are no submissions for: ${group.users_str}</div>
+    <h3 tal:condition="submissions">
+      Submissions for <strong>${group.users_str}</strong>:</h3>
+    <ul tal:condition="submissions">
+      <li tal:repeat="submission submissions">
+        ${structure: submission.time_score(request, admin=can_edit)}
+      </li>
+    </ul>
   </div>
-  <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
-  <blockquote>Files in brackets indicate partial submissions can be made without those
-    files. Note that this does not necessarily mean you will receive partial credit
-    for such submissions.</blockquote>
-  <p tal:condition="not submissions">
-    <strong>${name}</strong> has no submissions</p>
-  <p tal:condition="submissions">
-    These are the submissions for <strong>${name}</strong>:</p>
-  <ul tal:condition="submissions">
-    <li tal:repeat="submission submissions">
-      ${structure: submission.time_score(request, admin=can_edit)}
-    </li>
-  </ul>
-</div>
-</div>
+</metal:block>

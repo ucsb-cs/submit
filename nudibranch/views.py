@@ -787,13 +787,12 @@ def project_update(request, name, makefile, is_ready, class_name, deadline,
 
 
 @view_config(route_name='project_item_detailed',
-             renderer='templates/project_view_detailed.pt',
              request_method=('GET', 'HEAD'),
+             renderer='templates/project_view_detailed.pt',
              permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
           project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
           group=ViewableDBThing('group_id', Group, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
 def project_view_detailed(request, class_name, project, group):
     # Additional verification
     if project.class_.name != class_name:
@@ -808,10 +807,9 @@ def project_view_detailed(request, class_name, project, group):
     else:
         prev_group = next_group = None
 
-    return {'page_title': 'Project Page',
-            'project': project,
+    return {'project': project,
             'project_admin': project_admin,
-            'name': group.users_str,
+            'group': group,
             'can_edit': project_admin,
             'prev_group': prev_group,
             'next_group': next_group,
@@ -860,9 +858,8 @@ def project_view_stats(request, class_name, project):
     return retval
 
 
-@view_config(route_name='project_item_summary',
+@view_config(route_name='project_item_summary', request_method=('GET', 'HEAD'),
              renderer='templates/project_view_summary.pt',
-             request_method=('GET', 'HEAD'),
              permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
           project=ViewableDBThing('project_id', Project, source=MATCHDICT))
