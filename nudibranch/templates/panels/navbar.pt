@@ -10,7 +10,7 @@
       <div class="nav-collapse">
         <ul class="nav" tal:condition="nav">
           <li tal:repeat="item nav" class="${'active' if item['active'] else ''}">
-            <a href="${item['url']}">${item['name']}</a>
+            <a href="${item['url']}" tal:attributes="id item['id']">${item['name']}</a>
           </li>
         </ul>
       </div><!--/.nav-collapse -->

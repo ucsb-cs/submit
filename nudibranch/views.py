@@ -1383,7 +1383,6 @@ def user_list(request):
              renderer='templates/user_view.pt', permission='authenticated')
 @validate(user=ViewableDBThing('username', User, fetch_by='username',
                                validator=String('username'), source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
 def user_view(request, user):
     user_groups = [x.group_id for x in Session.query(UserToGroup)
                    .filter(UserToGroup.user == user).all()]
@@ -1403,8 +1402,7 @@ def user_view(request, user):
                           .filter(Submission.project_id.in_(class_projs))
                           .order_by(Submission.created_at.desc()).limit(10)
                           .all())
-    return {'page_title': 'User Page',
-            'name': user.name,
+    return {'name': user.name,
             'user_subs': user_subs,
             'classes_taking': sorted(user.classes),
             'admin_subs': admin_subs,

@@ -32,5 +32,17 @@
 
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
   <script src="${request.static_path('nudibranch:static/js/bootstrap.min.js')}"></script>
+  <script src="${request.static_path('nudibranch:static/application.js')}"></script>
+  <script src="${request.static_path('nudibranch:static/form2js.js')}"></script>
+  <script>
+    $(document).ready(function() {
+        $('#logout_btn').click(function() {
+            $.ajax({url: '/session', type: 'delete',
+                    complete: handle_response, error: handle_error,
+                    timeout: 30000});
+        });
+    });
+  </script>
+
   <metal:content define-slot="eof_content" />
 </html>

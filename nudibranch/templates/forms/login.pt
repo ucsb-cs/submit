@@ -19,8 +19,4 @@
     </form>
     <a href="${request.route_path('password_reset')}">Forgot password?</a><br/>
   </div>
-  <div metal:fill-slot="eof_content">
-    <script src="${request.static_path('nudibranch:static/application.js')}"></script>
-    <script src="${request.static_path('nudibranch:static/form2js.js')}"></script>
-  </div>
 </metal:block>
