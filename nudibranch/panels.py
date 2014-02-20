@@ -9,14 +9,16 @@ def navbar(context, request):
 
     title = 'submit.cs'
     nav = []
+    path = request.route_path
     if request.user:
-        nav.append(nav_item('Home', request.route_path(
-                    'user_item', username=request.user.username)))
+        nav.append(nav_item('Home', path('user_item',
+                                         username=request.user.username)))
+        nav.append(nav_item('Add Class', path('class_join_list')))
         nav.append(nav_item('Logout', '#', 'logout_btn'))
-        title += ' ({})'.format(request.user.username)
+        title += ' ({})'.format(request.user.name)
     else:
-        nav.append(nav_item('Login', request.route_path('session')))
-        nav.append(nav_item('Create Account', request.route_path('user_new')))
+        nav.append(nav_item('Login', path('session')))
+        nav.append(nav_item('Create Account', path('user_new')))
     return {'nav': nav, 'title': title}
 
 
