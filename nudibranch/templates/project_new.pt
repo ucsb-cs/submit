@@ -12,5 +12,16 @@
     <input type="hidden" name="class_id" id="class_id" value="${project.class_.id}"/>
     <input type="submit" name="submit" value="Create"/>
   </form>
+  <hr/>
+  <form tal:condition="clone_projects" name="input" action="${request.route_path('project_clone')}"
+	onsubmit="return form_request(this, 'PUT');">
+    <input type="submit" value="clone selected project" />
+    <input type="hidden" name="class_id" value="${project.class_.id}" />
+    <select name="project_id">
+      <option value="">--Select a project to clone--</option>
+      <option tal:repeat="tmp clone_projects" value="${tmp.id}">${tmp.class_.name}: ${tmp.name}</option>
+    </select>
+  </form>
+
 </div>
 </div>

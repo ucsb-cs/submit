@@ -198,22 +198,17 @@ def class_list(request):
              renderer='templates/class_view.pt', permission='authenticated')
 @validate(class_=AnyDBThing('class_name', Class, fetch_by='name',
                             validator=String('class_name'), source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
 def class_view(request, class_):
     class_admin = class_.is_admin(request.user)
-    clone_projects = []
     recent_subs = None
     if class_admin:
-        for other in sorted(request.user.admin_for):
-            clone_projects.extend(other.projects)
         project_ids = [x.id for x in class_.projects]
         if project_ids:
             recent_subs = (Submission.query_by()
                            .filter(Submission.project_id.in_(project_ids))
                            .order_by(Submission.created_at.desc()).limit(16)
                            .all())
-    return {'page_title': 'Class Page', 'class_': class_,
-            'class_admin': class_admin, 'clone_projects': clone_projects,
+    return {'class_': class_, 'class_admin': class_admin,
             'recent_subs': recent_subs}
 
 
@@ -709,7 +704,11 @@ def project_info(request, project):
 def project_new(request, class_):
     dummy_project = DummyTemplateAttr(None)
     dummy_project.class_ = class_
-    return {'page_title': 'Create Project', 'project': dummy_project}
+    clone_projects = []
+    for other in sorted(request.user.admin_for):
+        clone_projects.extend(other.projects)
+    return {'page_title': 'Create Project', 'project': dummy_project,
+            'clone_projects': clone_projects}
 
 
 @view_config(route_name='project_edit', renderer='json',
