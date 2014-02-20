@@ -16,6 +16,7 @@ def navbar(context, request):
         title += ' ({})'.format(request.user.username)
     else:
         nav.append(nav_item('Login', request.route_path('session')))
+        nav.append(nav_item('Create Account', request.route_path('user_new')))
     return {'nav': nav, 'title': title}
 
 

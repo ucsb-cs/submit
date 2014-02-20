@@ -1,0 +1,31 @@
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Create New Account</h1>
+    ${panel('js_test')}
+
+    <form role="form" name="input" action="${request.route_path('user')}"
+          method="POST" onsubmit="return form_request(this, 'put', true);">
+      <div class="form-group">
+        <label for="email">Umail Email Address</label>
+        <input type="email" class="form-control" placeholder="Enter umail email"
+               name="email" id="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" class="form-control" placeholder="Password"
+               name="password" id="password">
+      </div>
+      <button type="submit" class="btn btn-default">Create Account</button>
+    </form>
+
+    <div class="alert">
+      If you do not have a umail address please send an email to bboe _at_
+      cs.ucsb.edu from the email you wish to register from along with your full
+      name and the class name for which you require an account.
+    </div>
+  </div>
+  <div metal:fill-slot="eof_content">
+    <script src="${request.static_path('nudibranch:static/application.js')}"></script>
+    <script src="${request.static_path('nudibranch:static/form2js.js')}"></script>
+  </div>
+</metal:block>

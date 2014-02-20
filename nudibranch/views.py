@@ -1348,35 +1348,27 @@ def user_class_join(request, class_, username):
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='user', renderer='json', request_method='PUT')
+@view_config(route_name='user', request_method='PUT', renderer='json')
 @validate(identity=UmailAddress('email', min_length=16, max_length=64),
-          password=WhiteSpaceString('password', min_length=6),
-          admin_for=List('admin_for', EditableDBThing('', Class),
-                         optional=True))
-def user_create(request, identity, password, admin_for):
+          password=WhiteSpaceString('password', min_length=6))
+def user_create(request, identity, password):
     username, name = identity
-    user = User(name=name, username=username, password=password,
-                is_admin=False)
-    if admin_for:
-        user.admin_for.extend(admin_for)
-    Session.add(user)
+    Session.add(User(name=name, username=username, password=password,
+                     is_admin=False))
     try:
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('User \'{0}\' already exists'.format(username))
+    request.session.flash('Account created!', 'successes')
     redir_location = request.route_path('session',
                                         _query={'username': username})
     return http_created(request, redir_location=redir_location)
 
 
-@view_config(route_name='user_new', renderer='templates/user_create.pt',
-             request_method='GET')
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
+@view_config(route_name='user_new', request_method='GET',
+             renderer='templates/forms/user_create.pt')
 def user_edit(request):
-    admin_classes = request.user.classes_can_admin() if request.user else None
-    return {'page_title': 'Create User',
-            'admin_classes': admin_classes}
+    return {}
 
 
 @view_config(route_name='user', request_method='GET', permission='admin',
