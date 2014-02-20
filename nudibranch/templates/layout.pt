@@ -2,35 +2,35 @@
 <meta charset="UTF-8" />
 <title><p tal:condition="page_title" tal:replace="page_title + ' - '">Submit</title>
 <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQEAYAAABPYyMiAAAABmJLR0T///////8JWPfcAAAACXBIWXMAAABIAAAASABGyWs+AAAAF0lEQVRIx2NgGAWjYBSMglEwCkbBSAcACBAAAeaR9cIAAAAASUVORK5CYII=" rel="shortcut icon" type="image/x-icon" />
-<link rel="stylesheet" href="${_S('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}"
+<link rel="stylesheet" href="${request.static_path('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}"
       type="text/css" media="screen" />
-<link rel="stylesheet" href="${_S('nudibranch:static/style.css')}"
+<link rel="stylesheet" href="${request.static_path('nudibranch:static/style.css')}"
       type="text/css" media="screen" />
 <link tal:repeat="css css_files" rel="stylesheet"
-      href="${_S('nudibranch:static/' + css)}"
+      href="${request.static_path('nudibranch:static/' + css)}"
       type="text/css" media="screen" />
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
-<script src="${_S('nudibranch:static/application.js')}"></script>
-<script src="${_S('nudibranch:static/form2js.js')}"></script>
-<script src="${_S('nudibranch:static/json2.js')}"></script>
-<script src="${_S('nudibranch:static/sha1.js')}"></script>
-<script tal:repeat="js javascripts" src="${_S('nudibranch:static/' + js)}"></script>
+<script src="${request.static_path('nudibranch:static/application.js')}"></script>
+<script src="${request.static_path('nudibranch:static/form2js.js')}"></script>
+<script src="${request.static_path('nudibranch:static/json2.js')}"></script>
+<script src="${request.static_path('nudibranch:static/sha1.js')}"></script>
+<script tal:repeat="js javascripts" src="${request.static_path('nudibranch:static/' + js)}"></script>
 <div tal:condition="request.user and request.user.is_admin" style="background: #CCC">
   ADMIN BAR:
-  <a href="${_R('user')}">Users</a>
+  <a href="${request.route_path('user')}">Users</a>
   <span>|</span>
-  <a href="${_R('admin_utils')}">Admin Utilities</a>
+  <a href="${request.route_path('admin_utils')}">Admin Utilities</a>
 </div>
 <div tal:condition="request.user and not request.user.is_admin and request.user.admin_for" style="background: #CCC">
   CLASS ADMIN BAR:
-  <a href="${_R('class_admin_utils')}">Class Admin Utilities</a>
+  <a href="${request.route_path('class_admin_utils')}">Class Admin Utilities</a>
 </div>
 <div tal:condition="request.user" style="background: #0C0">
-  <form name="logout" action="${_R('session')}"
+  <form name="logout" action="${request.route_path('session')}"
         onsubmit="return form_request(this, 'delete');">
-    Hello <a href="${_R('user_item', username=request.user.username)}">
-      ${request.user.name}</a>! | <a href="${_R('class_join_list')}">Join Classes</a>
+    Hello <a href="${request.route_path('user_item', username=request.user.username)}">
+      ${request.user.name}</a>! | <a href="${request.route_path('class_join_list')}">Join Classes</a>
     <input type="submit" name="submit" value="Logout" />
   </form>
 </div>

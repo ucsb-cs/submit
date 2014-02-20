@@ -1,10 +1,10 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <p tal:condition="request.user.is_admin">
-    <a href="${_R('class_new')}">Create new class</a>
+    <a href="${request.route_path('class_new')}">Create new class</a>
   </p>
   <div tal:repeat="class_ classes">
-    <a href="${_R('class_item', class_name=class_.name)}">${class_.name}</a>
+    <a href="${request.route_path('class_item', class_name=class_.name)}">${class_.name}</a>
   </div>
 </div>
 </div>

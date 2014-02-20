@@ -1,12 +1,12 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <h1>Student Submissions Overview</h1>
-  <p>Info for <a href="${_R('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
-    (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)</p>
+  <p>Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
+    (<a href="${request.route_path('project_edit', project_id=project.id)}">edit</a>)</p>
 
   <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
 
-  <p tal:condition="recent_submissions"><a href="${_R('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
+  <p tal:condition="recent_submissions"><a href="${request.route_path('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
   <p><a href="${request.route_path('project_group_admin', project_id=project.id)}">Manually join groups</a></p>
 
   <div tal:condition="recent_submissions">
@@ -58,7 +58,7 @@
       <tr tal:repeat="(group, group_submissions) submissions">
         <td>
           <div tal:repeat="user sorted(group.users)">
-            <a href="${_R('user_item', username=user.username)}">
+            <a href="${request.route_path('user_item', username=user.username)}">
               ${user.name}</a>
           </div>
         </td>
@@ -68,7 +68,7 @@
               ${structure: group_submission.time_score(request, admin=True)}
             </li>
             <li tal:condition="group in group_truncated">
-              <a href="${_R('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}">
+              <a href="${request.route_path('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}">
                 See all submissions...</a>
             </li>
           </ul>

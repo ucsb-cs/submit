@@ -6,8 +6,8 @@
     <h3 tal:condition="class_.is_locked">This class is locked. You will not be
       able to make any changes.</h3>
     <div tal:condition="not class_.is_locked">
-      <p><a href="${_R('project_new', class_name=class_.name)}">Create new project</a></p>
-      <form tal:condition="clone_projects" name="input" action="${_R('project_clone')}"
+      <p><a href="${request.route_path('project_new', class_name=class_.name)}">Create new project</a></p>
+      <form tal:condition="clone_projects" name="input" action="${request.route_path('project_clone')}"
 	    onsubmit="return form_request(this, 'PUT');">
         <input type="submit" value="clone selected project" />
         <input type="hidden" name="class_id" value="${class_.id}" />
@@ -26,12 +26,12 @@
     <div tal:repeat="project sorted(class_.projects)" tal:omit-tag="">
       <li tal:condition="project.can_access(request.user)">
         <span tal:condition="class_admin" tal:omit-tag="">
-          <a href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
-          (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)
+          <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+          (<a href="${request.route_path('project_edit', project_id=project.id)}">edit</a>)
           <span tal:condition="project.is_ready" tal:omit-tag="">(ready for submission)</span>
         </span>
         <a tal:condition="not class_admin"
-	   href="${_R('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">
+	   href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">
           ${project.name}</a>
       </li>
     </div>
@@ -41,7 +41,7 @@
     <table>
       <tr><th>Project</th><th tal:condition="class_admin">Group</th><th>Sub Info</th></tr>
       <tr tal:repeat="sub recent_subs">
-        <td><a href="${_R('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a></td>
+        <td><a href="${request.route_path('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a></td>
         <td tal:condition="class_admin">${sub.group.users_str}</td>
         <td>${structure: sub.time_score(request, admin=True)}</td>
       </tr>

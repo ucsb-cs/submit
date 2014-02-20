@@ -1,6 +1,6 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <p>Make submission for <a href="${_R('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${_R('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a></p>
+  <p>Make submission for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a></p>
 
   <div metal:use-macro="_MACROS['js_test']"></div>
 
@@ -17,7 +17,7 @@
       </ul>
     </div>
 
-  <form id="upload_form" name="input" action="${_R('submission')}" method="PUT">
+  <form id="upload_form" name="input" action="${request.route_path('submission')}" method="PUT">
     <input type="hidden" name="project_id" value="${project.id}"/>
     <input id="file_submit" type="submit" name="submit" value="Submit 0 Files" disabled="disabled"/>
   </form>

@@ -7,7 +7,7 @@
     </tr>
     <tr tal:repeat="user users">
       <td>${user.name}</td>
-      <td><a href="${_R('user_item', username=user.username)}">${user.username}</a></td>
+      <td><a href="${request.route_path('user_item', username=user.username)}">${user.username}</a></td>
     </tr>
   </table>
 </div>

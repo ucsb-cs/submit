@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div class="header">${page_title}</div>
-  <form id="project_form" name="input" action="${_R('project')}"
+  <form id="project_form" name="input" action="${request.route_path('project')}"
         onsubmit="return form_request(this, 'PUT', true);">
     <p>
       <label for="name">Name</label><br/>

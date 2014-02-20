@@ -9,7 +9,7 @@
   </fieldset>
 
   <div>
-    Project: <a href="${_R('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a>
+    Project: <a href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a>
   </div>
   <div>Max Group Members: ${project.group_max}</div>
   <div>Members: ${members}</div>
@@ -18,7 +18,7 @@
     <h3>Make a request</h3>
     <p>Enter the email of someone in your class to request making a group with
     them. They will have to accept the group request.</p>
-    <form name="input" action="${_R('project_group', project_id=project.id)}"
+    <form name="input" action="${request.route_path('project_group', project_id=project.id)}"
           method="POST" onsubmit="return form_request(this, 'put', true);">
       <p>
         <label for="email">Email</label>
@@ -33,7 +33,7 @@
 
   <div tal:condition="requested">
     <h3>Your existing requests</h3>
-    <form name="input" action="${_R('project_group_item', project_id=project.id, group_request_id=requested.id)}"
+    <form name="input" action="${request.route_path('project_group_item', project_id=project.id, group_request_id=requested.id)}"
           method="DELETE" onsubmit="return form_request(this, 'delete', true);"
           style="display: inline;">
       <input type="submit" name="submit" value="Revoke request"/>
@@ -46,12 +46,12 @@
     <h3>Pending Requests from your fellow classmates</h3>
     <ul>
       <li tal:repeat="gr sorted(pending)">
-        <form name="input" action="${_R('project_group_item', project_id=project.id, group_request_id=gr.id)}"
+        <form name="input" action="${request.route_path('project_group_item', project_id=project.id, group_request_id=gr.id)}"
               method="DELETE" onsubmit="return form_request(this, 'delete', true);"
               style="display: inline;">
           <input type="submit" name="submit" value="Deny"/>
         </form>
-        <form name="input" action="${_R('project_group_item', project_id=project.id, group_request_id=gr.id)}"
+        <form name="input" action="${request.route_path('project_group_item', project_id=project.id, group_request_id=gr.id)}"
               method="PUT" onsubmit="return form_request(this, 'put', true);"
               style="display: inline;">
           <input type="submit" name="submit" value="Accept"/>

@@ -2,22 +2,22 @@
 <div metal:fill-slot="content">
   <div tal:condition="can_edit">
     <p class="floatleft nospace" tal:condition="prev_group">Previous group:
-      <a href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
+      <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
     </p>
     <p class="floatright nospace" tal:condition="next_group">Next group:
-      <a href="${_R('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=next_group.id)}">${next_group.users_str}</a>
+      <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=next_group.id)}">${next_group.users_str}</a>
     </p>
     <div class="clear"></div>
   </div>
 
   <p tal:condition="can_edit">
-     Info for <a href="${_R('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${_R('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
-     (<a href="${_R('project_edit', project_id=project.id)}">edit</a>)
+     Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+     (<a href="${request.route_path('project_edit', project_id=project.id)}">edit</a>)
   </p>
   <div tal:condition="not can_edit">
-    <p>Info for <a href="${_R('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}</p>
+    <p>Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}</p>
     <div tal:condition="request.user.can_join_group(project)">
-      <a href="${_R('project_group', project_id=project.id)}">Join Group</a>
+      <a href="${request.route_path('project_group', project_id=project.id)}">Join Group</a>
     </div>
   </div>
   <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>

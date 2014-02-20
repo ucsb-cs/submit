@@ -32,17 +32,17 @@
       <p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span>The expected outputs will be updated making the project unavailable until you mark it as ready again. Are you sure?</p>
     </div>
     <p class="floatleft nospace" tal:condition="prev_group">Previous group:
-      <a href="${_R('submission_item', submission_id=sorted(prev_group.submissions)[-1].id)}">${prev_group.users_str}</a>
+      <a href="${request.route_path('submission_item', submission_id=sorted(prev_group.submissions)[-1].id)}">${prev_group.users_str}</a>
     </p>
     <p class="floatright nospace" tal:condition="next_group">Next group:
-      <a href="${_R('submission_item', submission_id=sorted(next_group.submissions)[-1].id)}">${next_group.users_str}</a>
+      <a href="${request.route_path('submission_item', submission_id=sorted(next_group.submissions)[-1].id)}">${next_group.users_str}</a>
     </p>
     <div class="clear"></div>
     <p class="floatleft nospace" tal:condition="prev_sub">Group's previous submission:
-      <a href="${_R('submission_item', submission_id=prev_sub.id)}">${prev_sub.created_at}</a>
+      <a href="${request.route_path('submission_item', submission_id=prev_sub.id)}">${prev_sub.created_at}</a>
     </p>
     <p class="floatright nospace" tal:condition="next_sub">Group's next submission:
-      <a href="${_R('submission_item', submission_id=next_sub.id)}">${next_sub.created_at}</a>
+      <a href="${request.route_path('submission_item', submission_id=next_sub.id)}">${next_sub.created_at}</a>
     </p>
     <div class="clear"></div>
   </div>
@@ -57,22 +57,22 @@
   <div>Student(s): ${submission.group.users_str}
     <span tal:condition="submission_admin">(<a href="?as_user=1">View this page from the student's perspective</a>)</span>
     <span tal:condition="not submission_admin and
-    request.user.can_join_group(submission.project)">(<a href="${_R('project_group',
+    request.user.can_join_group(submission.project)">(<a href="${request.route_path('project_group',
     project_id=submission.project.id)}">Join Group</a>)</span>
   </div>
-  <div>Class: <a href="${_R('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
-  <div tal:condition="submission_admin">Project: <a href="${_R('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
+  <div>Class: <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
+  <div tal:condition="submission_admin">Project: <a href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
   <div tal:condition="not submission_admin">
-    Project: <a href="${_R('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
+    Project: <a href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
   </div>
   <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
   <input tal:condition="submission_admin" type="button" value="requeue" class="requeue" />
   <input tal:condition="submission_admin" type="button" value="generate expected" class="gen-expected" />
 
-  <h4>Submission Files<span tal:condition="submission_admin"> (<a href="${_R('zipfile_download', submission_id=submission.id)}">Download submission zipfile</a>)</span></h4>
+  <h4>Submission Files<span tal:condition="submission_admin"> (<a href="${request.route_path('zipfile_download', submission_id=submission.id)}">Download submission zipfile</a>)</span></h4>
   <ul tal:condition="submission.files">
     <li tal:repeat="f sorted(submission.files)">
-      <a href="${_R('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
+      <a href="${request.route_path('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
     </li>
   </ul>
 

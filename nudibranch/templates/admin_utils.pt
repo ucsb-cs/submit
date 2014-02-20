@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
-  <a href="${_R('user_new')}">Make New User</a>
+  <a href="${request.route_path('user_new')}">Make New User</a>
   <p>
-  <a href="${_R('class')}">Make New Class</a>
+  <a href="${request.route_path('class')}">Make New Class</a>
 </div>
 </div>

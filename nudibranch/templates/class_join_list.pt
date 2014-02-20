@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <p tal:condition="'last_class' in request.params">
-    Successfully joined <a href="${_R('class_item', class_name=request.params['last_class'])}">${request.params['last_class']}</a>
+    Successfully joined <a href="${request.route_path('class_item', class_name=request.params['last_class'])}">${request.params['last_class']}</a>
   </p>
   <p tal:condition="not classes">
     There are no available classes to add
@@ -15,7 +15,7 @@
       <tr tal:repeat="class_ classes">
 	<td>${class_.name}</td>
 	<td>
-	  <form name="input" action="${_R('user_class_join', class_name=class_.name,
+	  <form name="input" action="${request.route_path('user_class_join', class_name=class_.name,
 				     username=request.user.username)}"
 		onsubmit="return form_request(this, 'POST');">
 	    <input type="submit" name="submit" value="Join ${class_.name}"/>

@@ -1,7 +1,7 @@
 <div metal:use-macro="_LAYOUT">
 <div metal:fill-slot="content">
   <div class="header">Create New Class</div>
-  <form name="input" action="${_R('class')}"
+  <form name="input" action="${request.route_path('class')}"
         onsubmit="return form_request(this, 'put');">
     <p>
       <label for="name">Name</label><br/>
