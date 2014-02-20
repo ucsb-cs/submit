@@ -423,16 +423,12 @@ def password_reset_edit(request):
     return {}
 
 
-@view_config(route_name='password_reset_item',
-             renderer='templates/password_reset_item.pt',
-             request_method='GET')
+@view_config(route_name='password_reset_item', request_method='GET',
+             renderer='templates/forms/password_reset_item.pt')
 @validate(reset=AnyDBThing('token', PasswordReset, fetch_by='reset_token',
                            validator=UUID_VALIDATOR, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
 def password_reset_edit_item(request, reset):
-    return {'page_title': 'Password Reset',
-            'token': reset.get_token()}
+    return {'token': reset.get_token()}
 
 
 @view_config(route_name='password_reset_item', renderer='json',
@@ -448,7 +444,10 @@ def password_reset_item(request, username, password, reset):
     reset.user.password = password
     Session.delete(reset)
     Session.flush()
-    return http_ok(request, message='Your password was changed successfully.')
+    request.session.flash('Your password has been updated!', 'successes')
+    redir_location = request.route_path('session',
+                                        _query={'username': username})
+    return http_ok(request, redir_location=redir_location)
 
 
 @view_config(route_name='project_clone', request_method='PUT',
