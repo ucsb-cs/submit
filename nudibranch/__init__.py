@@ -48,8 +48,6 @@ def add_routes(config):
     config.add_route('project_item_download', 'project/download/{project_id}')
     config.add_route('project_item_summary',
                      '/class/{class_name}/{project_id}')
-    config.add_route('project_item_stats',
-                     '/class/{class_name}/{project_id}/stats')
     config.add_route('project_item_detailed',
                      '/class/{class_name}/{project_id}/{group_id}')
     config.add_route('project_item_detailed_user',

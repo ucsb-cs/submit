@@ -27,9 +27,9 @@ from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
     EditableDBThing, TestableStatus, TextDate, ViewableDBThing, UmailAddress,
     clone, fetch_request_ids, file_verifier_verification, format_points,
-    get_submission_stats, prepare_renderable, prev_next_submission,
-    prev_next_group, project_file_create, project_file_delete,
-    test_case_verification, zip_response)
+    prepare_renderable, prev_next_submission, prev_next_group,
+    project_file_create, project_file_delete, test_case_verification,
+    zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -805,20 +805,6 @@ def project_view_detailed_user(request, class_name, project, user):
             'prev_group': None,
             'next_group': None,
             'submissions': []}
-
-
-@view_config(route_name='project_item_stats',
-             renderer='templates/project_stats.pt', permission='authenticated')
-@validate(class_name=String('class_name', source=MATCHDICT),
-          project=ViewableDBThing('project_id', Project, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
-def project_view_stats(request, class_name, project):
-    # Additional verification
-    if project.class_.name != class_name:
-        raise HTTPNotFound()
-    retval = get_submission_stats(Submission, project)
-    retval['project'] = project
-    return retval
 
 
 @view_config(route_name='project_item_summary', request_method=('GET', 'HEAD'),
