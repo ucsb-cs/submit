@@ -12,8 +12,8 @@ from pyramid_addons.validation import (Enum, List, String, RegexString,
                                        SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPError,
-                                    HTTPForbidden, HTTPFound, HTTPNotFound,
-                                    HTTPOk, HTTPRedirection, HTTPSeeOther)
+                                    HTTPFound, HTTPNotFound, HTTPOk,
+                                    HTTPRedirection, HTTPSeeOther)
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
 from pyramid.view import (forbidden_view_config, notfound_view_config,
@@ -104,16 +104,6 @@ def build_file_create(request, file_, filename, project):
                                      source=MATCHDICT))
 def build_file_delete(request, build_file):
     return project_file_delete(request, build_file)
-
-
-@view_config(route_name='class_admin_utils', request_method='GET',
-             permission='authenticated',
-             renderer='templates/class_admin_utils.pt')
-@site_layout('nudibranch:templates/layout.pt')
-def class_admin_view(request):
-    if not request.user.admin_for:
-        raise HTTPForbidden()
-    return {'page_title': 'Class Administrator Utilities'}
 
 
 @view_config(route_name='class.admins', renderer='json', request_method='PUT')

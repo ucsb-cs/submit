@@ -65,7 +65,6 @@ def add_routes(config):
     config.add_route('user', '/user')
     config.add_route('user_class_join', '/user/{username}/{class_name}')
     config.add_route('user_item', '/user/{username}')
-    config.add_route('class_admin_utils', '/class_admin_utils')
     config.add_route('zipfile_download', '/zipfile_download/{submission_id}')
 
     # Form view routes

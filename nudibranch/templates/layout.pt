@@ -16,10 +16,6 @@
 <script src="${request.static_path('nudibranch:static/json2.js')}"></script>
 <script src="${request.static_path('nudibranch:static/sha1.js')}"></script>
 <script tal:repeat="js javascripts" src="${request.static_path('nudibranch:static/' + js)}"></script>
-<div tal:condition="request.user and not request.user.is_admin and request.user.admin_for" style="background: #CCC">
-  CLASS ADMIN BAR:
-  <a href="${request.route_path('class_admin_utils')}">Class Admin Utilities</a>
-</div>
 <div tal:condition="request.user" style="background: #0C0">
   <form name="logout" action="${request.route_path('session')}"
         onsubmit="return form_request(this, 'delete');">

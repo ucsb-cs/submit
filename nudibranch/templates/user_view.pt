@@ -9,8 +9,9 @@
         </li>
       </ul>
     </div>
-    <div tal:condition="not classes_taking">
-      <p>You are not a member of any classes. (<a href="${request.route_path('class_join_list')}">Join Classes</a>)</p>
+    <div tal:condition="not request.user.is_admin and not classes_taking"
+         class="alert alert-info">
+      You have yet to join any classes.
     </div>
     <div tal:condition="user_subs">
       <h3>Most recent submissions</h3>
