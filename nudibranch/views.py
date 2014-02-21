@@ -807,7 +807,8 @@ def project_view_detailed(request, class_name, project, group):
 
     return {'project': project,
             'project_admin': project_admin,
-            'group': group,
+            'is_member': request.user in group.users,
+            'users_str': group.users_str,
             'can_edit': project_admin,
             'prev_group': prev_group,
             'next_group': next_group,
@@ -824,7 +825,6 @@ def project_view_detailed(request, class_name, project, group):
           project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
           user=ViewableDBThing('username', User, fetch_by='username',
                                validator=String('username'), source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
 def project_view_detailed_user(request, class_name, project, user):
     group_assoc = user.fetch_group_assoc(project)
     if group_assoc:
@@ -832,10 +832,10 @@ def project_view_detailed_user(request, class_name, project, user):
                                  class_name=class_name, project_id=project.id,
                                  group_id=group_assoc.group_id)
         raise HTTPFound(location=url)
-    return {'page_title': 'Project Page',
-            'project': project,
+    return {'project': project,
             'project_admin': False,
-            'name': user.name,
+            'is_member': request.user == user,
+            'users_str': user.name,
             'can_edit': False,
             'prev_group': None,
             'next_group': None,

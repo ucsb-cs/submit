@@ -17,7 +17,7 @@
       <div class="clearfix"></div>
     </div>
 
-    <div tal:condition="request.user in group.users" tal:omit-tag="">
+    <div tal:condition="is_member" tal:omit-tag="">
       <a class="btn btn-info"
          href="${request.route_path('submission_new', project_id=project.id)}">Make a Submission</a>
       <a tal:condition="request.user.can_join_group(project)" class="btn btn-info"
@@ -25,9 +25,9 @@
     </div>
 
     <div tal:condition="not submissions" class="alert alert-warning">
-      There are no submissions for: ${group.users_str}</div>
+      There are no submissions for: ${users_str}</div>
     <h3 tal:condition="submissions">
-      Submissions for <strong>${group.users_str}</strong>:</h3>
+      Submissions for <strong>${users_str}</strong>:</h3>
     <ul tal:condition="submissions">
       <li tal:repeat="submission submissions">
         ${structure: submission.time_score(request, admin=can_edit)}
