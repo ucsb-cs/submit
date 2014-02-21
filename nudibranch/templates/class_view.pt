@@ -1,20 +1,13 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
-    <h1>${class_.name}</h1>
-    <p tal:condition="class_admin">
-      <div tal:condition="class_.is_locked" class="alert alert-danger">This
-        class is locked. You will not be able to make any changes.</div>
-
-      <a class="btn btn-info"
-         href="${request.route_path('class.admins', class_name=class_.name)}">
-        Add/view class admins</a>
-
-      <div tal:condition="not class_.is_locked" tal:omit-tag="">
-        <a class="btn btn-info"
-           href="${request.route_path('project_new', class_name=class_.name)}">
-          Create new project</a>
-      </div>
-    </p>
+    <h1>${class_.name}
+      <span tal:condition="class_admin and not class_.is_locked" tal:omit-tag="">
+        <a class="btn btn-success" href="${request.route_path('class.admins', class_name=class_.name)}">Edit Class Admins</a>
+        <a class="btn btn-info" href="${request.route_path('project_new', class_name=class_.name)}">Create New Project</a>
+      </span>
+    </h1>
+    <div tal:condition="class_.is_locked" class="alert alert-danger">This
+      class is locked. You will not be able to make any changes.</div>
 
     <h3>Projects</h3>
     <table class="table table-condensed">

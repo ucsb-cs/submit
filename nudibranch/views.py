@@ -492,16 +492,14 @@ def project_download(request, project):
 
 
 @view_config(route_name='project_edit',
-             renderer='templates/project_edit.pt',
+             renderer='templates/forms/project_edit.pt',
              request_method='GET', permission='authenticated')
 @validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
 def project_edit(request, project):
     action = request.route_path('project_item_summary',
                                 class_name=project.class_.name,
                                 project_id=project.id)
-    return {'page_title': 'Edit Project', 'project': project, 'action': action,
-            'flash': request.session.pop_flash()}
+    return {'project': project, 'action': action}
 
 
 @view_config(route_name='project_group_admin', request_method='PUT',
@@ -688,7 +686,7 @@ def project_requeue(request, project):
     if count == 0:
         return http_ok(request, message='There are no submissions to requeue.')
     request.session.flash('Requeued the most recent submissions ({0} items).'
-                          .format(count))
+                          .format(count), 'successes')
     return http_ok(request, redir_location=request.url)
 
 
