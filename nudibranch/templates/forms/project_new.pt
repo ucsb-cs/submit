@@ -1,0 +1,44 @@
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Create Project for ${project.class_.name}</h1>
+    ${panel('js_test')}
+
+    <h3>Create A New Project</h3>
+    <form role="form" id="project_form" name="input"
+          action="${request.route_path('project')}"
+          onsubmit="return form_request(this, 'PUT', true);">
+      <div class="form-group">
+        <label for="name">Project Name</label>
+        <input type="text" class="form-control" placeholder="Enter project name"
+               name="name" id="name">
+      </div>
+      <div class="form-group">
+        <label for="makefile">Select a Makefile: </label>
+        <input name="makefile_id" id="makefile" type="file">
+      </div>
+      <input type="hidden" name="class_id" id="class_id" value="${project.class_.id}"/>
+      <button type="submit" class="btn btn-info">Create Project</button>
+    </form>
+
+    <span tal:condition="clone_projects" tal:omit-tag="">
+      <hr>
+      <h3>Clone an Existing Project</h3>
+      <form role="form" name="input" action="${request.route_path('project_clone')}"
+	    onsubmit="return form_request(this, 'PUT');">
+        <div class="form-group">
+          <select name="project_id">
+            <option value="">--Select a project to clone--</option>
+            <option tal:repeat="tmp clone_projects" value="${tmp.id}">${tmp.class_.name}: ${tmp.name}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="name">New Project Name</label>
+          <input type="text" class="form-control" placeholder="Enter new project name"
+                 name="name" id="name">
+        </div>
+        <input type="hidden" name="class_id" value="${project.class_.id}" />
+        <button type="submit" class="btn btn-info">Clone Selected Project</button>
+      </form>
+    </span>
+  </div>
+</metal:block>

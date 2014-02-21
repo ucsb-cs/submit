@@ -414,16 +414,15 @@ def password_reset_item(request, username, password, reset):
 @view_config(route_name='project_clone', request_method='PUT',
              permission='authenticated', renderer='json')
 @validate(class_=EditableDBThing('class_id', Class),
+          name=String('name', min_length=2),
           src_project=ViewableDBThing('project_id', Project))
-def project_clone(request, class_, src_project):
+def project_clone(request, class_, name, src_project):
     # Additional check as we can clone projects whose classes are locked,
     # but we cannot clone projects that are locked
     if src_project.status not in (u'notready', u'ready'):
         raise HTTPConflict('Cannot clone a project with status: {}'
                            .format(src_project.status))
     # Build a copy of the project settings
-    name = '(cloned) {0}: {1}'.format(src_project.class_.name,
-                                      src_project.name)
     update = {'class_': class_, 'status': 'notready', 'name': name}
     project = clone(src_project, ('class_id',), update)
 
@@ -454,6 +453,10 @@ def project_clone(request, class_, src_project):
     except IntegrityError:
         raise HTTPConflict('The name `{0}` already exists for the class.'
                            .format(name))
+    request.session.flash('Cloned {} {} as {}'.format(src_project.class_.name,
+                                                      src_project.name,
+                                                      name),
+                          'successes')
     redir_location = request.route_path('project_edit', project_id=project.id)
     return http_created(request, redir_location=redir_location)
 
@@ -471,6 +474,7 @@ def project_create(request, name, class_, makefile):
     except IntegrityError:
         raise HTTPConflict('That project name already exists for the class')
     redir_location = request.route_path('project_edit', project_id=project.id)
+    request.session.flash('Project added!', 'successes')
     return http_created(request, redir_location=redir_location)
 
 
@@ -655,21 +659,19 @@ def project_info(request, project):
     return retval
 
 
-@view_config(route_name='project_new',
-             renderer='templates/project_new.pt',
-             request_method='GET', permission='authenticated')
+@view_config(route_name='project_new', request_method='GET',
+             renderer='templates/forms/project_new.pt',
+             permission='authenticated')
 @validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
                                  validator=String('class_name'),
                                  source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
 def project_new(request, class_):
     dummy_project = DummyTemplateAttr(None)
     dummy_project.class_ = class_
     clone_projects = []
     for other in sorted(request.user.admin_for):
         clone_projects.extend(other.projects)
-    return {'page_title': 'Create Project', 'project': dummy_project,
-            'clone_projects': clone_projects}
+    return {'project': dummy_project, 'clone_projects': clone_projects}
 
 
 @view_config(route_name='project_edit', renderer='json',
