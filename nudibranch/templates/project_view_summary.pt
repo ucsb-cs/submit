@@ -1,83 +1,84 @@
-<div metal:use-macro="_LAYOUT">
-<div metal:fill-slot="content">
-  <h1>Student Submissions Overview</h1>
-  <p>Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
-    (<a href="${request.route_path('project_edit', project_id=project.id)}">edit</a>)</p>
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Student Submissions Overview</h1>
 
-  <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
+    <p>Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
+      (<a href="${request.route_path('project_edit', project_id=project.id)}">edit</a>)</p>
 
-  <p tal:condition="recent_submissions"><a href="${request.route_path('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
-  <p><a href="${request.route_path('project_group_admin', project_id=project.id)}">Manually join groups</a></p>
+    <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
 
-  <div tal:condition="recent_submissions">
-    <div tal:condition="num_groups">
-      <h3>Stats (student submissions only)</h3>
-      <table style="text-align: center">
+    <p tal:condition="recent_submissions"><a href="${request.route_path('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
+    <p><a href="${request.route_path('project_group_admin', project_id=project.id)}">Manually join groups</a></p>
+
+    <div tal:condition="recent_submissions">
+      <div tal:condition="num_groups">
+        <h3>Stats (student submissions only)</h3>
+        <table style="text-align: center">
+          <tr>
+            <td>Total Submissions</td><td>${len(project.student_submissions)}</td>
+            <td>Max Score</td><td>${max}</td>
+            <td>Mean Score</td><td>${'{:.2f}'.format(mean)}</td>
+            <td>Median Score</td><td>${'{:.2f}'.format(median)}</td>
+          </tr>
+        </table>
+        <div id="piechart"></div>
+        <script type="text/javascript" src="//www.google.com/jsapi"></script>
+        <script type="text/javascript">
+          google.load("visualization", "1", {packages:["corechart"]});
+          google.setOnLoadCallback(drawChart);
+          function drawChart() {
+          var data = google.visualization.arrayToDataTable([
+          ['Score', 'Count'],
+          ['100%', ${hist[5]}],
+          ['90%-100%', ${hist[4]}],
+          ['80%-90%', ${hist[3]}],
+          ['70%-80%', ${hist[2]}],
+          ['60%-70%', ${hist[1]}],
+          ['Below 60%', ${hist[0]}]
+          ]);
+          var chart = new google.visualization.PieChart($('#piechart')[0]);
+          chart.draw(data, {title: 'Groups by Score (${num_groups} groups)',
+          pieSliceText: 'value', width: 500});
+          }
+        </script>
+      </div>
+      <h3>Most recent submissions</h3>
+      <ul>
+        <li tal:repeat="submission recent_submissions">
+          ${structure: submission.time_score(request, group=True, admin=True)}
+        </li>
+      </ul>
+    </div>
+
+    <div tal:condition="submissions">
+      <table border="1">
         <tr>
-          <td>Total Submissions</td><td>${len(project.student_submissions)}</td>
-          <td>Max Score</td><td>${max}</td>
-          <td>Mean Score</td><td>${'{:.2f}'.format(mean)}</td>
-          <td>Median Score</td><td>${'{:.2f}'.format(median)}</td>
+          <th>Student(s)</th>
+          <th>Submissions (Most Recent Three Shown)</th>
+        </tr>
+        <tr tal:repeat="(group, group_submissions) submissions">
+          <td>
+            <div tal:repeat="user sorted(group.users)">
+              <a href="${request.route_path('user_item', username=user.username)}">
+                ${user.name}</a>
+            </div>
+          </td>
+          <td>
+            <ul tal:condition="group_submissions">
+              <li tal:repeat="group_submission group_submissions">
+                ${structure: group_submission.time_score(request, admin=True)}
+              </li>
+              <li tal:condition="group in group_truncated">
+                <a href="${request.route_path('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}">
+                  See all submissions...</a>
+              </li>
+            </ul>
+          </td>
         </tr>
       </table>
-      <div id="piechart"></div>
-      <script type="text/javascript" src="//www.google.com/jsapi"></script>
-      <script type="text/javascript">
-        google.load("visualization", "1", {packages:["corechart"]});
-        google.setOnLoadCallback(drawChart);
-        function drawChart() {
-            var data = google.visualization.arrayToDataTable([
-                ['Score', 'Count'],
-                ['100%', ${hist[5]}],
-                ['90%-100%', ${hist[4]}],
-                ['80%-90%', ${hist[3]}],
-                ['70%-80%', ${hist[2]}],
-                ['60%-70%', ${hist[1]}],
-                ['Below 60%', ${hist[0]}]
-            ]);
-            var chart = new google.visualization.PieChart($('#piechart')[0]);
-            chart.draw(data, {title: 'Groups by Score (${num_groups} groups)',
-                              pieSliceText: 'value', width: 500});
-        }
-      </script>
     </div>
-    <h3>Most recent submissions</h3>
-    <ul>
-      <li tal:repeat="submission recent_submissions">
-        ${structure: submission.time_score(request, group=True, admin=True)}
-      </li>
-    </ul>
+    <p tal:condition="not submissions">
+      No students have submitted anything for ${project.name}
+    </p>
   </div>
-
-  <div tal:condition="submissions">
-    <table border="1">
-      <tr>
-        <th>Student(s)</th>
-        <th>Submissions (Most Recent Three Shown)</th>
-      </tr>
-      <tr tal:repeat="(group, group_submissions) submissions">
-        <td>
-          <div tal:repeat="user sorted(group.users)">
-            <a href="${request.route_path('user_item', username=user.username)}">
-              ${user.name}</a>
-          </div>
-        </td>
-        <td>
-          <ul tal:condition="group_submissions">
-            <li tal:repeat="group_submission group_submissions">
-              ${structure: group_submission.time_score(request, admin=True)}
-            </li>
-            <li tal:condition="group in group_truncated">
-              <a href="${request.route_path('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}">
-                See all submissions...</a>
-            </li>
-          </ul>
-        </td>
-      </tr>
-    </table>
-  </div>
-  <p tal:condition="not submissions">
-    No students have submitted anything for ${project.name}
-  </p>
-</div>
-</div>
+</metal:block>

@@ -340,7 +340,8 @@ def project_file_create(request, file_, filename, project, cls):
     except IntegrityError:
         raise HTTPConflict('That filename already exists for the project')
     redir_location = request.route_path('project_edit', project_id=project.id)
-    request.session.flash('Added {0} {1}.'.format(cls.__name__, filename))
+    request.session.flash('Added {0} {1}.'.format(cls.__name__, filename),
+                          'successes')
     return http_created(request, redir_location=redir_location)
 
 
@@ -349,7 +350,8 @@ def project_file_delete(request, project_file):
                                         project_id=project_file.project.id)
     request.session.flash('Deleted {0} {1}.'
                           .format(project_file.__class__.__name__,
-                                  project_file.filename))
+                                  project_file.filename),
+                          'successes')
     # Delete the file
     Session.delete(project_file)
     return http_ok(request, redir_location=redir_location)

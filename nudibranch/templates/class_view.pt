@@ -22,20 +22,19 @@
               <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
             </td>
             <td>
-              <span tal:condition="project.is_ready" tal:omit-tag="">
-                (ready for submission)
-              </span>
+              <span tal:condition="project.is_ready" class="label label-success">
+                Ready</span>
+              <span tal:condition="not project.is_ready" class="label label-important">
+                Not Ready</span>
             </td>
           </span>
-          <span tal:condition="not class_admin">
-          <td>
-	    <a href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a>
-          </td>
-          <td><a class="btn btn-info btn-mini" href="${request.route_path('submission_new', project_id=project.id)}">Make a Submission</a></td>
-          <td><span class="badge">${project.deadline}</span></td>
+          <td tal:condition="not class_admin"><a href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a></td>
+          <td><a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a></td>
+          <td><span tal:condition="project.deadline" class="badge">${project.deadline}</span></td>
         </tr>
       </div>
     </table>
+
     <div tal:condition="recent_subs">
       <h3>Classes' recent submissions</h3>
       <table class="table table-condensed">

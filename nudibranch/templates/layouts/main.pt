@@ -33,8 +33,8 @@
 
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
   <script src="${request.static_path('nudibranch:static/js/bootstrap.min.js')}"></script>
-  <script src="${request.static_path('nudibranch:static/application.js')}"></script>
-  <script src="${request.static_path('nudibranch:static/form2js.js')}"></script>
+  <script src="${request.static_path('nudibranch:static/js/application.js')}"></script>
+  <script src="${request.static_path('nudibranch:static/js/form2js.js')}"></script>
   <script>
     $(document).ready(function() {
         $('#logout_btn').click(function() {

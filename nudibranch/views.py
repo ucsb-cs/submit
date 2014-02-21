@@ -5,8 +5,7 @@ import os
 import transaction
 from base64 import b64decode
 from hashlib import sha1
-from pyramid_addons.helpers import (http_created, http_gone, http_ok,
-                                    site_layout)
+from pyramid_addons.helpers import (http_created, http_gone, http_ok)
 from pyramid_addons.validation import (Enum, List, String, RegexString,
                                        TextNumber, WhiteSpaceString, validate,
                                        SOURCE_GET,
@@ -73,7 +72,7 @@ def normal_exception(context, request):
 def forbidden_view(context, request):
     if request.user:
         return context
-    request.session.flash('You must be logged in to do that.')
+    request.session.flash('You must be logged in to do that.', 'warnings')
     return HTTPSeeOther(request.route_path('session',
                                            _query={'next': request.path}))
 
@@ -284,7 +283,8 @@ def file_verifier_create(request, copy_to_execution, filename, min_size,
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('That filename already exists for the project')
-    request.session.flash('Added expected file: {}'.format(filename))
+    request.session.flash('Added expected file: {}'.format(filename),
+                          'successes')
     redir_location = request.route_path('project_edit', project_id=project.id)
     return http_created(request, redir_location=redir_location)
 
@@ -332,7 +332,8 @@ def file_verifier_update(request, copy_to_execution, file_verifier, filename,
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('That filename already exists for the project')
-    request.session.flash('Updated expected file: {}'.format(filename))
+    request.session.flash('Updated expected file: {}'.format(filename),
+                          'successes')
     redir_location = request.route_path('project_edit',
                                         project_id=file_verifier.project.id)
     return http_ok(request, redir_location=redir_location)
@@ -552,7 +553,7 @@ def project_group_request_confirm(request, project, group_request):
         request.user.group_with(group_request.from_user, project)
         failed = False
     except GroupWithException as exc:
-        request.session.flash(exc.args[0])
+        request.session.flash(exc.args[0], 'errors')
         failed = True
     Session.delete(group_request)
     try:
@@ -711,7 +712,8 @@ def project_test_case_generate(request, submission):
     # Schedule a task to generate the expected outputs
     request.queue(submission_id=submission_id, update_project=True,
                   _priority=0)
-    request.session.flash('Rebuilding the project\'s expected outputs.')
+    request.session.flash('Rebuilding the project\'s expected outputs.',
+                          'successes')
     redir_location = request.route_url('project_edit', project_id=project_id)
     return http_ok(request, redir_location=redir_location)
 
@@ -744,7 +746,7 @@ def project_update(request, name, makefile, is_ready, class_name, deadline,
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('That project name already exists for the class')
-    request.session.flash('Project updated')
+    request.session.flash('Project updated', 'successes')
     redir_location = request.route_path('project_edit', project_id=project.id)
     return http_ok(request, redir_location=redir_location)
 
@@ -812,7 +814,6 @@ def project_view_detailed_user(request, class_name, project, user):
              permission='authenticated')
 @validate(class_name=String('class_name', source=MATCHDICT),
           project=ViewableDBThing('project_id', Project, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt')
 def project_view_summary(request, class_name, project):
     submissions = {}
     group_truncated = set()
@@ -872,8 +873,7 @@ def project_view_summary(request, class_name, project):
 
         else:
             submissions[group] = []
-    return {'page_title': 'Admin Project Page',
-            'group_truncated': group_truncated,
+    return {'group_truncated': group_truncated,
             'hist': hist,
             'max': max_score,
             'mean': mean,
@@ -982,7 +982,7 @@ def submission_new(request, project):
                                      source=MATCHDICT))
 def submission_requeue(request, submission):
     request.queue(submission_id=submission.id, _priority=0)
-    request.session.flash('Requeued the submission')
+    request.session.flash('Requeued the submission', 'successes')
     return http_ok(request, redir_location=request.url)
 
 
@@ -1106,7 +1106,8 @@ def test_case_create(request, name, args, expected, hide_expected,
 def test_case_delete(request, test_case):
     redir_location = request.route_path(
         'project_edit', project_id=test_case.testable.project.id)
-    request.session.flash('Deleted TestCase {0}.'.format(test_case.name))
+    request.session.flash('Deleted TestCase {0}.'.format(test_case.name),
+                          'successes')
     testable = test_case.testable
     Session.delete(test_case)
     # Update the testable point score
@@ -1144,7 +1145,8 @@ def test_case_update(request, name, args, expected, hide_expected,
         raise HTTPConflict('That name already exists for the testable')
     # Update the testable point score
     test_case.testable.update_points()
-    request.session.flash('Updated TestCase {0}.'.format(test_case.name))
+    request.session.flash('Updated TestCase {0}.'.format(test_case.name),
+                          'successes')
     redir_location = request.route_path(
         'project_edit', project_id=test_case.testable.project.id)
     return http_ok(request, redir_location=redir_location)
@@ -1246,7 +1248,8 @@ def testable_edit(request, name, is_hidden, make_target, executable,
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('That name already exists for the project')
-    request.session.flash('Updated Testable {0}.'.format(testable.name))
+    request.session.flash('Updated Testable {0}.'.format(testable.name),
+                          'successes')
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
     return http_ok(request, redir_location=redir_location)
@@ -1258,7 +1261,8 @@ def testable_edit(request, name, is_hidden, make_target, executable,
 def testable_delete(request, testable):
     redir_location = request.route_path('project_edit',
                                         project_id=testable.project.id)
-    request.session.flash('Deleted Testable {0}.'.format(testable.name))
+    request.session.flash('Deleted Testable {0}.'.format(testable.name),
+                          'successes')
     Session.delete(testable)
     return http_ok(request, redir_location=redir_location)
 
