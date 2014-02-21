@@ -22,14 +22,6 @@
          href="${request.route_path('submission_new', project_id=project.id)}">Make a Submission</a>
       <a tal:condition="request.user.can_join_group(project)" class="btn btn-info"
          href="${request.route_path('project_group', project_id=project.id)}">Join Group</a>
-      <div class="alert">You can also submit through a csil machine via
-        <code>~bboe/bin/submit -p ${project.class_.name}:${project.id}
-          ${project.submit_string()}</code>
-        <div><strong>Note</strong>: Files in brackets indicate partial
-          submissions can be made without those files. However, omitting these
-          files does not necessarily mean you will receive partial credit for
-          such submissions.</div>
-      </div>
     </div>
 
     <div tal:condition="not submissions" class="alert alert-warning">

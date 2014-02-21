@@ -1,0 +1,38 @@
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Make a submission for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a></h1>
+    ${panel('js_test')}
+
+    <fieldset>
+      <legend>Select file(s) to upload</legend>
+      <input name="files" id="files" type="file" multiple />
+      <div id="dropbox"> or drop file(s) here</div>
+      <div id="messages" class="alert alert-success alert-block">
+        <h3>Pending Files</h3>
+        <ul id="pending">
+        </ul>
+      </div>
+
+      <form role="form" id="upload_form" name="input" action="${request.route_path('submission')}" method="PUT">
+        <input type="hidden" name="project_id" value="${project.id}"/>
+        <button id="file_submit" type="submit" class="btn btn-default" name="submit" disabled="disabled">Submit 0 Files</button>
+      </form>
+    </fieldset>
+    <div class="alert">You can also submit through a csil machine via
+      <code>~bboe/bin/submit -p ${project.class_.name}:${project.id}
+        ${project.submit_string()}</code>
+      <div><strong>Note</strong>: Files in brackets indicate partial
+        submissions can be made without those files. However, omitting these
+        files does not necessarily mean you will receive partial credit for
+        such submissions.</div>
+    </div>
+  </div>
+  <div metal:fill-slot="eof_content">
+    <script src="${request.static_path('nudibranch:static/sha1.js')}"></script>
+    <script>
+      $(document).ready(function() {
+          new UploadApp();
+      });
+    </script>
+  </div>
+</metal:block>

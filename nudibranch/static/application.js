@@ -182,7 +182,10 @@ UploadApp.prototype.add_file = function(e) {
     }
     var num = Object.keys(this.all_files).length;
     this.submit.attr('disabled', num > 0 ? false : 'disabled');
-    this.submit.attr('value', 'Submit ' + num + ' files');
+    if (num == 1)
+        this.submit.text('Submit ' + num + ' file');
+    else
+        this.submit.text('Submit ' + num + ' files');
 }
 
 UploadApp.prototype.replace_file = function(xhr_response) {

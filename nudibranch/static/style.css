@@ -6,11 +6,6 @@ body {
     background-color: #fff;
 }
 
-legend {
-    font-weight: bold;
-    color: #333;
-}
-
 pre.make_output {
     width: 95%;
     font-family: monospace;
@@ -20,49 +15,6 @@ pre.make_output {
     border: 1px inset #666;
     background-color: #eee;
     overflow: auto;
-}
-
-#logout {
-    float: right;
-}
-
-#messages {
-    padding: 0 10px;
-    margin: 1em 0;
-    border: 1px solid #999;
-}
-
-#page_title {
-    font-size: 1.6em;
-    font-weight: bold;
-    padding-bottom: 10px;
-}
-
-.clear {
-    clear: both;
-}
-
-.description {
-    font-size: .8em;
-    font-style: italic;
-}
-
-.error {
-    font-size: .9em;
-    font-style: italic;
-    color: red;
-}
-
-.header {
-    font-size: 1.2em;
-    font-weight: bold;
-    padding-bottom: 8px;
-}
-
-.subheader {
-    font-size: 1.0em;
-    font-weight: bold;
-    padding-bottom: 6px;
 }
 
 .faulink {
@@ -75,25 +27,19 @@ pre.make_output {
     border-bottom: 1px dotted gray;
 }
 
+/* Used by submission_view */
 .nospace {
     margin: 0px;
     padding: 0px;
 }
-
 .clear {
-    clear:both;
+    clear: both;
 }
-
 .floatleft {
     float: left;
 }
-
 .floatright {
     float: right;
-}
-
-.result_image {
-    border: 1px solid black;
 }
 
 #dropbox {

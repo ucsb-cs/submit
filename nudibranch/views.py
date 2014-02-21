@@ -1020,13 +1020,11 @@ def submission_create(request, project, file_ids, filenames):
 
 
 @view_config(route_name='submission_new', request_method='GET',
-             renderer='templates/submission_new.pt',
+             renderer='templates/forms/submission_new.pt',
              permission='authenticated')
 @validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
 def submission_new(request, project):
-    return {'page_title': 'Create submission', 'project': project}
+    return {'project': project}
 
 
 @view_config(route_name='submission_item', renderer='json',
