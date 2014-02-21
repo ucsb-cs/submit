@@ -16,12 +16,6 @@
 <script src="${request.static_path('nudibranch:static/json2.js')}"></script>
 <script src="${request.static_path('nudibranch:static/sha1.js')}"></script>
 <script tal:repeat="js javascripts" src="${request.static_path('nudibranch:static/' + js)}"></script>
-<div tal:condition="request.user and request.user.is_admin" style="background: #CCC">
-  ADMIN BAR:
-  <a href="${request.route_path('user')}">Users</a>
-  <span>|</span>
-  <a href="${request.route_path('admin_utils')}">Admin Utilities</a>
-</div>
 <div tal:condition="request.user and not request.user.is_admin and request.user.admin_for" style="background: #CCC">
   CLASS ADMIN BAR:
   <a href="${request.route_path('class_admin_utils')}">Class Admin Utilities</a>

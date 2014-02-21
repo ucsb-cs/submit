@@ -89,14 +89,6 @@ def robots(request):
                     content_type=str('text/plain'))
 
 
-@view_config(route_name='admin_utils', request_method='GET',
-             permission='admin',
-             renderer='templates/admin_utils.pt')
-@site_layout('nudibranch:templates/layout.pt')
-def admin_view(request):
-    return {'page_title': 'Administrator Utilities'}
-
-
 @view_config(route_name='build_file', request_method='PUT',
              permission='authenticated', renderer='json')
 @validate(file_=ViewableDBThing('file_id', File),
@@ -1320,7 +1312,8 @@ def user_class_join(request, class_, username):
     if class_.is_locked:
         raise HTTPBadRequest('Invalid class')
     request.user.classes.append(class_)
-    request.session.flash('You have added {}'.format(class_.name), 'successes')
+    request.session.flash('You have joined {}'.format(class_.name),
+                          'successes')
     url = request.route_path('user_item', username=request.user.username)
     return http_created(request, redir_location=url)
 
@@ -1346,14 +1339,6 @@ def user_create(request, identity, password):
              renderer='templates/forms/user_create.pt')
 def user_edit(request):
     return {}
-
-
-@view_config(route_name='user', request_method='GET', permission='admin',
-             renderer='templates/user_list.pt')
-@site_layout('nudibranch:templates/layout.pt')
-def user_list(request):
-    users = sorted(User.query_by().all())
-    return {'page_title': 'User List', 'users': users}
 
 
 @view_config(route_name='user_item', request_method='GET',

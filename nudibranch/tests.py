@@ -171,7 +171,7 @@ class ClassTests(BaseAPITest):
     def test_class_edit(self):
         from nudibranch.views import class_edit
         request = self.make_request()
-        info = class_edit(request)
+        class_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
 
     def test_class_list(self):
@@ -829,7 +829,7 @@ class SessionTests(BaseAPITest):
     def test_session_edit(self):
         from nudibranch.views import session_edit
         request = self.make_request()
-        info = session_edit(request)
+        session_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
 
 
@@ -1212,16 +1212,8 @@ class UserTests(BaseAPITest):
     def test_user_edit(self):
         from nudibranch.views import user_edit
         request = self.make_request()
-        info = user_edit(request)
+        user_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-
-    def test_user_list(self):
-        from nudibranch.views import user_list
-        request = self.make_request()
-        info = user_list(request)
-        self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual(4, len(info['users']))
-        self.assertEqual('user1@email', info['users'][1].username)
 
     def test_user_view(self):
         from nudibranch.views import user_view
