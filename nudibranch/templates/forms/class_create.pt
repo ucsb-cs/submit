@@ -1,0 +1,22 @@
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Create New Class</h1>
+    ${panel('js_test')}
+    <form role="form" name="input" action="${request.route_path('class')}"
+          onsubmit="return form_request(this, 'put');">
+      <div class="form-group">
+        <label for="name">Class Name</label>
+        <input type="text" class="form-control" placeholder="Enter class name"
+               name="name" id="name">
+      </div>
+      <button type="submit" class="btn btn-info">Create Class</button>
+    </form>
+
+    <h3>Existing Classes</h3>
+    <ul>
+      <li tal:repeat="class_ classes">
+        <a href="${request.route_path('class_item', class_name=class_.name)}">${class_.name}</a> <span tal:condition="class_.is_locked">(Locked)</span>
+      </li>
+    </ul>
+  </div>
+</metal:block>

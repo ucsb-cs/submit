@@ -145,14 +145,15 @@ def class_create(request, name):
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('Class \'{0}\' already exists'.format(name))
-    return http_created(request, redir_location=request.route_path('class'))
+    request.session.flash('Created class {}'.format(name), 'successes')
+    return http_created(request,
+                        redir_location=request.route_path('class_new'))
 
 
-@view_config(route_name='class_new', renderer='templates/class_create.pt',
-             request_method='GET', permission='admin')
-@site_layout('nudibranch:templates/layout.pt')
+@view_config(route_name='class_new', request_method='GET',
+             renderer='templates/forms/class_create.pt', permission='admin')
 def class_edit(request):
-    return {'page_title': 'Create Class'}
+    return {'classes': sorted(Class.query_by().all())}
 
 
 @view_config(route_name='class_join_list', request_method='GET',
@@ -164,14 +165,6 @@ def class_join_list(request):
     all_classes = frozenset(Class.query_by(is_locked=False).all())
     user_classes = frozenset(request.user.classes)
     return {'classes': sorted(all_classes - user_classes)}
-
-
-@view_config(route_name='class', request_method='GET',
-             permission='authenticated', renderer='templates/class_list.pt')
-@site_layout('nudibranch:templates/layout.pt')
-def class_list(request):
-    classes = Class.query_by().all()
-    return {'page_title': 'Login', 'classes': classes}
 
 
 @view_config(route_name='class_item', request_method='GET',

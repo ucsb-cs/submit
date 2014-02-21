@@ -174,14 +174,6 @@ class ClassTests(BaseAPITest):
         class_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
 
-    def test_class_list(self):
-        from nudibranch.views import class_list
-        request = self.make_request()
-        info = class_list(request)
-        self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual(2, len(info['classes']))
-        self.assertEqual('Class 1', info['classes'][0].name)
-
     def test_class_view(self):
         from nudibranch.views import class_view
         user = User.fetch_by(username='user1@email')
