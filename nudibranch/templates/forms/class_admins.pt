@@ -1,0 +1,26 @@
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>${class_.name} Admin Management</h1>
+    ${panel('js_test')}
+
+    <h3>Add a class admin</h3>
+    <div class="alert alert-info">Enter the email of a user in the system to
+        add them as an admin for the class. <strong>Note</strong> that they
+        will be able to add other admins as well.</div>
+    <form role="form" name="input" method="POST"
+          action="${request.route_path('class.admins', class_name=class_.name)}"
+          onsubmit="return form_request(this, 'put', true);">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" class="form-control" placeholder="Enter email"
+               name="email" id="email">
+      </div>
+      <button type="submit" class="btn btn-warning">Add Class Admin</button>
+    </form>
+
+    <h3>Existing Admins</h3>
+    <ul>
+      <li tal:repeat="user sorted(class_.admins)">${user}</li>
+    </ul>
+  </div>
+</metal:block>

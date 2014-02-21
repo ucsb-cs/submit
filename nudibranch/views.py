@@ -120,21 +120,19 @@ def class_admins_add(request, class_, user):
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('The user could not be added.')
-    request.session.flash('Added {} as an admin to the class.'.format(user))
+    request.session.flash('Added {} as an admin to the class.'.format(user),
+                          'successes')
     return http_ok(request, redir_location=request.url)
 
 
 @view_config(route_name='class.admins', request_method='GET',
              permission='authenticated',
-             renderer='templates/class_admins.pt')
+             renderer='templates/forms/class_admins.pt')
 @validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
                                  validator=String('class_name'),
                                  source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
 def class_admins_view(request, class_):
-    return {'page_title': 'Class Admins', 'class_': class_,
-            'flash': request.session.pop_flash()}
+    return {'class_': class_}
 
 
 @view_config(route_name='class', request_method='PUT', permission='admin',
