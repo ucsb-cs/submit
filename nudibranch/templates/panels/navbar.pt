@@ -13,6 +13,7 @@
             <a href="${item['url']}" tal:attributes="id item['id']">${item['name']}</a>
           </li>
         </ul>
+        <a class="btn btn-info btn-large pull-right" href="https://github.com/ucsb-cs-education/submit_issues/issues" target="_blank"><i class="icon-white icon-comment"></i> Feedback / Suggestions</a>
       </div><!--/.nav-collapse -->
     </div>
   </div>
