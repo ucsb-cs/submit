@@ -1,11 +1,16 @@
-<div metal:use-macro="_LAYOUT">
-<div metal:fill-slot="content">
-  <script>
-    hljs.tabReplace = '    ';
-    hljs.initHighlightingOnLoad();
-  </script>
-  <noscript>Enable javascript to see a syntax highlighted version.</noscript>
-  <h3>${filename} (<a href="${url}">Download</a>)</h3>
-  <pre><code>${contents}</code></pre>
-</div>
-</div>
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <noscript>Enable javascript to see a syntax highlighted version.</noscript>
+
+    <h1>${filename} <a class="btn btn-inverse btn-large" href="${url}"><i class="icon-white icon-download"></i> Download</a></h1>
+    <pre><code>${contents}</code></pre>
+  </div>
+  <div metal:fill-slot="eof_content">
+    <link href="${request.static_path('nudibranch:static/css/highlight_github.css')}" rel="stylesheet">
+    <script src="${request.static_path('nudibranch:static/js/highlight.pack.js')}"></script>
+    <script>
+      hljs.tabReplace = '    ';
+      hljs.initHighlightingOnLoad();
+    </script>
+  </div>
+</metal:block>

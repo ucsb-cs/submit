@@ -264,7 +264,6 @@ def file_item_info(request, file_):
           filename=String('filename', min_length=1, source=MATCHDICT),
           raw=TextNumber('raw', min_value=0, max_value=1,
                          optional=True, source=SOURCE_GET))
-@site_layout('nudibranch:templates/layout.pt')
 def file_item_view(request, file_, filename, raw):
     source = File.file_path(request.registry.settings['file_directory'],
                             file_.sha1)
@@ -274,11 +273,8 @@ def file_item_view(request, file_, filename, raw):
         contents = codecs.open(source, encoding='utf-8').read()
     except UnicodeDecodeError as exc:
         contents = 'File contents could not be displayed: {}'.format(exc)
-    return {'page_title': filename,
-            'contents': contents,
+    return {'contents': contents,
             'filename': filename,
-            'css_files': ['highlight_github.css'],
-            'javascripts': ['highlight.pack.js'],
             'url': request.route_path('file_item', sha1sum=file_.sha1,
                                       filename=filename, _query={'raw': '1'})}
 
