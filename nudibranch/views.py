@@ -511,7 +511,7 @@ def project_group_admin_join(request, project, users):
     try:
         group = users[0].group_with(users[1], project, bypass_limit=True)
     except GroupWithException as exc:
-        request.session.flash(exc.args[0])
+        request.session.flash(exc.args[0], 'errors')
         group = None
     try:
         Session.flush()
@@ -519,16 +519,15 @@ def project_group_admin_join(request, project, users):
         raise HTTPConflict('Could not join the users at this time.')
     if not group:
         return http_gone(request, redir_location=request.url)
-    request.session.flash('Made group: {}'.format(group.users_str))
+    request.session.flash('Made group: {}'.format(group.users_str),
+                          'successes')
     return http_ok(request, redir_location=request.url)
 
 
-@view_config(route_name='project_group_admin',
-             renderer='templates/project_group_admin.pt',
-             request_method='GET', permission='authenticated')
+@view_config(route_name='project_group_admin', request_method='GET',
+             renderer='templates/forms/group_admin.pt',
+             permission='authenticated')
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
 def project_group_admin_view(request, project):
     students = set(project.class_.users)
     selectable = []
@@ -536,10 +535,7 @@ def project_group_admin_view(request, project):
         students = students - set(group.users)
         selectable.append((group.users_str, group.group_assocs[0].user.id))
     selectable.extend((x.name, x.id) for x in students)
-
-    return {'page_title': 'Group Admin', 'project': project,
-            'selectable': selectable,
-            'flash': request.session.pop_flash()}
+    return {'project': project, 'selectable': selectable}
 
 
 @view_config(route_name='project_group_item', renderer='json',

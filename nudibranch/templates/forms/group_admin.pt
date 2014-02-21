@@ -1,0 +1,25 @@
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Group management for <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a></h1>
+    ${panel('js_test')}
+
+    <div class="alert alert-info">Max Group Members: ${project.group_max}</div>
+
+    <div class="alert">The following will allow you to manually join students
+      in a group bypassing the maximum group size. The result of joining
+      students in a group cannot be undone.
+
+      <div><strong>Note</strong>: You can only merge two items at a time.</div>
+    </div>
+
+    <h3>Select groups to merge</h3>
+    <form role="form" name="input"
+          action="${request.route_path('project_group_admin', project_id=project.id)}"
+          method="PUT" onsubmit="return form_request(this, 'put', true);">
+      <label class="checkbox" tal:repeat="(name, id) sorted(selectable)">
+        <input type="checkbox" name="user_ids[]" value="${id}"> ${name}
+      </label>
+      <button type="submit" class="btn btn-default">Merge Groups</button>
+    </form>
+  </div>
+</metal:block>
