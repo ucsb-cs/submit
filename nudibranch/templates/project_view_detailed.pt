@@ -18,7 +18,7 @@
     </div>
 
     <div tal:condition="is_member" tal:omit-tag="">
-      <a class="btn btn-info"
+      <a class="btn btn-success"
          href="${request.route_path('submission_new', project_id=project.id)}">Make a Submission</a>
       <a tal:condition="request.user.can_join_group(project)" class="btn btn-info"
          href="${request.route_path('project_group', project_id=project.id)}">Join Group</a>

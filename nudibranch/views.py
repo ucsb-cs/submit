@@ -6,7 +6,7 @@ import transaction
 from base64 import b64decode
 from hashlib import sha1
 from pyramid_addons.helpers import (http_created, http_gone, http_ok,
-                                    pretty_date, site_layout)
+                                    site_layout)
 from pyramid_addons.validation import (Enum, List, String, RegexString,
                                        TextNumber, WhiteSpaceString, validate,
                                        SOURCE_GET,
@@ -1042,7 +1042,6 @@ def submission_requeue(request, submission):
                                      source=MATCHDICT),
           as_user=TextNumber('as_user', min_value=0, max_value=1,
                              optional=True, source=SOURCE_GET))
-@site_layout('nudibranch:templates/layout.pt')
 def submission_view(request, submission, as_user):
     actual_admin = submission.project.can_edit(request.user)
     submission_admin = not bool(as_user) and actual_admin
@@ -1051,8 +1050,7 @@ def submission_view(request, submission, as_user):
             update=request.user in submission.group.users)
         if delay:
             request.override_renderer = 'templates/submission_delay.pt'
-            return {'_pd': pretty_date,
-                    'delay': '{0:.1f} minutes'.format(delay),
+            return {'delay': '{0:.1f} minutes'.format(delay),
                     'submission': submission,
                     'submission_admin': actual_admin}
 
@@ -1097,21 +1095,16 @@ def submission_view(request, submission, as_user):
         diff_table = None
 
     # Do this after we've potentially updated the session
+    prev_sub, next_sub = prev_next_submission(submission)
     if submission_admin:
-        prev_sub, next_sub = prev_next_submission(submission)
         prev_group, next_group = prev_next_group(submission.project,
                                                  submission.group)
     else:
-        prev_sub = next_sub = prev_group = next_group = None
+        prev_group = next_group = None
 
-    return {'page_title': 'Submission Page',
-            '_pd': pretty_date,
-            '_fp': format_points,
-            'css_files': ['diff.css'],
+    return {'_fp': format_points,
             'diff_table': diff_table,
             'extra_files': extra_files,
-            'flash': request.session.pop_flash(),
-            'javascripts': ['diff.js'],
             'next_sub': next_sub,
             'next_group': next_group,
             'pending': pending,

@@ -1,157 +1,166 @@
-<div metal:use-macro="_LAYOUT">
-<div metal:fill-slot="content">
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Submission Results</h1>
+    ${panel('js_test')}
 
+    <div class="alert alert-info">
+      <div class="pull-left" tal:condition="prev_group">
+        <a class="btn btn-info btn-mini" href="${request.route_path('submission_item', submission_id=sorted(prev_group.submissions)[-1].id)}"><i class="icon-white icon-arrow-left"></i> Group</a>
+      </div>
+      <div class="pull-right" tal:condition="next_group">
+        <a class="btn btn-info btn-mini" href="${request.route_path('submission_item', submission_id=sorted(next_group.submissions)[-1].id)}">Group <i class="icon-white icon-arrow-right"></i></a>
+      </div>
+      <div class="pull-left" tal:condition="prev_sub">
+        <a class="btn btn-primary btn-mini" href="${request.route_path('submission_item', submission_id=prev_sub.id)}"><i class="icon-white icon-arrow-left"></i> Submission</a>
+      </div>
+      <div class="pull-right" tal:condition="next_sub">
+        <a class="btn btn-primary btn-mini" href="${request.route_path('submission_item', submission_id=next_sub.id)}">Submission <i class="icon-white icon-arrow-right"></i></a>
+      </div>
 
-  <script>
-    $(function() {
-        $(".requeue").on("click", function(event) {
-            if (confirm("Are you sure you want to requeue this submission?")) {
-                $.ajax({url: window.location.href, type: 'put', complete: handle_response});
-            }
-        });
-        $(".gen-expected").on("click", function(event) {
-            $("#dialog-confirm").dialog("open");
-        });
-        $("#dialog-confirm").dialog({
-            autoOpen: false,
-            resizable: false,
-            width: 540,
-            modal: true,
-            buttons: {
-                Cancel: function() { $(this).dialog("close"); },
-                "regenerate expected output": function() {
-                    $.ajax({url: window.location.href + '/gen', type: 'put', complete: handle_response});
-                }
-            }
-        });
-    });
-  </script>
+      <div class="pagination-centered clearfix">
+        <span tal:condition="request.user in submission.group.users"
+              tal:omit-tag="">
+          <a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=submission.project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
+          <a tal:condition="request.user.can_join_group(submission.project)"
+             class="btn btn-info btn-mini" href="${request.route_path('project_group', project_id=submission.project.id)}"><i class="icon-white icon-share"></i> Join Group</a>
+        </span>
 
-  <div tal:condition="submission_admin">
+        <span tal:condition="submission_admin" tal:omit-tag="">
+          <a class="btn btn-success btn-mini" href="?as_user=1"><i class="icon-white icon-eye-open"></i> Student View</a>
+          <a class="btn btn-inverse btn-mini" href="${request.route_path('zipfile_download', submission_id=submission.id)}"><i class="icon-white icon-download"></i> Download</a>
+          <button class="btn btn-warning btn-mini" id="requeue">
+            <i class="icon-white icon-repeat"></i> Requeue
+          </button>
+          <button class="btn btn-danger btn-mini" id="regenerate">
+            <i class="icon-white icon-refresh"></i> Regenerate Expected
+          </button>
+        </span>
+      </div>
+    </div>
+
     <div style="display:None" id="dialog-confirm" title="Regenerate Expected Output?">
       <p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span>The expected outputs will be updated making the project unavailable until you mark it as ready again. Are you sure?</p>
     </div>
-    <p class="floatleft nospace" tal:condition="prev_group">Previous group:
-      <a href="${request.route_path('submission_item', submission_id=sorted(prev_group.submissions)[-1].id)}">${prev_group.users_str}</a>
-    </p>
-    <p class="floatright nospace" tal:condition="next_group">Next group:
-      <a href="${request.route_path('submission_item', submission_id=sorted(next_group.submissions)[-1].id)}">${next_group.users_str}</a>
-    </p>
-    <div class="clear"></div>
-    <p class="floatleft nospace" tal:condition="prev_sub">Group's previous submission:
-      <a href="${request.route_path('submission_item', submission_id=prev_sub.id)}">${prev_sub.created_at}</a>
-    </p>
-    <p class="floatright nospace" tal:condition="next_sub">Group's next submission:
-      <a href="${request.route_path('submission_item', submission_id=next_sub.id)}">${next_sub.created_at}</a>
-    </p>
-    <div class="clear"></div>
-  </div>
 
 
-  <fieldset tal:condition="flash">
-    <legend>Status Messages</legend>
-    <p tal:repeat="msg flash">${msg}</p>
-  </fieldset>
-
-  <h3>Submission</h3>
-  <div>Student(s): ${submission.group.users_str}
-    <span tal:condition="submission_admin">(<a href="?as_user=1">View this page from the student's perspective</a>)</span>
-    <span tal:condition="not submission_admin and
-    request.user.can_join_group(submission.project)">(<a href="${request.route_path('project_group',
-    project_id=submission.project.id)}">Join Group</a>)</span>
-  </div>
-  <div>Class: <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
-  <div tal:condition="submission_admin">Project: <a href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
-  <div tal:condition="not submission_admin">
-    Project: <a href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
-  </div>
-  <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
-  <input tal:condition="submission_admin" type="button" value="requeue" class="requeue" />
-  <input tal:condition="submission_admin" type="button" value="generate expected" class="gen-expected" />
-
-  <h4>Submission Files<span tal:condition="submission_admin"> (<a href="${request.route_path('zipfile_download', submission_id=submission.id)}">Download submission zipfile</a>)</span></h4>
-  <ul tal:condition="submission.files">
-    <li tal:repeat="f sorted(submission.files)">
-      <a href="${request.route_path('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
-    </li>
-  </ul>
-
-  <div tal:condition="request.user.is_admin">
-    <h3>Admin only debugging information</h3>
-    <pre>${submission.verification_results}</pre>
-  </div>
-
-  <p tal:condition="not submission.verified_at">
-    The submission is still being verified.
-  </p>
-
-  <!-- Verification results block -->
-  <div tal:condition="submission.verified_at and verification_issues">
-    <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:orange">orange</span> indicates warnings.</p>
-    <ul>
-      <li tal:repeat="filename sorted(verification_issues)">
-	<b>${filename}</b>
-	<ul>
-	  <li tal:repeat="warning verification_issues[filename][0]">
-	    <span style="color:orange">Line ${warning['lineno']}: <strong>${warning['token']}</strong></span>
-	  </li>
-	  <li tal:repeat="error verification_issues[filename][1]">
-	    <span style="color:red">${error}</span>
-	  </li>
-	</ul>
+    <div>Student(s): ${submission.group.users_str}</div>
+    <div>Class: <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
+    <div tal:condition="submission_admin">Project: <a href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
+    <div tal:condition="not submission_admin">
+      Project: <a href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
+    </div>
+    <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
+    <h4>Submission Files</h4>
+    <ul tal:condition="submission.files">
+      <li tal:repeat="f sorted(submission.files)">
+        <a href="${request.route_path('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
       </li>
     </ul>
-  </div>
 
-  <div tal:condition="submission.verified_at and not pending and not diff_table">
-    It appears that there is nothing to do.
-  </div>
+    <p tal:condition="not submission.verified_at">
+      The submission is still being verified.
+    </p>
 
-  <!-- Tests that are still pending -->
-  <div tal:condition="pending">
-    <h3><span style="color:red">Note:</span> The following test groups are still pending: ${_fp(sum([t.points() for t in pending]))}</h3>
-    <ul>
-      <li tal:repeat="testable sorted(pending)">
-	${testable.name} ${_fp(testable.points())}
-      </li>
-    </ul>
-  </div>
-
-  <!-- Test case summary block -->
-  <div tal:condition="diff_table"
-       tal:replace="structure diff_table"></div>
-
-  <!-- For each test group, reasons for failure (if applicable) -->
-  <div tal:repeat="status sorted(testable_statuses)">
-    <div tal:condition="status.issue" style="border:1px solid">
-      <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
-      <p><strong>Reason</strong>: ${status.issue}</p>
-      <pre tal:condition="status.show_make_output" class="make_output">${status.testable_result.make_results}</pre>
-      <ul tal:condition="status.issues">
-	<li tal:repeat="(file, grouped) sorted(status.issues.items())">
-	  <b>${file}</b>
+    <!-- Verification results block -->
+    <div tal:condition="submission.verified_at and verification_issues">
+      <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:orange">orange</span> indicates warnings.</p>
+      <ul>
+        <li tal:repeat="filename sorted(verification_issues)">
+	  <b>${filename}</b>
 	  <ul>
-	    <li style="color:orange" tal:repeat="warning grouped[0]">
-	      ${warning}
+	    <li tal:repeat="warning verification_issues[filename][0]">
+	      <span style="color:orange">Line ${warning['lineno']}: <strong>${warning['token']}</strong></span>
 	    </li>
-	    <li style="color:red" tal:repeat="error grouped[1]">
-	      ${error}
+	    <li tal:repeat="error verification_issues[filename][1]">
+	      <span style="color:red">${error}</span>
 	    </li>
 	  </ul>
-	</li>
+        </li>
+      </ul>
+    </div>
+
+    <div tal:condition="submission.verified_at and not pending and not diff_table">
+      It appears that there is nothing to do.
+    </div>
+
+    <!-- Tests that are still pending -->
+    <div tal:condition="pending">
+      <h3><span style="color:red">Note:</span> The following test groups are still pending: ${_fp(sum([t.points() for t in pending]))}</h3>
+      <ul>
+        <li tal:repeat="testable sorted(pending)">
+	  ${testable.name} ${_fp(testable.points())}
+        </li>
+      </ul>
+    </div>
+
+    <!-- Test case summary block -->
+    <div tal:condition="diff_table"
+         tal:replace="structure diff_table"></div>
+
+    <!-- For each test group, reasons for failure (if applicable) -->
+    <div tal:repeat="status sorted(testable_statuses)">
+      <div tal:condition="status.issue" style="border:1px solid">
+        <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
+        <p><strong>Reason</strong>: ${status.issue}</p>
+        <pre tal:condition="status.show_make_output" class="make_output">${status.testable_result.make_results}</pre>
+        <ul tal:condition="status.issues">
+	  <li tal:repeat="(file, grouped) sorted(status.issues.items())">
+	    <b>${file}</b>
+	    <ul>
+	      <li style="color:orange" tal:repeat="warning grouped[0]">
+	        ${warning}
+	      </li>
+	      <li style="color:red" tal:repeat="error grouped[1]">
+	        ${error}
+	      </li>
+	    </ul>
+	  </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Show the user any extra filenames that were submitted -->
+    <div tal:condition="extra_files">
+      <hr />
+      <h3>Extra files that were submitted</h3>
+      <ul>
+        <li tal:repeat="file extra_files">
+	  ${file}
+        </li>
       </ul>
     </div>
   </div>
 
-  <!-- Show the user any extra filenames that were submitted -->
-  <div tal:condition="extra_files">
-    <hr />
-    <h3>Extra files that were submitted</h3>
-    <ul>
-      <li tal:repeat="file extra_files">
-	${file}
-      </li>
-    </ul>
+  <div metal:fill-slot="eof_content">
+    <link rel="stylesheet" href="${request.static_path('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}" type="text/css" media="screen" />
+    <link href="${request.static_path('nudibranch:static/css/diff.css')}" rel="stylesheet">
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
+    <script src="${request.static_path('nudibranch:static/js/diff.js')}"></script>
+    <script>
+      $(function() {
+          $("#requeue").on("click", function(event) {
+              if (confirm("Are you sure you want to requeue this submission?")) {
+                  $.ajax({url: window.location.href, type: 'put',
+                          complete: handle_response});
+              }
+          });
+          $("#regenerate").on("click", function(event) {
+              $("#dialog-confirm").dialog("open");
+          });
+          $("#dialog-confirm").dialog({
+              autoOpen: false,
+              resizable: false,
+              width: 540,
+              modal: true,
+              buttons: {
+                  Cancel: function() { $(this).dialog("close"); },
+                  "regenerate expected output": function() {
+                      $.ajax({url: window.location.href + '/gen', type: 'put',
+                              complete: handle_response});
+                  }
+              }
+          });
+      });
+    </script>
   </div>
-</div>
-</div>
+</metal:block>

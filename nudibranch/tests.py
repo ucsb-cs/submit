@@ -127,20 +127,6 @@ class BaseAPITest(unittest.TestCase):
         Session.remove()
 
 
-class BasicTests(BaseAPITest):
-    def test_site_layout_decorator(self):
-        from nudibranch.views import home
-        request = self.make_request()
-        info = home(request)
-        self.assertRaises(ValueError, info['_S'], 'favicon.ico')
-
-    def test_home(self):
-        from nudibranch.views import home
-        request = self.make_request()
-        info = home(request)
-        self.assertEqual('Home', info['page_title'])
-
-
 class ClassTests(BaseAPITest):
     """The the API methods involved with modifying class information."""
 
@@ -187,7 +173,6 @@ class ClassTests(BaseAPITest):
         request = self.make_request()
         info = class_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Create Class', info['page_title'])
 
     def test_class_list(self):
         from nudibranch.views import class_list
@@ -596,7 +581,6 @@ class ProjectTests(BaseAPITest):
             matchdict={'project_id': text_type(project.id)}, user=user)
         info = project_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Edit Project', info['page_title'])
         self.assertEqual(project.class_.id, info['project'].class_.id)
 
     def test_new(self):
@@ -607,7 +591,6 @@ class ProjectTests(BaseAPITest):
                                     user=user)
         info = project_new(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Create Project', info['page_title'])
         self.assertEqual(class_.id, info['project'].class_.id)
 
     def test_update_duplicate(self):
@@ -848,7 +831,6 @@ class SessionTests(BaseAPITest):
         request = self.make_request()
         info = session_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Login', info['page_title'])
 
 
 class SubmissionTests(BaseAPITest):
@@ -1232,7 +1214,6 @@ class UserTests(BaseAPITest):
         request = self.make_request()
         info = user_edit(request)
         self.assertEqual(HTTPOk.code, request.response.status_code)
-        self.assertEqual('Create User', info['page_title'])
 
     def test_user_list(self):
         from nudibranch.views import user_list
