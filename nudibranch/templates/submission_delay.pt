@@ -1,27 +1,25 @@
-<div metal:use-macro="_LAYOUT">
-<div metal:fill-slot="content">
-  <h3>Submission</h3>
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Submission Results</h1>
+    <div>Student(s): ${submission.group.users_str}
+      <span tal:condition="not submission_admin and
+                           request.user.can_join_group(submission.project)">(<a href="${request.route_path('project_group',
+                                                                                      project_id=submission.project.id)}">Join Group</a>)</span>
+    </div>
+    <div>Class: <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
+    <div tal:condition="submission_admin">Project: <a href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
+    <div tal:condition="not submission_admin">
+      Project: <a href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
+    </div>
+    <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
 
+    <h4>Submission Files</h4>
+    <ul tal:condition="submission.files">
+      <li tal:repeat="f sorted(submission.files)">
+        <a href="${request.route_path('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
+      </li>
+    </ul>
 
-  <div>Student(s): ${submission.group.users_str}
-    <span tal:condition="not submission_admin and
-    request.user.can_join_group(submission.project)">(<a href="${request.route_path('project_group',
-    project_id=submission.project.id)}">Join Group</a>)</span>
+    <div class="alert">You can see the results of this submission in ${delay}.</div>
   </div>
-  <div>Class: <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
-  <div tal:condition="submission_admin">Project: <a href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
-  <div tal:condition="not submission_admin">
-    Project: <a href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
-  </div>
-  <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
-
-  <h4>Submission Files</h4>
-  <ul tal:condition="submission.files">
-    <li tal:repeat="f sorted(submission.files)">
-      <a href="${request.route_path('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
-    </li>
-  </ul>
-
-  <p>You can see the results of this submission in ${delay}.</p>
-</div>
-</div>
+</metal:block>
