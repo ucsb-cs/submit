@@ -596,7 +596,7 @@ def project_group_request_confirm(request, project, group_request):
     if failed:
         return http_gone(request, redir_location=url)
     request.session.flash('Joined group with {}'
-                          .format(group_request.from_user))
+                          .format(group_request.from_user), 'successes')
     return http_ok(request, redir_location=url)
 
 
@@ -635,7 +635,8 @@ def project_group_request_create(request, project, username):
                       .format(site_name, project.class_.name, project.name),
                       recipients=[user.username], body=body)
     get_mailer(request).send(message)
-    request.session.flash('Request to {} sent via email.'.format(user))
+    request.session.flash('Request to {} sent via email.'.format(user),
+                          'successes')
     return http_ok(request, redir_location=request.url)
 
 
@@ -650,17 +651,15 @@ def project_group_request_delete(request, project, group_request):
     else:
         msg = 'Denied request from {}.'.format(group_request.from_user)
     Session.delete(group_request)
-    request.session.flash(msg)
+    request.session.flash(msg, 'successes')
     url = request.route_url('project_group', project_id=project.id)
     return http_ok(request, redir_location=url)
 
 
 @view_config(route_name='project_group', request_method='GET',
-             renderer='templates/project_group.pt',
+             renderer='templates/forms/project_group.pt',
              permission='authenticated')
 @validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT))
-@site_layout('nudibranch:templates/layout.pt',
-             'nudibranch:templates/macros.pt')
 def project_group_view(request, project):
     assoc = request.user.fetch_group_assoc(project)
     members = assoc.group.users_str if assoc else request.user.name
@@ -668,9 +667,8 @@ def project_group_view(request, project):
     requested = GroupRequest.query_by(from_user=request.user,
                                       project=project).first()
     can_join = request.user.can_join_group(project)
-    return {'page_title': 'Group management', 'project': project,
-            'members': members, 'can_join': can_join, 'pending': pending.all(),
-            'requested': requested, 'flash': request.session.pop_flash()}
+    return {'project': project, 'members': members, 'can_join': can_join,
+            'pending': pending.all(), 'requested': requested}
 
 
 @view_config(route_name='project_info', request_method='GET',
