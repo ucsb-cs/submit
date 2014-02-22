@@ -2,8 +2,8 @@
   <div metal:fill-slot="content">
     <h1>${class_.name}
       <span tal:condition="class_admin and not class_.is_locked" tal:omit-tag="">
-        <a class="btn btn-success" href="${request.route_path('class.admins', class_name=class_.name)}">Edit Class Admins</a>
-        <a class="btn btn-info" href="${request.route_path('project_new', class_name=class_.name)}">Create New Project</a>
+        <a class="btn btn-success" href="${request.route_path('class.admins', class_name=class_.name)}"><i class="icon-white icon-lock"></i> Edit Class Admins</a>
+        <a class="btn btn-info" href="${request.route_path('project_new', class_name=class_.name)}"><i class="icon-white icon-plus"></i> Create New Project</a>
       </span>
     </h1>
     <div tal:condition="class_.is_locked" class="alert alert-danger">This
@@ -16,9 +16,7 @@
           <span tal:condition="class_admin" tal:omit-tag="">
             <td>
               <a href="${request.route_path('project_edit', project_id=project.id)}"
-                       class="btn btn-warning btn-mini">edit</a>
-            </td>
-            <td>
+                 class="btn btn-warning btn-mini"><i class="icon-white icon-pencil"></i> Edit</a>
               <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
             </td>
             <td>
@@ -29,8 +27,10 @@
             </td>
           </span>
           <td tal:condition="not class_admin"><a href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a></td>
-          <td><a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a></td>
-          <td><span tal:condition="project.deadline" class="badge">${project.deadline}</span></td>
+          <td>
+            <a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
+            <span tal:condition="project.deadline" class="badge">${project.deadline}</span>
+          </td>
         </tr>
       </div>
     </table>
