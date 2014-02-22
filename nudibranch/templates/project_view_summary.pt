@@ -1,26 +1,20 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
-    <h1>Student Submissions Overview</h1>
-
-    <p>Info for <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
-      (<a href="${request.route_path('project_edit', project_id=project.id)}">edit</a>)</p>
-
-    <p>Make a submission <a href="${request.route_path('submission_new', project_id=project.id)}">here</a> or via <code>~bboe/bin/submit -p ${project.class_.name}:${project.id} ${project.submit_string()}</code></p>
-
-    <p tal:condition="recent_submissions"><a href="${request.route_path('project_item_download', project_id=project.id)}">Download most recent submissions</a></p>
-    <p><a href="${request.route_path('project_group_admin', project_id=project.id)}">Manually join groups</a></p>
+    <h1><a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
+      <a class="btn btn-warning" href="${request.route_path('project_edit', project_id=project.id)}"><i class="icon-white icon-pencil"></i> Edit</a>
+      <a class="btn btn-success" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
+      <a class="btn btn-info" href="${request.route_path('project_group_admin', project_id=project.id)}"><i class="icon-white icon-share"></i> Join Groups</a>
+      <a class="btn btn-inverse" tal:condition="recent_submissions" href="${request.route_path('project_item_download', project_id=project.id)}"><i class="icon-white icon-download"></i> Download Submissions</a>      
+    </h1>
 
     <div tal:condition="recent_submissions">
       <div tal:condition="num_groups">
-        <h3>Stats (student submissions only)</h3>
-        <table style="text-align: center">
-          <tr>
-            <td>Total Submissions</td><td>${len(project.student_submissions)}</td>
-            <td>Max Score</td><td>${max}</td>
-            <td>Mean Score</td><td>${'{:.2f}'.format(mean)}</td>
-            <td>Median Score</td><td>${'{:.2f}'.format(median)}</td>
-          </tr>
-        </table>
+        <h3>Stats (student submissions only)
+          <span class="label">Total Submissions: ${len(project.student_submissions)}</span>
+          <span class="label">Max Score: ${max}</span>
+          <span class="label">Mean Score: ${'{:.2f}'.format(mean)}</span>
+          <span class="label">Median Score: ${'{:.2f}'.format(median)}</span>
+        </h3>
         <div id="piechart"></div>
         <script type="text/javascript" src="//www.google.com/jsapi"></script>
         <script type="text/javascript">
@@ -51,30 +45,29 @@
     </div>
 
     <div tal:condition="submissions">
-      <table border="1">
-        <tr>
-          <th>Student(s)</th>
-          <th>Submissions (Most Recent Three Shown)</th>
-        </tr>
-        <tr tal:repeat="(group, group_submissions) submissions">
-          <td>
-            <div tal:repeat="user sorted(group.users)">
-              <a href="${request.route_path('user_item', username=user.username)}">
-                ${user.name}</a>
-            </div>
-          </td>
-          <td>
-            <ul tal:condition="group_submissions">
-              <li tal:repeat="group_submission group_submissions">
+      <table class="table table-striped table-condensed">
+        <thead>
+          <tr>
+            <th>Student(s)</th>
+            <th>Submissions (Most Recent and Best Shown)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr tal:repeat="(group, group_submissions) submissions">
+            <td>
+              <div tal:repeat="user sorted(group.users)">
+                <a href="${request.route_path('user_item', username=user.username)}">
+                  ${user.name}</a>
+              </div>
+            </td>
+            <td>
+              <div tal:repeat="group_submission group_submissions">
                 ${structure: group_submission.time_score(request, admin=True)}
-              </li>
-              <li tal:condition="group in group_truncated">
-                <a href="${request.route_path('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}">
-                  See all submissions...</a>
-              </li>
-            </ul>
-          </td>
-        </tr>
+              </div>
+              <a class="btn btn-mini" tal:condition="group in group_truncated" href="${request.route_path('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}"> More Submissions</a>
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
     <p tal:condition="not submissions">
