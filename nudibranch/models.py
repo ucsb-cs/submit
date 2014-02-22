@@ -616,27 +616,37 @@ class Submission(BasicBase, Base):
 
     def time_score(self, request, group=False, admin=False):
         url = request.route_path('submission_item', submission_id=self.id)
-        fmt = '<a href="{url}">{created}</a>{name} ({score}){modifier}'
+        fmt = '<a href="{url}">{created}</a>{name} {score} {modifier}'
         if not self.verification_results:
-            score = '<strong>waiting to verify submission</strong>'
+            score = '<span class="label">waiting to verify submission</span>'
         elif self.testables_pending():
-            score = '<strong>waiting for results</strong>'
+            score = '<span class="label">waiting for results</span>'
         elif not admin and self.get_delay(update=False):
-            score = '<strong>waiting for delay to expire</strong>'
+            score = '<span class="label">waiting for delay to expire</span>'
         else:
-            score = '{} / {}'.format(
-                self.points(include_hidden=admin),
-                self.project.points_possible(include_hidden=admin))
-        name = ' by {}'.format(self.group.users_str) if group else ''
-        if self.is_late:
-            if getattr(self, '_is_best', False):
-                modifier = ' [late] *best'
+            points = self.points(include_hidden=admin)
+            possible = self.project.points_possible(include_hidden=admin)
+            score = 100 * points / possible if possible else 0
+            if score >= 100:
+                style = 'badge-info'
+            elif score >= 90:
+                style = 'badge-success'
+            elif score >= 75:
+                style = ''
+            elif score >= 60:
+                style = 'badge-warning'
+            elif score == 0:
+                style = 'badge-inverse'
             else:
-                modifier = ' [late]'
-        elif getattr(self, '_is_best', False):
-            modifier = ' *best'
-        else:
-            modifier = ''
+                style = 'badge-important'
+            score = ('<span class="badge {}">{} / {}</span>'
+                     .format(style, points, possible))
+        name = ' by {}'.format(self.group.users_str) if group else ''
+        modifier = ''
+        if self.is_late:
+            modifier += '<span class="label label-important">Late</span>'
+        if getattr(self, '_is_best', False):
+            modifier += '<span><i class="icon-star"></i></span>'
 
         return fmt.format(url=url, created=self.created_at,
                           name=name, score=score, modifier=modifier)
