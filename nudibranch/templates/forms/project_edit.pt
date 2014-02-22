@@ -15,37 +15,48 @@
     <div class="alert alert-danger" tal:condition="project.status == 'locked'">
       This project is locked. You will not be able to make any changes.</div>
 
-    <form id="project_form" name="input" action="${action}"
+    <form class="form-horizontal well" role="form" classid="project_form" name="input" action="${action}"
           onsubmit="return form_request(this, 'POST', true);">
-      <fieldset>
-        <legend>Basic Settings</legend>
-        <label for="name">Name</label>
-        <br/>
-        <input type="text" name="name" id="name" value="${project.name}" />
-        <br/>
-        <label for="group_max">Maximum Group Size</label>
-        <br/>
-        <input type="text" name="group_max" id="group_max" value="${project.group_max}" />
-        <br/>
-        <label for="deadline">Deadline (Empty or valid date/time format such as YYYY-MM-DD HH:MM)</label>
-        <br/>
-        <input type="text" name="deadline" id="deadline" value="${project.deadline}" style="width:200px" />
-        <br/>
-        <label for="delay_minutes">Submission Results Delay (in minutes)</label>
-        <br/>
-        <input type="text" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}" />
-        <br/>
-        <label for="is_ready">Ready for Submission</label>
-        <input type="checkbox" name="is_ready" id="is_ready" value="1" tal:attributes="checked 'checked' if project.is_ready else None"/>
-        <br/>
-        <div tal:condition="project.makefile">
-          <a href="${request.route_path('file_item', sha1sum=project.makefile.sha1, filename='Makefile')}">Existing Makefile</a></div>
-        <label for="makefile">Select a Makefile: </label>
-        <input name="makefile_id" id="makefile" type="file" />
-        <input type="hidden" name="makefile_id" value="${project.makefile_id}" />
-        <br/>
-        <input type="submit" name="submit" value="Update" />
-      </fieldset>
+      <div>
+        <label class="control-label" for="name">Name</label>
+        <div class="controls">
+          <input type="text" name="name" id="name" value="${project.name}">
+        </div>
+      </div>
+      <div>
+        <label class="control-label" for="group_max">Maximum Group Size</label>
+        <div class="controls">
+          <input class="input-small" type="text" name="group_max" id="group_max" value="${project.group_max}">
+        </div>
+      </div>
+      <div>
+        <label class="control-label" for="deadline">Deadline</label>
+        <div class="controls">
+          <input type="text" name="deadline" id="deadline" value="${project.deadline}">
+        </div>
+      </div>
+      <div>
+        <label class="control-label" for="delay_minutes">Results Delay</label>
+        <div class="controls">
+          <input class="input-small" type="text" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}"> minutes
+        </div>
+      </div>
+      <div>
+        <label class="control-label" for="makefile">Makefile</label>
+        <div class="controls">
+          <a class="btn btn-info btn-mini" tal:condition="project.makefile" href="${request.route_path('file_item', sha1sum=project.makefile.sha1, filename='Makefile')}">Existing Makefile</a>
+          <input name="makefile_id" id="makefile" type="file">
+        </div>
+      </div>
+      <div>
+        <div class="controls">
+          <label class="checkbox">
+            <input type="checkbox" name="is_ready" id="is_ready" value="1" tal:attributes="checked 'checked' if project.is_ready else None"> Ready for submissions
+          </label>
+          <input type="hidden" name="makefile_id" value="${project.makefile_id}">
+          <button type="submit" class="btn btn-default">Update Project Settings</button>
+        </div>
+      </div>
     </form>
 
     <h3><span class="help" title="A testable defines the parameters for a single executable that is produced from the student's submission.">Testables</span></h3>
