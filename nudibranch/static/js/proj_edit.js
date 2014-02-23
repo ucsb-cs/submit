@@ -134,11 +134,11 @@ table-hover">');
             other += '<span class="label label-info">stdin</span>'
         if (data['source'] != 'stdout')
             other += '<span class="label">{0}</span>'._format(data['source']);
-        if (data['hide_expected'])
-            other += '<span class="label label-important">Hide Expected</span>'
         if (data['output_type'] != 'diff')
             other += '<span class="label label-inverse">{0}</span>'._format(
                 data['output_type']);
+        else if (data['hide_expected'])
+            other += '<span class="label label-important">Hide Expected</span>'
         $('<tr><td><span class="btn btn-warning btn-mini" onclick="$(\'#update\
 _tc_{0}\').dialog(\'open\');"><i class="icon-white icon-pencil"></i> Edit\
 </span> {1}</td><td>{2}</td></tr>'
