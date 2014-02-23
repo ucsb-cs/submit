@@ -28,8 +28,8 @@ function files_form(category, info, ids) {
         new_title = '<i class="icon-white icon-list"></i> Define'
     }
     lcn = lcn || name.replace(' ', '_').toLowerCase();
-    var retval = $('<div class="span4 well well-small"><h3>Select {0}s</h3>'
-                   ._format(name));
+    var retval = $('<div class="pull-left well well-small"><h3>Select {0}s\
+</h3>'._format(name));
     for (var i = 0; i < info.length; ++i) {
         var f = info[i];
         var checked = $.inArray(f['id'], ids) != -1 ? 'checked="checked"' : '';
@@ -48,15 +48,19 @@ View</a>'._format(file_path, f['file_hex'], f['name'])
 "$(\'#file_verifier_{0}\').dialog(\'open\');"><i class="icon-white \
 icon-pencil"></i> Edit</span>'._format(f['id']);
         }
-
-        hfd(lhs, ('<label class="checkbox"><input type="checkbox" ' +
-                  'name="{0}_ids[]" value="{1}" {2}>  {3}</label>')
-            ._format(lcn, f['id'], checked, f['name'])).appendTo(retval);
+        var rhs = '<label class="checkbox"><input type="checkbox" name="{0}_\
+ids[]" value="{1}" {2}>  {3}</label>'._format(lcn, f['id'], checked,
+                                              f['name']);
+        var div = $('<div>');
+        $('<div class="pull-left">').append($(lhs)).appendTo(div);
+        $('<div class="pull-left" style="margin-left:5px">').append($(rhs))
+            .appendTo(div);
+        $('<div class="clearfix">').appendTo(div);
+        div.appendTo(retval);
     }
-    hfd('',
-        ('<span class="btn btn-success btn-mini" onclick="$(\'#{0}_new\')' +
-         '.dialog(\'open\');">{2} {1}</span>')._format(lcn, name, new_title))
-        .appendTo(retval);
+    $('<div style="text-align: center">').append($('<span class="btn \
+btn-success btn-mini" onclick="$(\'#{0}_new\').dialog(\'open\');">{1} {2}\
+</span>'._format(lcn, new_title, name))).appendTo(retval);
     return retval;
 }
 function testable_div(info) {
@@ -80,42 +84,36 @@ function testable_div(info) {
     files_form(1, execution_files, info['execution_files']).appendTo(row);
     files_form(2, expected_files, info['expected_files']).appendTo(row);
     row.appendTo(form);
-    var row = $('<div class="row-fluid show-grid">');
-    var tmp = $('<div class="span6 offset3">');
     hfd('<label for="testable_name_{0}">Testable Name</label>'
         ._format(info['id']),
         '<input type="text" id="testable_name_{0}" name="name" value="{1}">'
-        ._format(info['id'], tb_name)).appendTo(tmp);
+        ._format(info['id'], tb_name)).appendTo(form);
     hfd('<label for="make_target_{0}">Make Target</label>'
         ._format(info['id']),
         ('<input type="text" id="make_target_{0}" name="make_target" ' +
          'placeholder="do not run make" value="{1}">')
-        ._format(info['id'], info['target'] || '')).appendTo(tmp);
+        ._format(info['id'], info['target'] || '')).appendTo(form);
     hfd('<label for="executable_{0}">Executable</label>'
         ._format(info['id']),
         ('<input type="text" id="executable_{0}" name="executable" ' +
          'value="{1}">')._format(info['id'], info['executable']))
-        .appendTo(tmp);
+        .appendTo(form);
     hfd('',
         '<label class="checkbox"><input type="checkbox" name="is_hidden" ' +
         'value="1" {0}> Hide results from students</label>'._format(hidden))
-        .appendTo(tmp);
-    tmp.appendTo(row);
-    row.appendTo(form);
-    var tmp = $('<div style="text-align: center">');
+        .appendTo(form);
     if (info['id'] == 'new') {
         $('<input type="hidden" name="project_id" value="{0}"/>'
-          ._format(proj_id)).appendTo(tmp);
+          ._format(proj_id)).appendTo(form);
         $('<button class="btn btn-success" type="submit">Add Testable</button>'
-         ).appendTo(tmp);
+         ).appendTo(form);
     }
     else {
         $('<button class="btn btn-warning" type="submit">Update {0}</button>\
 <span class="btn btn-danger button-delete" data-name="{0}" \
 data-url="/testable/{1}"><i class="icon-white icon-trash"></i> Delete \
-{0}</span>'._format(info['name'], info['id'])).appendTo(tmp);
+{0}</span>'._format(info['name'], info['id'])).appendTo(form);
     }
-    tmp.appendTo(form);
     form.appendTo(div);
     $('<hr><h3>Test Cases <span class="btn btn-success" onclick="$(\'#testable\
 _{0}_tc_new\').dialog(\'open\');"><i class="icon-white icon-fire"></i> New \
@@ -164,7 +162,7 @@ function add_testables(testable_data) {
 $(function() {
     add_testables(testables);
 
-    $(".dialog").dialog({autoOpen: false, width: 400});
+    $(".dialog").dialog({autoOpen: false, modal: true, width: 'auto'});
     $("#testable_tab").tabs();
     $(".button-delete").on("click", function(event) {
         var name = event.target.getAttribute("data-name");

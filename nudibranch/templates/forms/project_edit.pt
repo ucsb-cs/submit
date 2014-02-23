@@ -26,7 +26,7 @@
       <div>
         <label class="control-label" for="group_max">Maximum Group Size</label>
         <div class="controls">
-          <input class="input-small" type="text" name="group_max" id="group_max" value="${project.group_max}">
+          <input class="input-small" type="number" name="group_max" id="group_max" value="${project.group_max}">
         </div>
       </div>
       <div>
@@ -38,7 +38,7 @@
       <div>
         <label class="control-label" for="delay_minutes">Results Delay</label>
         <div class="controls">
-          <input class="input-small" type="text" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}"> minutes
+          <input class="input-small" type="number" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}"> minutes
         </div>
       </div>
       <div>
@@ -84,7 +84,7 @@
       </form>
     </div>
 
-    <div id="file_verifier_new" class="dialog" title="Add New Expected File" style="background: #ccf">
+    <div id="file_verifier_new" class="dialog" title="Add New Expected File">
       <form name="file_verifier" action="${request.route_path('file_verifier')}"
             onsubmit="return form_request(this, 'PUT', true);">
         <label for="fv_filename_new">Filename</label>
@@ -230,62 +230,90 @@
         </form>
       </div>
       <div id="testable_${testable.id}_tc_new" class="dialog"
-           title="Add new test case" style="background: #ccf">
-        <form name="test_case" action="${request.route_path('test_case')}"
+           title="Add new test case">
+        <form role="form" class="form-horizontal" name="test_case"
+              action="${request.route_path('test_case')}"
               onsubmit="return form_request(this, 'PUT', true);">
-          <label for="testable_${testable.id}_tc_name_new">Test Name</label>
-          <input type="text" name="name" id="testable_${testable.id}_tc_name_new">
-          <label for="testable_${testable.id}_tc_args_new">Execution line</label>
-          <input type="text" name="args" id="testable_${testable.id}_tc_args_new" value="a.out">
-          <label for="testable_${testable.id}_tc_points_new">Points</label>
-          <input type="text" name="points" id="testable_${testable.id}_tc_points_new" value="1">
-          <label for="testable_${testable.id}_tc_input_new">Select a standard input file: </label>
-          <input name="stdin_id" id="testable_${testable.id}_tc_input_new" type="file">
-          <input type="hidden" name="stdin_id" value="">
-          Output file source:
-          <div style="margin-left: 20px">
-            <input id="testable_${testable.id}_tc_source_stdout_new" name="output_source"
-                   type="radio" value="stdout" class="toggle_tc_file" checked="checked"
-                   data-testable="${testable.id}" data-tc="new">
-            <label for="testable_${testable.id}_tc_source_stdout_new">STDOUT</label>
-            <input id="testable_${testable.id}_tc_source_stderr_new" name="output_source"
-                   type="radio" value="stderr" class="toggle_tc_file"
-                   data-testable="${testable.id}" data-tc="new">
-            <label for="testable_${testable.id}_tc_source_stderr_new">STDERR</label>
-            <input id="testable_${testable.id}_tc_source_file_new" name="output_source"
-                   type="radio" value="file" class="toggle_tc_file"
-                   data-testable="${testable.id}" data-tc="new">
-            <label for="testable_${testable.id}_tc_source_file_new">named file</label>
+          <div>
+            <label class="control-label" for="testable_${testable.id}_tc_name_new">Test Name</label>
+            <div class="controls">
+              <input type="text" name="name" id="testable_${testable.id}_tc_name_new">
+            </div>
+          </div>
+          <div>
+            <label class="control-label" for="testable_${testable.id}_tc_args_new">Execution line</label>
+            <div class="controls">
+              <input type="text" name="args" id="testable_${testable.id}_tc_args_new" value="a.out">
+            </div>
+          </div>
+          <div>
+            <label class="control-label" for="testable_${testable.id}_tc_points_new">Points</label>
+            <div class="controls">
+              <input class="input-small" type="number" name="points" id="testable_${testable.id}_tc_points_new" value="1">
+            </div>
+          </div>
+          <div>
+            <label class="control-label" for="testable_${testable.id}_tc_input_new">Standard input file</label>
+            <div class="controls">
+              <input name="stdin_id" id="testable_${testable.id}_tc_input_new" type="file">
+              <input type="hidden" name="stdin_id" value="">
+            </div>
+          </div>
+          <div>
+            <label class="control-label">Output file source</label>
+            <div class="controls">
+              <label class="radio">
+                <input name="output_source" type="radio" value="stdout"
+                       class="toggle_tc_file" checked="checked"
+                       data-testable="${testable.id}" data-tc="new"> STDOUT</label>
+              <label class="radio">
+                <input name="output_source" type="radio" value="stderr"
+                       class="toggle_tc_file"
+                       data-testable="${testable.id}" data-tc="new"> STDERR</label>
+              <label class="radio">
+                <input name="output_source" type="radio" value="file"
+                       class="toggle_tc_file"
+                       data-testable="${testable.id}" data-tc="new"> named file</label>
+            </div>
           </div>
           <div id="testable_${testable.id}_new_file_div" style="display: None">
-            <label for="testable_${testable.id}_tc_output_filename_new">Output file name</label>
-            <input type="text" name="output_filename"
-                   id="testable_${testable.id}_tc_output_filename_new" disabled="disabled">
+            <label class="control-label" for="testable_${testable.id}_tc_output_filename_new">Output file name</label>
+            <div class="controls">
+              <input type="text" name="output_filename"
+                     id="testable_${testable.id}_tc_output_filename_new"
+                     disabled="disabled">
+            </div>
           </div>
-          Output file handling:
-          <div style="margin-left: 20px">
-            <input id="testable_${testable.id}_tc_type_diff_new" name="output_type"
-                   type="radio" value="diff" class="toggle_tc_expected" checked="checked"
-                   data-testable="${testable.id}" data-tc="new">
-            <label for="testable_${testable.id}_tc_type_diff_new">Diff</label>
-            <input id="testable_${testable.id}_tc_type_text_new" name="output_type"
-                   type="radio" value="text"  class="toggle_tc_expected"
-                   data-testable="${testable.id}" data-tc="new">
-            <label for="testable_${testable.id}_tc_type_text_new">Save (text)</label>
-            <input id="testable_${testable.id}_tc_type_image_new" name="output_type"
-                   type="radio" value="image"  class="toggle_tc_expected"
-                   data-testable="${testable.id}" data-tc="new">
-            <label for="testable_${testable.id}_tc_type_image_new">Save (image)</label>
+          <div>
+            <label class="control-label">Output file handling</label>
+            <div class="controls">
+              <label class="radio">
+                <input name="output_type" type="radio" value="diff"
+                       class="toggle_tc_expected" checked="checked"
+                       data-testable="${testable.id}" data-tc="new"> Diff</label>
+              <label class="radio">
+                <input name="output_type" type="radio" value="text"
+                       class="toggle_tc_expected" data-testable="${testable.id}"
+                       data-tc="new"> Save (text)</label>
+              <label class="radio">
+                <input name="output_type" type="radio" value="image"
+                       class="toggle_tc_expected" data-testable="${testable.id}"
+                       data-tc="new"> Save (image)</label>
+            </div>
           </div>
-          <fieldset id="testable_${testable.id}_new_expected_div">
-            <legend>Diff settings</legend>
-            <label for="testable_${testable.id}_tc_expected_new">Select the expected output file: </label>
-            <input name="expected_id" id="testable_${testable.id}_tc_expected_new" type="file">
-            <input id="testable_${testable.id}_tc_expected_id_new" type="hidden"
-                   name="expected_id" value="">
-            <input type="checkbox" name="hide_expected" id="testable_${testable.id}_tc_hide_expected_new" value="1">
-            <label for="testable_${testable.id}_tc_hide_expected_new"><span class="help" title="This obscures the left-hand-side of the diff output in the student view thus preventing students from determining what their program should output.">Hide expected output</span></label>
-          </fieldset>
+          <div class="well well-small" id="testable_${testable.id}_new_expected_div">
+            <label class="control-label" for="testable_${testable.id}_tc_expected_new">Expected Output File</label>
+            <div class="controls">
+              <input name="expected_id" id="testable_${testable.id}_tc_expected_new" type="file">
+              <input id="testable_${testable.id}_tc_expected_id_new" type="hidden"
+                     name="expected_id" value="">
+            </div>
+            <div class="controls">
+              <label class="checkbox">
+                <input type="checkbox" name="hide_expected" value="1">
+                <span class="help" title="This obscures the left-hand-side of the diff output in the student view thus preventing students from determining what their program should output.">Hide expected output</span></label>
+            </div>
+          </div>
           <input type="hidden" name="testable_id" value="${testable.id}">
           <button name="submit">add</button>
         </form>
