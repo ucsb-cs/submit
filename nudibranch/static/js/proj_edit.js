@@ -25,7 +25,7 @@ function files_form(category, info, ids) {
         var name = 'Expected File';
         var path = expected_file_path;
         lcn = 'file_verifier';
-        new_title = 'Define'
+        new_title = '<i class="icon-white icon-list"></i> Define'
     }
     lcn = lcn || name.replace(' ', '_').toLowerCase();
     var retval = $('<div class="span4 well well-small"><h3>Select {0}s</h3>'
@@ -54,7 +54,7 @@ icon-pencil"></i> Edit</span>'._format(f['id']);
             ._format(lcn, f['id'], checked, f['name'])).appendTo(retval);
     }
     hfd('',
-        ('<span class="btn btn-success" onclick="$(\'#{0}_new\')' +
+        ('<span class="btn btn-success btn-mini" onclick="$(\'#{0}_new\')' +
          '.dialog(\'open\');">{2} {1}</span>')._format(lcn, name, new_title))
         .appendTo(retval);
     return retval;
@@ -80,39 +80,75 @@ function testable_div(info) {
     files_form(1, execution_files, info['execution_files']).appendTo(row);
     files_form(2, expected_files, info['expected_files']).appendTo(row);
     row.appendTo(form);
+    var row = $('<div class="row-fluid show-grid">');
+    var tmp = $('<div class="span6 offset3">');
     hfd('<label for="testable_name_{0}">Testable Name</label>'
         ._format(info['id']),
         '<input type="text" id="testable_name_{0}" name="name" value="{1}">'
-        ._format(info['id'], tb_name)).appendTo(form);
+        ._format(info['id'], tb_name)).appendTo(tmp);
     hfd('<label for="make_target_{0}">Make Target</label>'
         ._format(info['id']),
         ('<input type="text" id="make_target_{0}" name="make_target" ' +
          'placeholder="do not run make" value="{1}">')
-        ._format(info['id'], info['target'] || '')).appendTo(form);
+        ._format(info['id'], info['target'] || '')).appendTo(tmp);
     hfd('<label for="executable_{0}">Executable</label>'
         ._format(info['id']),
         ('<input type="text" id="executable_{0}" name="executable" ' +
          'value="{1}">')._format(info['id'], info['executable']))
-        .appendTo(form);
+        .appendTo(tmp);
     hfd('',
         '<label class="checkbox"><input type="checkbox" name="is_hidden" ' +
         'value="1" {0}> Hide results from students</label>'._format(hidden))
-        .appendTo(form);
+        .appendTo(tmp);
+    tmp.appendTo(row);
+    row.appendTo(form);
+    var tmp = $('<div style="text-align: center">');
     if (info['id'] == 'new') {
-        hfd('<input type="hidden" name="project_id" value="{0}"/>'
-            ._format(proj_id),
-            '<button class="btn btn-success" type="submit">' +
-            'Add Testable</button>').appendTo(form);
+        $('<input type="hidden" name="project_id" value="{0}"/>'
+          ._format(proj_id)).appendTo(tmp);
+        $('<button class="btn btn-success" type="submit">Add Testable</button>'
+         ).appendTo(tmp);
     }
     else {
-        hfd('',
-            ('<button class="btn btn-warning" type="submit">Update {0}' +
-             '</button><span class="btn btn-danger button-delete" ' +
-             'data-name="{0}" data-url="/testable/{1}"><i class="icon-white ' +
-             'icon-trash"></i> Delete {0}</span>')
-            ._format(info['name'], info['id'])).appendTo(form);
+        $('<button class="btn btn-warning" type="submit">Update {0}</button>\
+<span class="btn btn-danger button-delete" data-name="{0}" \
+data-url="/testable/{1}"><i class="icon-white icon-trash"></i> Delete \
+{0}</span>'._format(info['name'], info['id'])).appendTo(tmp);
     }
+    tmp.appendTo(form);
     form.appendTo(div);
+    $('<hr><h3>Test Cases <span class="btn btn-success" onclick="$(\'#testable\
+_{0}_tc_new\').dialog(\'open\');"><i class="icon-white icon-fire"></i> New \
+Test Case</span></h3>'._format(info['id'])).appendTo(div);
+    var table = $('<table role="table" class="table table-condensed \
+table-hover">');
+    $('<thead><tr><th>Test Name</th><th>Info</th></tr></thead>')
+        .appendTo(table);
+    var body = $('<tbody>');
+    for (var i = 0; i < info['test_cases'].length; ++i) {
+        var data = info['test_cases'][i];
+        var other = '<span class="badge">{0}</span>'._format(data['points']);
+        var args = data['args'].split(/\s+/);
+        if (args.length > 1)
+            other += ('<span class="label label-success">{0} args</span>'
+                      ._format(args.length));
+        if (data['stdin'])
+            other += '<span class="label label-info">stdin</span>'
+        if (data['source'] != 'stdout')
+            other += '<span class="label">{0}</span>'._format(data['source']);
+        if (data['hide_expected'])
+            other += '<span class="label label-important">Hide Expected</span>'
+        if (data['output_type'] != 'diff')
+            other += '<span class="label label-inverse">{0}</span>'._format(
+                data['output_type']);
+        $('<tr><td><span class="btn btn-warning btn-mini" onclick="$(\'#update\
+_tc_{0}\').dialog(\'open\');"><i class="icon-white icon-pencil"></i> Edit\
+</span> {1}</td><td>{2}</td></tr>'
+          ._format(data['id'], data['name'], other))
+            .appendTo(body);
+    }
+    body.appendTo(table);
+    table.appendTo(div);
     return div;
 }
 function add_testables(testable_data) {

@@ -489,7 +489,8 @@ class Project(BasicBase, Base):
     def testables_json(self):
         return json.dumps([x.edit_json(False) for x in sorted(self.testables)]
                           + [{'id': 'new', 'name': 'Add New', 'target': '',
-                              'executable': '', 'hidden': False}])
+                              'executable': '', 'hidden': False,
+                              'test_cases': []}])
 
     def verify_submission(self, base_path, submission, update):
         """Return list of testables that can be built."""
@@ -734,6 +735,13 @@ class TestCase(BasicBase, Base):
         """Return whether or not `user` can make changes to the test_case."""
         return self.testable.project.can_edit(user)
 
+    def edit_json(self, jsonify=False):
+        data = {'id': self.id, 'name': self.name, 'points': self.points,
+                'source': self.source, 'hide_expected': self.hide_expected,
+                'stdin': self.stdin is not None, 'args': self.args,
+                'output_type': self.output_type}
+        return json.dumps(data) if jsonify else data
+
     def serialize(self):
         data = dict([(x, getattr(self, x)) for x in ('args', 'id', 'source',
                                                      'output_filename')])
@@ -813,7 +821,9 @@ class Testable(BasicBase, Base):
                 'executable': self.executable, 'hidden': self.is_hidden,
                 'build_files': ids(self.build_files),
                 'execution_files': ids(self.execution_files),
-                'expected_files': ids(self.file_verifiers)}
+                'expected_files': ids(self.file_verifiers),
+                'test_cases': [x.edit_json(False) for x in
+                               sorted(self.test_cases)]}
         return json.dumps(data) if jsonify else data
 
     def points(self):
