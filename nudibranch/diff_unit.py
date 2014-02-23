@@ -103,16 +103,12 @@ class DiffRenderable(object):
         '''Returns a list of strings describing everything that's wrong'''
         raise NotImplemented
 
-    def wrong_things_html_list(self):
-        '''Returns all the things that were wrong in an html list, or None if
-        nothing was wrong'''
-        things = self.wrong_things()
-        if things:
-            list_items = ["<li>{0}</li>".format(escape(thing))
-                          for thing in things]
+    def wrong_things_html(self):
+        list_items = ["<li>{0}</li>".format(escape(thing))
+                      for thing in self.wrong_things()]
+        if list_items:
             return "<ul>{0}</ul>".format("\n".join(list_items))
-        else:
-            return None
+        return ''
 
     def extra_display(self):
         return ''

@@ -25,10 +25,9 @@ from .exceptions import GroupWithException, InvalidId
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
     EditableDBThing, TestableStatus, TextDate, ViewableDBThing, UmailAddress,
-    clone, fetch_request_ids, file_verifier_verification, format_points,
-    prepare_renderable, prev_next_submission, prev_next_group,
-    project_file_create, project_file_delete, test_case_verification,
-    zip_response)
+    clone, fetch_request_ids, file_verifier_verification, prepare_renderable,
+    prev_next_submission, prev_next_group, project_file_create,
+    project_file_delete, test_case_verification, zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -1018,8 +1017,12 @@ def submission_view(request, submission, as_user):
             diff_renderer.add_renderable(prepare_renderable(request, tcr,
                                                             submission_admin))
     if submission.verification_results:
-        extra_files = submission.verification_results.extra_filenames
-        verification_issues = submission.verification_results.issues()
+        mapping = submission.file_mapping()
+        extra_files = {x: mapping[x] for x in
+                       submission.verification_results.extra_filenames}
+        files = {x.filename: x.file for x in submission.files
+                 if x.filename not in extra_files}
+        warnings = submission.verification_results.warnings
         pending = submission.testables_pending()
 
         # Testable statuses
@@ -1028,15 +1031,13 @@ def submission_view(request, submission, as_user):
             by_testable[testable_result.testable] = testable_result
         testable_statuses = [
             TestableStatus(testable, by_testable.get(testable),
-                           verification_issues)
+                           submission.verification_results.errors)
             for testable in (set(submission.project.testables) - pending)
             if submission_admin or not testable.is_hidden]
         # Prune pending
         pending = [x for x in pending if submission_admin or not x.is_hidden]
     else:
-        extra_files = None
-        verification_issues = None
-        pending = None
+        extra_files = files = pending = warnings = None
         testable_statuses = []
 
     if submission.testables_succeeded():
@@ -1053,9 +1054,10 @@ def submission_view(request, submission, as_user):
     else:
         prev_group = next_group = None
 
-    return {'_fp': format_points,
-            'diff_table': diff_table,
+    return {'diff_table': diff_table,
             'extra_files': extra_files,
+            'files': files,
+            'has_issues': any(x.issue for x in testable_statuses),
             'next_sub': next_sub,
             'next_group': next_group,
             'pending': pending,
@@ -1064,7 +1066,7 @@ def submission_view(request, submission, as_user):
             'submission': submission,
             'submission_admin': submission_admin,
             'testable_statuses': testable_statuses,
-            'verification_issues': verification_issues}
+            'warnings': warnings}
 
 
 @view_config(route_name='test_case', request_method='PUT',

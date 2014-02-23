@@ -18,9 +18,9 @@ from .exceptions import InvalidId
 
 
 class TestableStatus(object):
-    def __init__(self, testable, testable_result, verification_issues):
+    def __init__(self, testable, testable_result, verification_errors):
         self.issue = None
-        self.issues = {x: y for (x, y) in verification_issues.items()
+        self.errors = {x: y for (x, y) in verification_errors.items()
                        if testable.requires_file(x)}
         self.show_make_output = False
         self.testable = testable
@@ -28,13 +28,14 @@ class TestableStatus(object):
 
         if testable_result:
             if testable_result.status == 'make_failed':
-                self.issue = 'Build failed (see make output)'
+                self.issue = 'Build failed'
                 self.show_make_output = True
             elif testable_result.status == 'nonexistent_executable':
                 self.issue = ('The expected executable was not created during '
                               'the build process')
         else:
-            self.issue = 'At least one of your files was invalid (see below)'
+            self.issue = ('One or more of the required files did not pass '
+                          'verification (see below)')
 
     def __cmp__(self, other):
         return cmp(self.testable, other.testable)
@@ -278,12 +279,6 @@ def file_verifier_verification(function):
         return function(request, *args, min_size=min_size, max_size=max_size,
                         min_lines=min_lines, max_lines=max_lines, **kwargs)
     return wrapped
-
-
-def format_points(points):
-    return "({0} {1})".format(
-        points,
-        "point" if points == 1 else "points")
 
 
 def get_queue_func(request):

@@ -24,7 +24,7 @@
          href="${request.route_path('project_group', project_id=project.id)}">Join Group</a>
     </div>
 
-    <div tal:condition="not submissions" class="alert alert-warning">
+    <div tal:condition="not submissions" class="alert">
       There are no submissions for: ${users_str}</div>
     <h3 tal:condition="submissions">
       Submissions for <strong>${users_str}</strong>:</h3>

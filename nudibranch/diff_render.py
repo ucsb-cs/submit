@@ -114,8 +114,6 @@ class HTMLDiff(difflib.HtmlDiff):
         """'difflib_chg_{0}_top');">Hide All</a>\n""" + \
         "</p>"
     FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}: {2}</h3>\n{3}'
-    TENTATIVE_SCORE_BLOCK = ('<p>Tentative execution score: {0} / {1} '
-                             '({2:.2f}%)</p>\n')
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
     NEXT_HREF_TOP = '<a href="#difflib_chg_{0}_top">t</a>'
@@ -144,22 +142,15 @@ class HTMLDiff(difflib.HtmlDiff):
         self._diff_html[diff] = self._make_html_for_diff(diff)
 
     def _make_html_for_diff(self, diff):
-        table = None
-        if diff.should_show_table():
-            table = self._make_table_for_diff(diff)
-        wrong_things = diff.wrong_things_html_list()
         inner = diff.extra_display()
-        if table:
-            inner += table
-        if wrong_things:
-            inner += wrong_things
-        if inner != '':
-            return self.FAILING_TEST_BLOCK.format(diff.name_id(),
-                                                  diff.escaped_group(),
-                                                  diff.escaped_name(),
-                                                  inner)
-        else:
+        if diff.should_show_table():
+            inner += self._make_table_for_diff(diff)
+        inner += diff.wrong_things_html()
+        if not inner:
             return None
+        return self.FAILING_TEST_BLOCK.format(diff.name_id(),
+                                              diff.escaped_group(),
+                                              diff.escaped_name(), inner)
 
     def make_table(self, diff):
         """Makes unique anchor prefixes so that multiple tables may exist
@@ -254,12 +245,11 @@ class HTMLDiff(difflib.HtmlDiff):
                     '<table border="1">\n  <tr><th>Test Group</th>'
                     '<th>Test Name</th><th>Value</th></tr>{1}</table>')
         failed = passed = ''
-        for diff in sorted(self._all_diffs()):
-            output = diff.html_header_row()
-            if self._has_diff(diff):
-                failed += output
+        for diff, html in sorted(self._diff_html.items()):
+            if html:
+                failed += diff.html_header_row()
             else:
-                passed += output
+                passed += diff.html_header_row()
 
         output = ''
         if failed:
@@ -268,44 +258,16 @@ class HTMLDiff(difflib.HtmlDiff):
             output += template.format('Passed', passed, 'green')
         return output
 
-    def _has_diff(self, diff):
-        return self._diff_html.get(diff, None) is not None
-
-    def _all_diffs(self):
-        return self._diff_html.keys()
-
-    def tentative_score(self):
-        """Return the total, available, and percentage score."""
-        diffs = self._all_diffs()
-        total = sum(x.test_points for x in diffs if x.is_correct())
-        if self._points_possible > 0:
-            percent = total * 100. / self._points_possible
-        else:
-            percent = 0
-        return total, self._points_possible, percent
-
-    def make_summary(self):
-        retval = self.TENTATIVE_SCORE_BLOCK.format(*self.tentative_score())
-        retval += self._make_test_summary()
-        return retval
-
-    def is_legend_needed(self):
-        for diff in self._all_diffs():
-            if diff.should_show_table():
-                return True
-        return False
-
     def legend_html(self):
-        if self.is_legend_needed():
+        if any(x.should_show_table() for x in self._diff_html):
             return "<hr>{0}<hr>".format(self._legend)
         else:
-            return "<hr>"
+            return ""
 
     def make_whole_file(self):
-        tables = [self._diff_html[diff] for diff in sorted(self._all_diffs())
-                  if self._has_diff(diff)]
+        tables = [x[1] for x in sorted(self._diff_html.items()) if x[1]]
         return self._file_template % dict(
-            summary=self.make_summary(),
+            summary=self._make_test_summary(),
             legend=self.legend_html(),
             table='<hr>\n'.join(tables))
 

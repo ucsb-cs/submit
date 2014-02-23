@@ -1,6 +1,13 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
-    <h1>Submission Results</h1>
+    <h1>
+      <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a>
+      <a tal:condition="submission_admin"
+         href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a>
+      <a tal:condition="not submission_admin"
+         href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
+      Submission Results
+    </h1>
     ${panel('js_test')}
 
     <div class="alert alert-info">
@@ -16,7 +23,6 @@
       <div class="pull-right" tal:condition="next_sub">
         <a class="btn btn-primary btn-mini" href="${request.route_path('submission_item', submission_id=next_sub.id)}">Submission <i class="icon-white icon-arrow-right"></i></a>
       </div>
-
       <div class="pagination-centered clearfix">
         <span tal:condition="request.user in submission.group.users"
               tal:omit-tag="">
@@ -24,7 +30,6 @@
           <a tal:condition="request.user.can_join_group(submission.project)"
              class="btn btn-info btn-mini" href="${request.route_path('project_group', project_id=submission.project.id)}"><i class="icon-white icon-share"></i> Join Group</a>
         </span>
-
         <span tal:condition="submission_admin" tal:omit-tag="">
           <a class="btn btn-success btn-mini" href="?as_user=1"><i class="icon-white icon-eye-open"></i> Student View</a>
           <a class="btn btn-inverse btn-mini" href="${request.route_path('zipfile_download', submission_id=submission.id)}"><i class="icon-white icon-download"></i> Download</a>
@@ -37,58 +42,60 @@
         </span>
       </div>
     </div>
-
     <div style="display:None" id="dialog-confirm" title="Regenerate Expected Output?">
       <p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span>The expected outputs will be updated making the project unavailable until you mark it as ready again. Are you sure?</p>
     </div>
 
+    <div class="well well small">
+      <div>Student(s): ${submission.group.users_str}</div>
+      <div>Submitted:
+        ${structure: submission.time_score(request, admin=submission_admin)}
+        <strong>Note</strong>: Score is tentative
+      </div>
+      <div tal:condition="files">Files:
+        <a class="btn btn-info btn-mini" target="_blank"
+           tal:repeat="(filename, file) sorted(files.items())"
+           href="${request.route_path('file_item', sha1sum=file.sha1, filename=filename)}">
+          <i class="icon-white icon-search"></i> ${filename}</a>
+      </div>
+      <div tal:condition="extra_files">Extra Files:
+        <a class="btn btn-info btn-mini" target="_blank"
+           tal:repeat="(filename, file) sorted(extra_files.items())"
+           href="${request.route_path('file_item', sha1sum=file.sha1, filename=filename)}">
+          <i class="icon-white icon-search"></i> ${filename}</a>
+      </div>
 
-    <div>Student(s): ${submission.group.users_str}</div>
-    <div>Class: <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
-    <div tal:condition="submission_admin">Project: <a href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
-    <div tal:condition="not submission_admin">
-      Project: <a href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
     </div>
-    <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
-    <h4>Submission Files</h4>
-    <ul tal:condition="submission.files">
-      <li tal:repeat="f sorted(submission.files)">
-        <a href="${request.route_path('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
-      </li>
-    </ul>
 
-    <p tal:condition="not submission.verified_at">
+    <div class="alert" tal:condition="not submission.verified_at">
       The submission is still being verified.
-    </p>
+    </div>
 
     <!-- Verification results block -->
-    <div tal:condition="submission.verified_at and verification_issues">
-      <p>Your submission had files that were problematic. <span style="color:red">Red</span> indicates errors, and <span style="color:orange">orange</span> indicates warnings.</p>
+    <div class="alert" tal:condition="submission.verified_at and warnings">
+      <h4>Warnings</h4>
       <ul>
-        <li tal:repeat="filename sorted(verification_issues)">
-	  <b>${filename}</b>
-	  <ul>
-	    <li tal:repeat="warning verification_issues[filename][0]">
-	      <span style="color:orange">Line ${warning['lineno']}: <strong>${warning['token']}</strong></span>
-	    </li>
-	    <li tal:repeat="error verification_issues[filename][1]">
-	      <span style="color:red">${error}</span>
-	    </li>
-	  </ul>
+        <li tal:repeat="filename sorted(warnings)">
+          <strong>${filename}</strong>
+	  <div class="label label-warning"
+               tal:repeat="warning warnings[filename]">
+	    Line ${warning['lineno']}: <strong>${warning['token']}</strong>
+          </div>
         </li>
       </ul>
     </div>
 
-    <div tal:condition="submission.verified_at and not pending and not diff_table">
+    <div class="alert" tal:condition="submission.verified_at and not pending and not diff_table and not has_issues">
       It appears that there is nothing to do.
     </div>
 
     <!-- Tests that are still pending -->
-    <div tal:condition="pending">
-      <h3><span style="color:red">Note:</span> The following test groups are still pending: ${_fp(sum([t.points() for t in pending]))}</h3>
+    <div class="alert" tal:condition="pending">
+      <h4>Pending Test Groups <span class="badge badge-warning">${sum([t.points() for t in pending])} points</span></h4>
       <ul>
         <li tal:repeat="testable sorted(pending)">
-	  ${testable.name} ${_fp(testable.points())}
+	  ${testable.name}
+          <span class="badge badge-warning">${testable.points()} points</span>
         </li>
       </ul>
     </div>
@@ -98,36 +105,19 @@
          tal:replace="structure diff_table"></div>
 
     <!-- For each test group, reasons for failure (if applicable) -->
-    <div tal:repeat="status sorted(testable_statuses)">
-      <div tal:condition="status.issue" style="border:1px solid">
-        <h3 style="color:red">Test group &ldquo;${status.testable.name}&rdquo; failed to run ${_fp(status.testable.points())}</h3>
-        <p><strong>Reason</strong>: ${status.issue}</p>
+    <div tal:repeat="status sorted(testable_statuses)" tal:omit-tag="">
+      <div class="alert alert-error" tal:condition="status.issue">
+        <h4>Test Group Failed: ${status.testable.name} <span class="badge badge-important">${status.testable.points()} points</span></h4>
+        <div>${status.issue}</div>
         <pre tal:condition="status.show_make_output" class="make_output">${status.testable_result.make_results}</pre>
-        <ul tal:condition="status.issues">
-	  <li tal:repeat="(file, grouped) sorted(status.issues.items())">
-	    <b>${file}</b>
-	    <ul>
-	      <li style="color:orange" tal:repeat="warning grouped[0]">
-	        ${warning}
-	      </li>
-	      <li style="color:red" tal:repeat="error grouped[1]">
-	        ${error}
-	      </li>
-	    </ul>
+        <ul tal:condition="status.errors">
+	  <li tal:repeat="(file, errors) sorted(status.errors.items())">
+	    <strong>${file}</strong>
+            <div class="label label-important"
+                 tal:repeat="error errors">${error}</div>
 	  </li>
         </ul>
       </div>
-    </div>
-
-    <!-- Show the user any extra filenames that were submitted -->
-    <div tal:condition="extra_files">
-      <hr>
-      <h3>Extra files that were submitted</h3>
-      <ul>
-        <li tal:repeat="file extra_files">
-	  ${file}
-        </li>
-      </ul>
     </div>
   </div>
 
@@ -150,7 +140,7 @@
           $("#dialog-confirm").dialog({
               autoOpen: false,
               resizable: false,
-              width: 540,
+              width: "auto",
               modal: true,
               buttons: {
                   Cancel: function() { $(this).dialog("close"); },

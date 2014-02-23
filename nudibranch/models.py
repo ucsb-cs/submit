@@ -324,8 +324,16 @@ class VerificationResults(object):
     """
 
     @property
+    def errors(self):
+        return self._errors_by_filename
+
+    @property
     def extra_filenames(self):
-        return self._extra_filenames
+        return self._extra_filenames or []
+
+    @property
+    def warnings(self):
+        return self._warnings_by_filename
 
     def __init__(self):
         self._errors_by_filename = {}
@@ -336,16 +344,6 @@ class VerificationResults(object):
     def __str__(self):
         import pprint
         return pprint.pformat(vars(self))
-
-    def issues(self):
-        """Return a mapping of filename to (warnings, errors) pairs"""
-        errors = self._errors_by_filename
-        warnings = self._warnings_by_filename
-        retval = {}
-        for filename in frozenset(errors.keys() + warnings.keys()):
-            retval[filename] = (warnings.get(filename, []),
-                                errors.get(filename, []))
-        return retval
 
     def missing_testables(self):
         """Return a set of testables that have files missing."""
@@ -496,7 +494,7 @@ class Project(BasicBase, Base):
         """Return list of testables that can be built."""
         results = VerificationResults()
         valid_files = set()
-        file_mapping = dict([(x.filename, x) for x in submission.files])
+        file_mapping = submission.file_mapping()
 
         # Create a list of in-use file verifiers
         file_verifiers = set(fv for testable in self.testables
@@ -505,7 +503,7 @@ class Project(BasicBase, Base):
         for fv in file_verifiers:
             if fv.filename in file_mapping:
                 errors, warnings = fv.verify(base_path,
-                                             file_mapping[fv.filename].file)
+                                             file_mapping[fv.filename])
                 if errors:
                     results.set_errors_for_filename(errors, fv.filename)
                 else:
@@ -514,7 +512,7 @@ class Project(BasicBase, Base):
                     results.set_warnings_for_filename(warnings, fv.filename)
                 del file_mapping[fv.filename]
             elif not fv.optional:
-                results.set_errors_for_filename(['file missing'], fv.filename)
+                results.set_errors_for_filename(['missing'], fv.filename)
         if file_mapping:
             results.set_extra_filenames(frozenset(file_mapping.keys()))
 
@@ -606,9 +604,7 @@ class Submission(BasicBase, Base):
 
     def file_mapping(self):
         """Return a mapping of filename to File object for the submission."""
-        results = Session.query(SubmissionToFile).filter_by(
-            submission_id=self.id)
-        return dict((x.filename, x.file) for x in results)
+        return {x.filename: x.file for x in self.files}
 
     def get_delay(self, update):
         """Return the minutes to delay the viewing of submission results.
