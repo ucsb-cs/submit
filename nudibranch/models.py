@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import errno
+import json
 import os
 import re
 import sys
@@ -82,6 +83,11 @@ class BuildFile(BasicBase, Base):
         """Return whether or not the user can edit the build file."""
         return self.project.can_edit(user)
 
+    def edit_json(self, jsonify=True):
+        data = {'id': self.id, 'name': self.filename,
+                'file_hex': self.file.sha1}
+        return json.dumps(data) if jsonify else data
+
 
 class Class(BasicBase, Base):
     is_locked = Column(Boolean, default=False, nullable=False,
@@ -128,6 +134,11 @@ class ExecutionFile(BasicBase, Base):
     def can_edit(self, user):
         """Return whether or not the user can edit the build file."""
         return self.project.can_edit(user)
+
+    def edit_json(self, jsonify=True):
+        data = {'id': self.id, 'name': self.filename,
+                'file_hex': self.file.sha1}
+        return json.dumps(data) if jsonify else data
 
 
 class File(BasicBase, Base):
@@ -223,6 +234,18 @@ class FileVerifier(BasicBase, Base):
 
     def can_edit(self, user):
         return self.project.can_edit(user)
+
+    def edit_json(self, jsonify=True):
+        attrs = ('id', ('name', 'filename'), 'copy_to_execution', 'min_size',
+                 'max_size', 'min_lines', 'max_lines', 'optional',
+                 'warning_regex')
+        data = {}
+        for attr in attrs:
+            if isinstance(attr, tuple):
+                data[attr[0]] = getattr(self, attr[1])
+            else:
+                data[attr] = getattr(self, attr)
+        return json.dumps(data) if jsonify else data
 
     def verify(self, base_path, file_):
         errors = []
@@ -409,6 +432,9 @@ class Project(BasicBase, Base):
     def __cmp__(self, other):
         return cmp(alphanum_key(self.name), alphanum_key(other.name))
 
+    def build_files_json(self):
+        return json.dumps([x.edit_json(False) for x in self.build_files])
+
     def can_access(self, user):
         """Return whether or not `user` can access a project.
 
@@ -425,6 +451,12 @@ class Project(BasicBase, Base):
     def can_view(self, user):
         """Return whether or not `user` can view the project's settings."""
         return self.class_.is_admin(user)
+
+    def execution_files_json(self):
+        return json.dumps([x.edit_json(False) for x in self.execution_files])
+
+    def file_verifiers_json(self):
+        return json.dumps([x.edit_json(False) for x in self.file_verifiers])
 
     def points_possible(self, include_hidden=False):
         """Return the total points possible for this project."""
@@ -453,6 +485,11 @@ class Project(BasicBase, Base):
             else:
                 required.append(file_verifier.filename)
         return ' '.join(sorted(required) + sorted(optional))
+
+    def testables_json(self):
+        return json.dumps([x.edit_json(False) for x in sorted(self.testables)]
+                          + [{'id': 'new', 'name': 'Add New', 'target': '',
+                              'executable': '', 'hidden': False}])
 
     def verify_submission(self, base_path, submission, update):
         """Return list of testables that can be built."""
@@ -768,6 +805,16 @@ class Testable(BasicBase, Base):
     def can_edit(self, user):
         """Return whether or not `user` can make changes to the testable."""
         return self.project.can_edit(user)
+
+    def edit_json(self, jsonify=True):
+        def ids(item):
+            return [x.id for x in sorted(item)]
+        data = {'id': self.id, 'name': self.name, 'target': self.make_target,
+                'executable': self.executable, 'hidden': self.is_hidden,
+                'build_files': ids(self.build_files),
+                'execution_files': ids(self.execution_files),
+                'expected_files': ids(self.file_verifiers)}
+        return json.dumps(data) if jsonify else data
 
     def points(self):
         return sum([test_case.points for test_case in self.test_cases])

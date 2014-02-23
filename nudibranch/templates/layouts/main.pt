@@ -20,10 +20,10 @@
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
   <![endif]-->
 
-  ${panel('navbar')}
+${panel('navbar')}
 
   <div class="container">
-    ${panel('messages')}
+${panel('messages')}
     <metal:content define-slot="content" />
     <hr>
     <footer>
