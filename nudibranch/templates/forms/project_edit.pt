@@ -68,171 +68,273 @@
 
     <!-- Dialog Boxes -->
     <div tal:repeat="(lcn, name) [('build_file', 'Build File'), ('execution_file', 'Execution File')]"
-         id="${lcn}_new" class="dialog" title="Add New ${name}">
-      <form role="form" name="${name}" action="${request.route_path(lcn)}"
+         id="${lcn}_new" class="dialog" title="Add ${name}">
+      <form class="form-horizontal" role="form" name="${name}"
+            action="${request.route_path(lcn)}"
             onsubmit="return form_request(this, 'PUT', true);">
-        <div class="form-group">
-          <label for="${lcn}_name_new">Filename</label>
-          <input type="text" name="filename" id="${lcn}_name_new">
+        <div class="control-group">
+          <label class="control-label" for="${lcn}_name_new">Filename</label>
+          <div class="controls">
+            <input type="text" name="filename" id="${lcn}_name_new">
+          </div>
         </div>
-        <div class="form-group">
-          <label for="${lcn}_id_new">Select a ${name.lower()}</label>
-          <input name="file_id" id="${lcn}_id_new" type="file">
+        <div class="control-group">
+          <label class="control-label" for="${lcn}_id_new">${name}</label>
+          <div class="controls">
+            <input name="file_id" id="${lcn}_id_new" type="file">
+          </div>
         </div>
         <input type="hidden" name="project_id" value="${project.id}">
         <button class="btn btn-success" name="submit">Add ${name}</button>
       </form>
     </div>
 
-    <div id="file_verifier_new" class="dialog" title="Add New Expected File">
-      <form name="file_verifier" action="${request.route_path('file_verifier')}"
+    <div id="file_verifier_new" class="dialog" title="Add Expected File">
+      <form class="form-horizontal" role="form" name="file_verifier"
+            action="${request.route_path('file_verifier')}"
             onsubmit="return form_request(this, 'PUT', true);">
-        <label for="fv_filename_new">Filename</label>
-        <input type="text" name="filename" id="fv_filename_new" value="">
-        <label for="min_size_new">Min Size</label>
-        <input type="text" name="min_size" id="min_size_new" value="0">
-        <label for="max_size_new">Max Size</label>
-        <input type="text" name="max_size" id="max_size_new"
+        <div>
+          <label class="control-label" for="fv_filename_new">Filename</label>
+          <div class="controls">
+            <input type="text" name="filename" id="fv_filename_new" value="">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="min_size_new">Min Size</label>
+          <div class="controls">
+            <input type="text" name="min_size" id="min_size_new" value="0">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="max_size_new">Max Size</label>
+          <div class="controls">
+            <input type="text" name="max_size" id="max_size_new"
                class="form_optional" placeholder="system max" value="">
-        <label for="min_lines_new">Min Lines</label>
-        <input type="text" name="min_lines" id="min_lines_new" value="0">
-        <label for="max_lines_new">Max Lines</label>
-        <input type="text" name="max_lines" id="max_lines_new"
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="min_lines_new">Min Lines</label>
+          <div class="controls">
+            <input type="text" name="min_lines" id="min_lines_new" value="0">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="max_lines_new">Max Lines</label>
+          <div class="controls">
+            <input type="text" name="max_lines" id="max_lines_new"
                class="form_optional" placeholder="system max" value="">
-        <label for="warning_regex_new"><span class="help" title="If provided, any lines which match the regular expression provided here will be output under warning of possible invalid content header.">Warning Regex</span></label>
-        <input type="text" name="warning_regex" id="warning_regex_new"
-               class="form_optional" placeholder="accept everything" value="">
-        <label class="checkbox">
-          <input type="checkbox" name="copy_to_execution" value="1">
-          <span class="help" title="When checked, the file will be available relative to the present working directory during test execution. This is useful if you want the students to submit input files or test-cases.">Copy to Execution Environment</span>
-        </label>
-        <label class="checkbox">
-          <input type="checkbox" name="optional" value="1">
-          Optional
-        </label>
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="warning_regex_new"><span class="help" title="If provided, any lines which match the regular expression provided here will be output under warning of possible invalid content header.">Warning Regex</span></label>
+          <div class="controls">
+            <input type="text" name="warning_regex" id="warning_regex_new"
+                   class="form_optional" placeholder="accept everything" value="">
+          </div>
+        </div>
+        <div>
+          <div class="controls">
+            <label class="checkbox">
+              <input type="checkbox" name="copy_to_execution" value="1">
+              <span class="help" title="When checked, the file will be available relative to the present working directory during test execution. This is useful if you want the students to submit input files or test-cases.">Copy to Execution Environment</span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <div class="controls">
+            <label class="checkbox">
+              <input type="checkbox" name="optional" value="1">
+              Optional
+            </label>
+          </div>
+        </div>
         <input type="hidden" name="project_id" value="${project.id}">
-        <button name="submit">Add</button>
+        <button class="btn btn-success" name="submit">Add Expected File</button>
       </form>
     </div>
     <div tal:repeat="fv project.file_verifiers" id="file_verifier_${fv.id}"
          class="dialog" title="Update Expected File ${fv.filename}">
-      <fieldset>
-        <legend>Expected File ${fv.filename}</legend>
-        <form name="file_verifier" onsubmit="return form_request(this, 'POST', true);"
-              action="${request.route_path('file_verifier_item', file_verifier_id=fv.id)}">
-          <label for="filename_${fv.id}">Filename</label>
-          <input type="text" name="filename" id="filename_${fv.id}"
-                 value="${fv.filename}">
-          <label for="min_size_${fv.id}">Min Size</label>
-          <input type="text" name="min_size" id="min_size_${fv.id}"
-                 value="${fv.min_size}">
-          <label for="max_size_${fv.id}">Max Size</label>
-          <input type="text" name="max_size" id="max_size_${fv.id}"
-                 class="form_optional" placeholder="system max"
-                 value="${fv.max_size}">
-          <label for="min_lines_${fv.id}">Min Lines</label>
-          <input type="text" name="min_lines" id="min_lines_${fv.id}"
-                 value="${fv.min_lines}">
-          <label for="max_lines_${fv.id}">Max Lines</label>
-          <input type="text" name="max_lines" id="max_lines_${fv.id}"
-                 class="form_optional" placeholder="system max"
-                 value="${fv.max_lines}">
-          <label for="warning_regex_${fv.id}"><span class="help" title="If provided, any lines which match the regular expression provided here will be output under warning of possible invalid content header.">Warning Regex</span></label>
-          <input type="text" name="warning_regex" id="warning_regex_${fv.id}"
-                 class="form_optional" placeholder="accept everything" value="${fv.warning_regex}">
-          <label class="checkbox">
-            <input type="checkbox" name="copy_to_execution" value="1" tal:attributes="checked 'checked' if fv.copy_to_execution else None">
-            <span class="help" title="When checked, the file will be available relative to the present working directory during test execution. This is useful if you want the students to submit input files or test-cases.">Copy to Execution Environment</span>
-          </label>
-          <label class="checkbox">
-            <input type="checkbox" name="optional" value="1"
-                   tal:attributes="checked 'checked' if fv.optional else None">
-            Optional
-          </label>
-          <button name="submit">update</button>
-        </form>
-      </fieldset>
+      <form class="form-horizontal" role="form" name="file_verifier"
+            onsubmit="return form_request(this, 'POST', true);"
+            action="${request.route_path('file_verifier_item', file_verifier_id=fv.id)}">
+        <div>
+          <label class="control-label" for="filename_${fv.id}">Filename</label>
+          <div class="controls">
+            <input type="text" name="filename" id="filename_${fv.id}"
+                   value="${fv.filename}">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="min_size_${fv.id}">Min Size</label>
+          <div class="controls">
+            <input type="text" name="min_size" id="min_size_${fv.id}"
+                   value="${fv.min_size}">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="max_size_${fv.id}">Max Size</label>
+          <div class="controls">
+            <input type="text" name="max_size" id="max_size_${fv.id}"
+                   class="form_optional" placeholder="system max"
+                   value="${fv.max_size}">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="min_lines_${fv.id}">Min Lines</label>
+          <div class="controls">
+            <input type="text" name="min_lines" id="min_lines_${fv.id}"
+                   value="${fv.min_lines}">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="max_lines_${fv.id}">Max Lines</label>
+          <div class="controls">
+            <input type="text" name="max_lines" id="max_lines_${fv.id}"
+                   class="form_optional" placeholder="system max"
+                   value="${fv.max_lines}">
+          </div>
+        </div>
+        <div>
+          <label class="control-label" for="warning_regex_${fv.id}"><span class="help" title="If provided, any lines which match the regular expression provided here will be output under warning of possible invalid content header.">Warning Regex</span></label>
+          <div class="controls">
+            <input type="text" name="warning_regex" id="warning_regex_${fv.id}"
+                   class="form_optional" placeholder="accept everything" value="${fv.warning_regex}">
+          </div>
+        </div>
+        <div>
+          <div class="controls">
+            <label class="checkbox">
+              <input type="checkbox" name="copy_to_execution" value="1" tal:attributes="checked 'checked' if fv.copy_to_execution else None">
+              <span class="help" title="When checked, the file will be available relative to the present working directory during test execution. This is useful if you want the students to submit input files or test-cases.">Copy to Execution Environment</span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <div class="controls">
+            <label class="checkbox">
+              <input type="checkbox" name="optional" value="1"
+                     tal:attributes="checked 'checked' if fv.optional else None">
+              Optional
+            </label>
+          </div>
+        </div>
+        <button name="submit">update</button>
+      </form>
     </div>
 
     <div tal:repeat="testable project.testables">
       <div tal:repeat="tc testable.test_cases" class="dialog" id="update_tc_${tc.id}" title="Update test case ${tc.name}">
-        <form name="test_case"
+        <form class="form-horizontal" role="form" name="test_case"
               action="${request.route_path('test_case_item', test_case_id=tc.id)}"
               onsubmit="return form_request(this, 'POST', true);">
-          <label for="testable_${testable.id}_tc_name_${tc.id}">Test Name</label>
-          <input type="text" name="name" id="testable_${testable.id}_tc_name_${tc.id}" value="${tc.name}">
-          <label for="testable_${testable.id}_tc_args_${tc.id}">Execution line</label>
-          <input type="text" name="args" id="testable_${testable.id}_tc_args_${tc.id}"
-                 value="${tc.args}">
-          <label for="testable_${testable.id}_tc_points_${tc.id}">Points</label>
-          <input type="text" name="points" id="testable_${testable.id}_tc_points_${tc.id}"
-                 value="${tc.points}">
-          <div tal:condition="tc.stdin_id">
-            <a href="${request.route_path('file_item', sha1sum=tc.stdin.sha1, filename='{0}:{1}:stdin'.format(project.name, tc.name))}">Existing standard input file</a>
-          </div>
-          <label for="testable_${testable.id}_tc_input_${tc.id}">Select a new standard input file: </label>
-          <input name="stdin_id" id="testable_${testable.id}_tc_input_${tc.id}" type="file">
-          <input type="hidden" name="stdin_id" value="${tc.stdin_id}">
-          Output file source:
-          <div style="margin-left: 20px">
-            <label class="radio">
-              <input name="output_source" type="radio" value="stdout"
-                     class="toggle_tc_file"
-                     tal:attributes="checked 'checked' if tc.source == 'stdout' else None"
-                     data-testable="${testable.id}" data-tc="${tc.id}"> STDOUT</label>
-            <label class="radio">
-              <input name="output_source" type="radio" value="stderr"
-                     class="toggle_tc_file"
-                     tal:attributes="checked 'checked' if tc.source == 'stderr' else None"
-                     data-testable="${testable.id}" data-tc="${tc.id}"> STDERR</label>
-            <label class="radio">
-              <input name="output_source" type="radio" value="file"
-                     class="toggle_tc_file"
-                     tal:attributes="checked 'checked' if tc.source == 'file' else None"
-                     data-testable="${testable.id}" data-tc="${tc.id}"> named file</label>
-          </div>
-          <div id="testable_${testable.id}_${tc.id}_file_div"
-               tal:attributes="style 'display: None' if tc.source != 'file' else None">
-            <label for="testable_${testable.id}_tc_output_filename_${tc.id}">Output file name</label>
-            <input type="text" name="output_filename" value="${tc.output_filename}"
-                   id="testable_${testable.id}_tc_output_filename_${tc.id}"
-                   tal:attributes="disabled 'disabled' if tc.source != 'file' else None">
-          </div>
-          Output file handling:
-          <label class="radio">
-            <input name="output_type" type="radio" value="diff"
-                   class="toggle_tc_expected"
-                   tal:attributes="checked 'checked' if tc.output_type == 'diff' else None"
-                   data-testable="${testable.id}" data-tc="${tc.id}"> Diff</label>
-          <label class="radio">
-            <input name="output_type" type="radio" value="text"
-                   class="toggle_tc_expected"
-                   tal:attributes="checked 'checked' if tc.output_type == 'text' else None"
-                   data-testable="${testable.id}" data-tc="${tc.id}"> Save (text)</label>
-          <label class="radio">
-            <input name="output_type" type="radio" value="image"
-                   class="toggle_tc_expected"
-                   tal:attributes="checked 'checked' if tc.output_type == 'image' else None"
-                   data-testable="${testable.id}" data-tc="${tc.id}"> Save (image)</label>
-          <fieldset id="testable_${testable.id}_${tc.id}_expected_div"
-                    tal:attributes="style 'display: None' if tc.output_type != 'diff' else None">
-            <legend>Diff settings</legend>
-            <div tal:condition="tc.expected_id">
-              <a href="${request.route_path('file_item', sha1sum=tc.expected.sha1, filename='{0}:{1}:expected'.format(project.name, tc.name))}">Existing expected output file</a>
+          <div>
+            <label class="control-label" for="testable_${testable.id}_tc_name_${tc.id}">Test Name</label>
+            <div class="controls">
+              <input type="text" name="name" id="testable_${testable.id}_tc_name_${tc.id}" value="${tc.name}">
             </div>
-            <label for="testable_${testable.id}_tc_expected_${tc.id}">Select a new expected output file: </label>
-            <input name="expected_id" id="testable_${testable.id}_tc_expected_${tc.id}" type="file"
-                   tal:attributes="disabled 'disabled' if tc.output_type != 'diff' else None">
-            <input id="testable_${testable.id}_tc_expected_id_${tc.id}" type="hidden"
-                   name="expected_id" value="${tc.expected_id}">
-            <label class="checkbox">
-              <input type="checkbox" name="hide_expected" value="1"
-                     tal:attributes="checked 'checked' if tc.hide_expected else None">
-              <span class="help" title="This obscures the left-hand-side of the diff output in the student view thus preventing students from determining what their program should output.">Hide expected output</span>
-            </label>
-          </fieldset>
-          <button name="submit">update</button>
-          <input type="button" value="delete" class="button-delete" data-name="${tc.name}" data-url="${request.route_path('test_case_item', test_case_id=tc.id)}">
+          </div>
+          <div>
+            <label class="control-label" for="testable_${testable.id}_tc_args_${tc.id}">Execution line</label>
+            <div class="controls">
+              <input type="text" name="args" value="${tc.args}"
+                     id="testable_${testable.id}_tc_args_${tc.id}">
+            </div>
+          </div>
+          <div>
+            <label class="control-label"
+                   for="testable_${testable.id}_tc_points_${tc.id}">Points</label>
+            <div class="controls">
+              <input type="text" name="points"value="${tc.points}"
+                     id="testable_${testable.id}_tc_points_${tc.id}">
+            </div>
+          </div>
+          <div>
+            <label class="control-label" for="testable_${testable.id}_tc_input_${tc.id}">Standard Input</label>
+            <div class="controls">
+              <a class="btn btn-info btn-mini" tal:condition="tc.stdin_id"
+                 href="${request.route_path('file_item', sha1sum=tc.stdin.sha1, filename='{0}:{1}:stdin'.format(project.name, tc.name))}" style="color: white"
+                 target="_blank"><i class="icon-white icon-search"></i>
+                Existing STDIN</a>
+              <input name="stdin_id" id="testable_${testable.id}_tc_input_${tc.id}" type="file">
+              <input type="hidden" name="stdin_id" value="${tc.stdin_id}">
+            </div>
+          </div>
+          <div>
+            <label class="control-label">Output file source</label>
+            <div class="controls">
+              <label class="radio">
+                <input name="output_source" type="radio" value="stdout"
+                       class="toggle_tc_file"
+                       tal:attributes="checked 'checked' if tc.source == 'stdout' else None"
+                       data-testable="${testable.id}" data-tc="${tc.id}"> STDOUT</label>
+              <label class="radio">
+                <input name="output_source" type="radio" value="stderr"
+                       class="toggle_tc_file"
+                       tal:attributes="checked 'checked' if tc.source == 'stderr' else None"
+                       data-testable="${testable.id}" data-tc="${tc.id}"> STDERR</label>
+              <label class="radio">
+                <input name="output_source" type="radio" value="file"
+                       class="toggle_tc_file"
+                       tal:attributes="checked 'checked' if tc.source == 'file' else None"
+                       data-testable="${testable.id}" data-tc="${tc.id}"> named file</label>
+            </div>
+          </div>
+          <div class="well well-small" id="testable_${testable.id}_${tc.id}_file_div"
+               tal:attributes="style 'display: None' if tc.source != 'file' else None">
+            <label class="control-label" for="testable_${testable.id}_tc_output_filename_${tc.id}">Output file name</label>
+            <div class="controls">
+              <input type="text" name="output_filename" value="${tc.output_filename}"
+                     id="testable_${testable.id}_tc_output_filename_${tc.id}"
+                     tal:attributes="disabled 'disabled' if tc.source != 'file' else None">
+            </div>
+          </div>
+          <div>
+            <label class="control-label">Output file handling</label>
+            <div class="controls">
+              <label class="radio">
+                <input name="output_type" type="radio" value="diff"
+                       class="toggle_tc_expected"
+                       tal:attributes="checked 'checked' if tc.output_type == 'diff' else None"
+                       data-testable="${testable.id}" data-tc="${tc.id}"> Diff</label>
+              <label class="radio">
+                <input name="output_type" type="radio" value="text"
+                       class="toggle_tc_expected"
+                       tal:attributes="checked 'checked' if tc.output_type == 'text' else None"
+                       data-testable="${testable.id}" data-tc="${tc.id}"> Save (text)</label>
+              <label class="radio">
+                <input name="output_type" type="radio" value="image"
+                       class="toggle_tc_expected"
+                       tal:attributes="checked 'checked' if tc.output_type == 'image' else None"
+                       data-testable="${testable.id}" data-tc="${tc.id}"> Save (image)</label>
+            </div>
+          </div>
+          <div class="well well-small"
+               id="testable_${testable.id}_${tc.id}_expected_div"
+               tal:attributes="style 'display: None' if tc.output_type != 'diff' else None">
+            <label class="control-label" for="testable_${testable.id}_tc_expected_${tc.id}">Expected Output</label>
+            <div class="controls">
+              <a class="btn btn-info btn-mini" tal:condition="tc.expected_id"
+                 href="${request.route_path('file_item', sha1sum=tc.expected.sha1, filename='{0}:{1}:expected'.format(project.name, tc.name))}" style="color: white"
+                 target="_blank">
+                <i class="icon-white icon-search"></i>
+                Existing Expected</a>
+              <input name="expected_id"
+                     id="testable_${testable.id}_tc_expected_${tc.id}" type="file"
+                     tal:attributes="disabled 'disabled' if tc.output_type != 'diff' else None">
+              <input id="testable_${testable.id}_tc_expected_id_${tc.id}" type="hidden"
+                     name="expected_id" value="${tc.expected_id}">
+            </div>
+            <div class="controls">
+              <label class="checkbox">
+                <input type="checkbox" name="hide_expected" value="1"
+                       tal:attributes="checked 'checked' if tc.hide_expected else None">
+                <span class="help" title="This obscures the left-hand-side of the diff output in the student view thus preventing students from determining what their program should output.">Hide expected output</span>
+              </label>
+            </div>
+          </div>
+          <button class="btn btn-warning" name="submit">Update Test Case</button>
+          <button class="btn btn-danger button-delete" data-name="${tc.name}"
+                  data-url="${request.route_path('test_case_item', test_case_id=tc.id)}"><i class="icon-white icon-trash"></i> Delete Test Case</button>
         </form>
       </div>
       <div id="testable_${testable.id}_tc_new" class="dialog"
@@ -282,7 +384,7 @@
                        data-testable="${testable.id}" data-tc="new"> named file</label>
             </div>
           </div>
-          <div id="testable_${testable.id}_new_file_div" style="display: None">
+          <div class="well well-small" id="testable_${testable.id}_new_file_div" style="display: None">
             <label class="control-label" for="testable_${testable.id}_tc_output_filename_new">Output file name</label>
             <div class="controls">
               <input type="text" name="output_filename"
