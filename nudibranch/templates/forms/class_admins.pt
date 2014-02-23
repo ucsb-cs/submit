@@ -15,7 +15,7 @@
         <input type="email" class="form-control" placeholder="Enter email"
                name="email" id="email">
       </div>
-      <button type="submit" class="btn btn-warning">Add Class Admin</button>
+      <button class="btn btn-warning">Add Class Admin</button>
     </form>
 
     <h3>Existing Admins</h3>

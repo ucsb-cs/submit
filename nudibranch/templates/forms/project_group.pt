@@ -20,7 +20,7 @@
           <input type="email" class="form-control" placeholder="Enter email"
                  name="email" id="email">
         </div>
-        <button type="submit" class="btn btn-primary">Make Request</button>
+        <button class="btn btn-primary">Make Request</button>
       </form>
     </div>
     <div tal:condition="not can_join" class="alert alert-danger">
@@ -31,7 +31,7 @@
       <h3>Your outstanding request</h3>
       <form role="form" name="input" action="${request.route_path('project_group_item', project_id=project.id, group_request_id=requested.id)}"
             method="DELETE" onsubmit="return form_request(this, 'delete', true);">
-        <button type="submit" class="btn btn-danger btn-mini">Revoke Request</button>
+        <button class="btn btn-danger btn-mini">Revoke Request</button>
         <strong>${requested.to_user}</strong>
       </form>
       <div class="alert">Before you can make another request, the
@@ -44,12 +44,12 @@
         <form name="input" action="${request.route_path('project_group_item', project_id=project.id, group_request_id=gr.id)}"
               method="DELETE" onsubmit="return form_request(this, 'delete', true);"
               style="display: inline;">
-          <button type="submit" class="btn btn-danger btn-mini">Deny</button>
+          <button class="btn btn-danger btn-mini">Deny</button>
         </form>
         <form name="input" action="${request.route_path('project_group_item', project_id=project.id, group_request_id=gr.id)}"
               method="PUT" onsubmit="return form_request(this, 'put', true);"
               style="display: inline;">
-          <button type="submit" class="btn btn-success btn-mini">Accept</button>
+          <button class="btn btn-success btn-mini">Accept</button>
         </form>
         <strong>${gr.from_user}</strong>
       </div>

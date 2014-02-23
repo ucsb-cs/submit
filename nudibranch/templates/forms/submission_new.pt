@@ -5,7 +5,7 @@
 
     <fieldset>
       <legend>Select file(s) to upload</legend>
-      <input name="files" id="files" type="file" multiple />
+      <input name="files" id="files" type="file" multiple>
       <div id="dropbox"> or drop file(s) here</div>
       <div id="messages" class="alert alert-success alert-block">
         <h3>Pending Files</h3>
@@ -14,8 +14,8 @@
       </div>
 
       <form role="form" id="upload_form" name="input" action="${request.route_path('submission')}" method="PUT">
-        <input type="hidden" name="project_id" value="${project.id}"/>
-        <button id="file_submit" type="submit" class="btn btn-default" name="submit" disabled="disabled">Submit 0 Files</button>
+        <input type="hidden" name="project_id" value="${project.id}">
+        <button id="file_submit" class="btn btn-default" name="submit" disabled="disabled">Submit 0 Files</button>
       </form>
     </fieldset>
     <div class="alert">You can also submit through a csil machine via

@@ -16,8 +16,8 @@
         <label for="makefile">Select a Makefile: </label>
         <input name="makefile_id" id="makefile" type="file">
       </div>
-      <input type="hidden" name="class_id" id="class_id" value="${project.class_.id}"/>
-      <button type="submit" class="btn btn-info">Create Project</button>
+      <input type="hidden" name="class_id" id="class_id" value="${project.class_.id}">
+      <button class="btn btn-info">Create Project</button>
     </form>
 
     <span tal:condition="clone_projects" tal:omit-tag="">
@@ -36,8 +36,8 @@
           <input type="text" class="form-control" placeholder="Enter new project name"
                  name="name" id="name">
         </div>
-        <input type="hidden" name="class_id" value="${project.class_.id}" />
-        <button type="submit" class="btn btn-info">Clone Selected Project</button>
+        <input type="hidden" name="class_id" value="${project.class_.id}">
+        <button class="btn btn-info">Clone Selected Project</button>
       </form>
     </span>
   </div>

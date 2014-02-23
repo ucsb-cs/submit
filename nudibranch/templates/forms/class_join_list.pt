@@ -11,7 +11,7 @@
               action="${request.route_path('user_class_join',
                       class_name=class_.name, username=request.user.username)}"
 	      onsubmit="return form_request(this, 'POST');">
-          <button type="submit" class="btn btn-default">Join ${class_.name}</button>
+          <button class="btn btn-default">Join ${class_.name}</button>
 	</form>
       </div>
     </div>
