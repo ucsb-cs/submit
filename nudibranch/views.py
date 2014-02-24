@@ -488,7 +488,8 @@ def project_download(request, project):
 
     files = []
     for sub in project.recent_submissions():
-        user_path = '{0}_{1}'.format(sub.group.users_str, sub.id)
+        users = sub.group.users_str.replace(' ', '_').replace(',', '-')
+        user_path = '{0}_{1}'.format(users, sub.id)
         for filename, file_ in sub.file_mapping().items():
             files.append((os.path.join(project.name, user_path, filename),
                           file_path(file_)))
@@ -1348,7 +1349,8 @@ def zipfile_download(request, submission):
     def file_path(file_):
         return File.file_path(request.registry.settings['file_directory'],
                               file_.sha1)
-    base_path = '{0}_{1}'.format(submission.group.users_str, submission.id)
+    users = submission.group.users_str.replace(' ', '_').replace(',', '-')
+    base_path = '{0}_{1}'.format(users, submission.id)
     # include makefile and student submitted files
     files = [(os.path.join(base_path, 'Makefile'),
               file_path(submission.project.makefile))]
