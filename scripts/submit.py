@@ -19,8 +19,19 @@ class Submit(object):
              'project_item':   'class/{class_name}/{project_id}/u/{email}',
              'submission':     'submission'}
 
-    @staticmethod
-    def _get_config(section):
+    def __init__(self, config_section):
+        self.config_path = None
+        config = self._get_config(config_section)
+        self._config = config
+        self.debug = config['debug'].lower() in ('1', 'true', 'yes')
+        self.request_delay = int(config['request_delay'])
+        self.request_timeout = int(config['request_timeout'])
+        self._url = config['url']
+        self.session = requests.session()
+        self.session.headers['X-Requested-With'] = 'XMLHttpRequest'
+        self.email = None
+
+    def _get_config(self, section):
         config = ConfigParser()
         if 'APPDATA' in os.environ:  # Windows
             os_config_path = os.environ['APPDATA']
@@ -33,24 +44,14 @@ class Submit(object):
         locations = [os.path.join(os.path.dirname(__file__), 'submit.ini'),
                      'submit.ini']
         if os_config_path is not None:
-            locations.insert(1, os.path.join(os_config_path, 'submit.ini'))
+            self.config_path = os.path.join(os_config_path, 'submit.ini')
+            locations.insert(1, self.config_path)
         if not config.read(locations):
             raise Exception('No submit.ini found.')
         if not config.has_section(section) and section != 'DEFAULT':
             raise Exception('No section `{0}` found in submit.ini.'
                             .format(section))
         return dict(config.items(section))
-
-    def __init__(self, config_section):
-        config = self._get_config(config_section)
-        self._config = config
-        self.debug = config['debug'].lower() in ('1', 'true', 'yes')
-        self.request_delay = int(config['request_delay'])
-        self.request_timeout = int(config['request_timeout'])
-        self._url = config['url']
-        self.session = requests.session()
-        self.session.headers['X-Requested-With'] = 'XMLHttpRequest'
-        self.email = None
 
     def login(self, email=None, password=None):
         """Login to establish a valid session."""
@@ -73,6 +74,7 @@ class Submit(object):
                                     password=password)
             if response.status_code == 201:
                 print('logged in as {0}'.format(email))
+                self.save_prompt(email, password)
                 self.email = email
                 break
             else:
@@ -121,6 +123,23 @@ class Submit(object):
                   'Please try your submission again in a minute.')
             sys.exit(1)
         return retval
+
+    def save_prompt(self, email, password):
+        if not self.config_path or (email == self._config.get('email') and
+                                    password == self._config.get('password')):
+            return  # Already saved or cannot save
+        sys.stdout.write('Would you like to save your credentials? [yN]: ')
+        sys.stdout.flush()
+        if sys.stdin.readline().strip().lower() not in ('y', 'yes', '1'):
+            return
+        dirpath = os.path.dirname(self.config_path)
+        if not os.path.isdir(dirpath):
+            os.mkdir(dirpath, 0700)
+        with open(self.config_path, 'w') as fp:
+            fp.write('[DEFAULT]\nemail: {}\npassword: {}\n'
+                     .format(email, password))
+        os.chmod(self.config_path, 0600)
+        print('Saved credentials to {}'.format(self.config_path))
 
     def send_file(self, the_file):
         print('Sending {0}'.format(os.path.basename(the_file.name)))
