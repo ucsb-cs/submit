@@ -43,6 +43,7 @@ class Submit(object):
 
     def __init__(self, config_section):
         config = self._get_config(config_section)
+        self._config = config
         self.debug = config['debug'].lower() in ('1', 'true', 'yes')
         self.request_delay = int(config['request_delay'])
         self.request_timeout = int(config['request_timeout'])
@@ -54,19 +55,24 @@ class Submit(object):
     def login(self, email=None, password=None):
         """Login to establish a valid session."""
         auth_url = self.url('auth')
+        email = email or self._config.get('email')
+        password = password or self._config.get('password')
+        if password and not email:
+            raise Exception('Email must be provided when password is.')
         while True:
-            if not email and not password:
+            if not email:
                 sys.stdout.write('Email: ')
                 sys.stdout.flush()
                 email = sys.stdin.readline().strip()
                 if not email:
                     print('Goodbye!')
                     sys.exit(1)
-                password = getpass.getpass()
+            if not password:
+                password = getpass.getpass('Password for {0}: '.format(email))
             response = self.request(auth_url, 'PUT', email=email,
                                     password=password)
             if response.status_code == 201:
-                self.msg('logged in')
+                print('logged in as {0}'.format(email))
                 self.email = email
                 break
             else:
