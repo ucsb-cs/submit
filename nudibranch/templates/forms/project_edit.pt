@@ -54,7 +54,7 @@
             <input type="checkbox" name="is_ready" value="1" tal:attributes="checked 'checked' if project.is_ready else None"> Ready for submissions
           </label>
           <input type="hidden" name="makefile_id" value="${project.makefile_id}">
-          <button class="btn btn-default">Update Project Settings</button>
+          <button class="btn btn-warning">Update Project Settings</button>
         </div>
       </div>
     </form>
@@ -422,7 +422,7 @@
             </div>
           </div>
           <input type="hidden" name="testable_id" value="${testable.id}">
-          <button name="submit">add</button>
+          <button class="btn btn-success" name="submit">Add Test Case</button>
         </form>
       </div>
     </div>

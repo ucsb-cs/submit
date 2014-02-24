@@ -15,7 +15,8 @@
         <input type="password" class="form-control" placeholder="Password"
                name="password" id="password">
       </div>
-      <button class="btn btn-default">Create Account</button>
+      <button class="btn btn-success"><i class="icon-white icon-user"></i>
+          Create Account</button>
     </form>
 
     <div class="alert">

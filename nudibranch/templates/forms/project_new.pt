@@ -17,7 +17,7 @@
         <input name="makefile_id" id="makefile" type="file">
       </div>
       <input type="hidden" name="class_id" id="class_id" value="${project.class_.id}">
-      <button class="btn btn-info">Create Project</button>
+      <button class="btn btn-success">Create Project</button>
     </form>
 
     <span tal:condition="clone_projects" tal:omit-tag="">
@@ -37,7 +37,7 @@
                  name="name" id="name">
         </div>
         <input type="hidden" name="class_id" value="${project.class_.id}">
-        <button class="btn btn-info">Clone Selected Project</button>
+        <button class="btn btn-success">Clone Selected Project</button>
       </form>
     </span>
   </div>
