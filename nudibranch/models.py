@@ -619,7 +619,7 @@ class Submission(BasicBase, Base):
         delay = self.project.delay - (now - self.created_at)
         if delay <= zero:  # Never delay longer than the project's delay time
             return None
-        if not self.group.viewed_at:  # Don't delay
+        if self.group.viewed_at is None:  # Don't delay
             if update:
                 self.group.viewed_at = func.now()
             return None
