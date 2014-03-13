@@ -924,11 +924,16 @@ def session_edit(request, username, next_path):
                          min_elements=1))
 def submission_create(request, project, file_ids, filenames):
     # Additional input verification
-    if len(file_ids) != len(filenames):
+    filename_set = set(filenames)
+    if len(filename_set) != len(filenames):
+        raise HTTPBadRequest('A filename cannot be provided more than once')
+    elif len(file_ids) != len(filenames):
         msg = 'Number of file_ids must match number of filenames'
         raise HTTPBadRequest(msg)
-    elif len(set(filenames)) != len(filenames):
-        raise HTTPBadRequest('A filename cannot be provided more than once')
+    # Verify there are no extra files
+    extra = filename_set - set(x.filename for x in project.file_verifiers)
+    if extra:
+        raise HTTPBadRequest('Invalid files: {}'.format(', '.join(extra)))
 
     # Verify user permission on files
     msgs = []
