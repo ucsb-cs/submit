@@ -59,6 +59,8 @@ class WorkerProxy():
         self.private_key_file = settings['ssh_priv_key']
         self.account = args.worker_account
         machines = settings['worker_machines']
+        if isinstance(machines, basestring):
+            machines = [machines]
         random.shuffle(machines)
         self.machines = [(5., x) for x in machines]
         engine = engine_from_config(settings, 'sqlalchemy.')
@@ -68,8 +70,13 @@ class WorkerProxy():
             settings['queue_server'], settings['queue_tell_worker'],
             self.do_work, is_daemon=args.daemon,
             log_file=settings['worker_proxy_log_file'].format(self.account),
-            pid_file=settings['worker_proxy_pid_file'].format(self.account))
-        worker.start()
+            pid_file=settings['worker_proxy_pid_file'].format(self.account),
+            email_subject='WorkerProxy {} Exception'.format(self.account),
+            email_from=settings['exc_mail_from'],
+            email_to=settings['exc_mail_to'])
+
+        worker.handle_command(args.command)
+
 
     @workers.wrapper
     def do_work(self, submission_id, testable_id, update_project=False):
