@@ -1,10 +1,7 @@
 #!/usr/bin/env python
-import amqp_worker
 import errno
 import json
 import os
-import pika
-import pwd
 import shlex
 import shutil
 import select
@@ -13,6 +10,7 @@ import socket
 import sys
 import tempfile
 import time
+from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT
 
 
@@ -20,33 +18,16 @@ SRC_PATH = 'src'
 INPUT_PATH = 'inputs'
 RESULTS_PATH = 'results'
 EXECUTION_FILES_PATH = 'execution_files'
-SYNC_FILE = 'sync_files'
 
 MAX_FILE_SIZE = 81920
 TIME_LIMIT = 4
 
 
-class SubmissionHandler(object):
-    @staticmethod
-    def _cleanup():
-        for filename in os.listdir('.'):
-            if os.path.isdir(filename):
-                shutil.rmtree(filename)
-            else:
-                os.unlink(filename)
+def log_msg(msg):
+    print('{} {}'.format(datetime.now(), msg))
 
-    @staticmethod
-    def _file_wait(filename, expected_message):
-        start = time.time()
-        while True:
-            if os.path.isfile(filename):
-                if open(filename).read() != expected_message:
-                    raise Exception('Unexpected `done` file.')
-                print('\t\tfile_wait took {0} seconds'
-                      .format(time.time() - start))
-                return
-            time.sleep(0.1)
 
+class Worker(object):
     @staticmethod
     def execute(command, stderr=None, stdin=None, stdout=None, files=None,
                 save=None):
@@ -122,64 +103,29 @@ class SubmissionHandler(object):
                     shutil.copy(src, save[1])
             shutil.rmtree(tmp_dir)
 
-    def __init__(self, settings, is_daemon):
-        settings['working_dir'] = os.path.expanduser(settings['working_dir'])
-        self.worker = amqp_worker.AMQPWorker(
-            settings['server'], settings['queue_tell_worker'], self.do_work,
-            is_daemon=is_daemon, working_dir=settings['working_dir'],
-            log_file=settings['log_file'], pid_file=settings['pid_file'])
-        self.settings = settings
+    def __init__(self):
+        # Load testable information
+        os.chdir('working')
+        with open('data.json') as fp:
+            self.data = json.load(fp)
 
-    def communicate(self, queue, complete_file, submission_id, testable_id,
-                    update_project=False):
-        hostname = socket.gethostbyaddr(socket.gethostname())[0]
-        username = pwd.getpwuid(os.getuid())[0]
-        data = {'complete_file': complete_file, 'remote_dir': os.getcwd(),
-                'user': username, 'host': hostname,
-                'submission_id': submission_id, 'testable_id': testable_id}
-        if update_project:
-            data['update_project'] = update_project
-        self.worker.channel.queue_declare(queue=queue, durable=True)
-        self.worker.channel.basic_publish(
-            exchange='', body=json.dumps(data), routing_key=queue,
-            properties=pika.BasicProperties(delivery_mode=2))
-        self._file_wait(complete_file,
-                        '{0}.{1}'.format(submission_id, testable_id))
-
-    def do_work(self, submission_id, testable_id, update_project=False):
-        self._cleanup()
-        print('Got job: {0}.{1}'.format(submission_id, testable_id))
-        # sync_files worker will verify the request using this file
-        with open('sync_verification', 'w') as fp:
-            fp.write('{0}.{1}'.format(submission_id, testable_id))
-        self.communicate(queue=self.settings['queue_sync_files'],
-                         complete_file=SYNC_FILE,
-                         submission_id=submission_id, testable_id=testable_id)
-        print('\tFiles synced: {0}.{1}'.format(submission_id, testable_id))
-        data = json.load(open('post_sync_data'))
+    def run(self):
+        # Build and run tests
         os.mkdir(RESULTS_PATH)
         result = {}
         try:
-            if data['make_target']:
-                result['make'] = self.make_project(data['executable'],
-                                                   data['make_target'])
-            self.run_tests(data['test_cases'])
+            if self.data['make_target']:
+                result['make'] = self.make_project(self.data['executable'],
+                                                   self.data['make_target'])
+            self.run_tests(self.data['test_cases'])
             result['status'] = 'success'
         except (MakeFailed, NonexistentExecutable) as exc:
             result['make'] = exc.message
             result['status'] = 'make_failed' if isinstance(exc, MakeFailed) \
                 else 'nonexistent_executable'
-
+        # Save results
         with open(os.path.join(RESULTS_PATH, 'testable'), 'w') as fp:
             json.dump(result, fp)
-
-        # Move SYNC_FILE for fetch_result verification worker
-        os.rename(SYNC_FILE, os.path.join(RESULTS_PATH, SYNC_FILE))
-        self.communicate(queue=self.settings['queue_fetch_results'],
-                         complete_file='results_fetched',
-                         submission_id=submission_id, testable_id=testable_id,
-                         update_project=update_project)
-        print('\tResults fetched: {0}.{1}'.format(submission_id, testable_id))
 
     def make_project(self, executable, target):
         """Build the project and verify the executable exists."""
@@ -239,7 +185,7 @@ class SubmissionHandler(object):
                     result['status'] = 'output_limit_exceeded'
             elif os.path.getsize(output_file) > max_file_size:
                 # Truncate output file size
-                print('Truncating outputfile', os.path.getsize(output_file))
+                print('\ttruncating outputfile', os.path.getsize(output_file))
                 fd = os.open(output_file, os.O_WRONLY)
                 os.ftruncate(fd, max_file_size)
                 os.close(fd)
@@ -270,10 +216,19 @@ class TimeoutException(Exception):
 
 
 def main():
-    parser = amqp_worker.base_argument_parser()
-    args, settings = amqp_worker.parse_base_args(parser, 'worker')
-    handler = SubmissionHandler(settings, args.daemon)
-    handler.worker.start()
+    with open('worker.log', 'a') as fp:
+        wp = Worker()
+        status = 'failed'
+        start = time.time()
+        try:
+            wp.run()
+            status = 'success'
+            return 0
+        finally:
+            fp.write('{date} {key} {machine} {status} in {delta} seconds\n'
+                     .format(date=datetime.now(), key=wp.data['key'],
+                             machine=socket.gethostname(),
+                             status=status, delta=time.time() - start))
 
 
 if __name__ == '__main__':

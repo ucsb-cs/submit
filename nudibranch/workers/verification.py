@@ -4,14 +4,15 @@ from nudibranch import workers
 from sqlalchemy import engine_from_config
 
 
-@workers.transaction_wrapper
+@workers.wrapper
 def do_work(submission_id, update_project=False):
     submission = Submission.fetch_by_id(submission_id)
     if not submission:
-        print('Invalid submission id: {0}'.format(submission_id))
+        workers.log_msg('Invalid submission id: {0}'.format(submission_id))
         return
     if update_project and not submission.project.status == u'locked':
-        print('Project to update is not locked: {0}'.format(submission_id))
+        workers.log_msg('Project to update is not locked: {0}'
+                        .format(submission_id))
         return
     # Verify and update submission
     valid_testables = submission.verify(workers.BASE_FILE_PATH,
@@ -21,22 +22,24 @@ def do_work(submission_id, update_project=False):
     if update_project:
         for testable in submission.project.testables:
             if testable not in valid_testables:
-                print('Cannot update project due to invalid testable: {}'
-                      .format(testable.id))
+                workers.log_msg(
+                    'Cannot update project due to invalid testable: {}'
+                    .format(testable.id))
             elif not testable.is_locked:
-                print('Cannot update project due to unlocked testable: {}'
-                      .format(testable.id))
+                workers.log_msg(
+                    'Cannot update project due to unlocked testable: {}'
+                    .format(testable.id))
             else:
                 continue
             valid_testables = None
             break
     if valid_testables:
-        print('Passed: {0}'.format(submission_id))
+        workers.log_msg('Passed: {0}'.format(submission_id))
         retval = [{'submission_id': submission_id, 'testable_id': x.id,
                    'update_project': update_project}
                   for x in valid_testables]
     else:
-        print('Failed: {0}'.format(submission_id))
+        workers.log_msg('Failed: {0}'.format(submission_id))
         if update_project:
             submission.project.status = u'notready'
             for testable in submission.project.testables:

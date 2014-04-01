@@ -54,7 +54,6 @@ setup(name='Nudibranch',
       main = nudibranch:main
       [console_scripts]
       worker_verification = nudibranch.workers.verification:main
-      worker_sync_files = nudibranch.workers.communicator:sync_files
-      worker_fetch_results = nudibranch.workers.communicator:fetch_results
+      worker_proxy = nudibranch.workers.proxy:main
       """,
       )
