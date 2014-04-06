@@ -612,25 +612,32 @@ class Submission(BasicBase, Base):
         Only store information into the datebase when `update` is set.
 
         """
+        if hasattr(self, '_delay'):
+            return self._delay
+
         now = datetime.now(UTC())
         if self.project.deadline and self.project.deadline < now:
+            self._delay = None
             return None  # Don't delay after the project's deadline
         zero = timedelta(0)
         delay = self.project.delay - (now - self.created_at)
         if delay <= zero:  # Never delay longer than the project's delay time
-            return None
-        if self.group.viewed_at is None:  # Don't delay
+            self._delay = None
+        elif self.group.viewed_at is None:  # Don't delay
             if update:
                 self.group.viewed_at = func.now()
-            return None
+            self._delay = None
         elif self.created_at <= self.group.viewed_at:  # Show older results
-            return None
-        pv_delay = self.project.delay - (now - self.group.viewed_at)
-        if pv_delay <= zero:
-            if update:  # Update the counter
-                self.group.viewed_at = func.now()
-            return None
-        return min(delay, pv_delay).total_seconds() / 60
+            self._delay = None
+        else:
+            pv_delay = self.project.delay - (now - self.group.viewed_at)
+            if pv_delay <= zero:
+                if update:  # Update the counter
+                    self.group.viewed_at = func.now()
+                self._delay = None
+            else:
+                self._delay = min(delay, pv_delay).total_seconds() / 60
+        return self._delay
 
     def points(self, include_hidden=False):
         """Return the number of points awarded to this submission."""
