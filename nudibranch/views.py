@@ -15,6 +15,7 @@ from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPError,
                                     HTTPRedirection, HTTPSeeOther)
 from pyramid.response import FileResponse, Response
 from pyramid.security import forget, remember
+from pyramid.settings import asbool
 from pyramid.view import (forbidden_view_config, notfound_view_config,
                           view_config)
 from pyramid_mailer import get_mailer
@@ -888,7 +889,8 @@ def project_view_summary(request, class_name, project):
 @validate(username=String('email'), password=WhiteSpaceString('password'),
           next_path=String('next', optional=True))
 def session_create(request, username, password, next_path):
-    development_mode = request.registry.settings.get('development_mode', False)
+    development_mode = asbool(request.registry.settings.get('development_mode',
+                                                            False))
     user = User.login(username, password, development_mode=development_mode)
     if not user:
         raise HTTPConflict('Invalid login')
