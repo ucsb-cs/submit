@@ -69,6 +69,7 @@ class WorkerProxy():
         worker = amqp_worker.AMQPWorker(
             settings['queue_server'], settings['queue_tell_worker'],
             self.do_work, is_daemon=args.daemon,
+            error_queue=settings.get('queue_tell_worker_error'),
             log_file=settings['worker_proxy_log_file'].format(self.account),
             pid_file=settings['worker_proxy_pid_file'].format(self.account),
             email_subject='WorkerProxy {} Exception'.format(self.account),
