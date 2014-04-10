@@ -102,7 +102,7 @@ class WorkerProxy():
             # Log the start of the job
             workers.log_msg('{}.{} begin ({})'
                             .format(submission_id, testable_id, machine))
-
+            log_type = 'unhandled'
             try:
                 # Kill any processes on the worker
                 priority = self.kill_processes(machine)
