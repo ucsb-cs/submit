@@ -5,7 +5,7 @@ import pickle
 import random
 import subprocess
 import time
-from .exceptions import HandledError
+from .exceptions import HandledError, SSHConnectTimeout
 from heapq import heappop, heappush
 from nudibranch import workers
 from nudibranch.diff_unit import Diff
@@ -78,7 +78,6 @@ class WorkerProxy():
 
         worker.handle_command(args.command)
 
-
     @workers.wrapper
     def do_work(self, submission_id, testable_id, update_project=False):
         # Verify job
@@ -96,32 +95,43 @@ class WorkerProxy():
             raise HandledError('Rejecting update to unlocked testable: {0}'
                                .format(testable_id))
 
-        # Fetch the best machine
-        priority, machine = heappop(self.machines)
-
-        # Log the start of the job
-        workers.log_msg('{}.{} begin ({})'
-                        .format(submission_id, testable_id, machine))
-
-        try:
-            # Kill any processes on the worker
-            priority = self.kill_processes(machine)
-            # Copy the files to the worker (and remove existing files)
-            self.push_files(machine, submission, testable)
-            # Run the remote worker
-            self.ssh(machine, 'python worker.py')
-            # Fetch and generate the results
-            self.fetch_results(machine, submission, testable, update_project)
-        except:
-            priority += 10.
-            # Email exception
-            raise
-        finally:
-            # Add the machine back to the queue
-            heappush(self.machines, (priority, machine))
-            # Log the end of the job
-            workers.log_msg('{}.{} end ({})'
+        attempt = 0
+        while attempt < 16:
+            # Fetch the best machine
+            priority, machine = heappop(self.machines)
+            # Log the start of the job
+            workers.log_msg('{}.{} begin ({})'
                             .format(submission_id, testable_id, machine))
+
+            try:
+                # Kill any processes on the worker
+                priority = self.kill_processes(machine)
+                # Copy the files to the worker (and remove existing files)
+                self.push_files(machine, submission, testable)
+                # Run the remote worker
+                self.ssh(machine, 'python worker.py')
+                # Fetch and generate the results
+                self.fetch_results(machine, submission, testable,
+                                   update_project)
+                log_type = 'success'
+                return
+            except SSHConnectTimeout:  # Retry with a different host
+                attempt += 1
+                log_type = 'timeout'
+                priority += 10
+            except Exception:  # Increase priority and rereaise the exception
+                log_type = 'exception'
+                priority += 5
+                raise
+            finally:
+                # Add the machine back to the queue
+                heappush(self.machines, (priority, machine))
+                # Log the end of the job
+                workers.log_msg('{}.{} {} ({})'.format(submission_id,
+                                                       testable_id, log_type,
+                                                       machine))
+        raise Exception('{}.{} timed out 16 times.'
+                        .format(submission_id, testable_id))
 
     def fetch_results(self, machine, submission, testable, update_project):
         # Rsync to retrieve results
@@ -272,6 +282,8 @@ class WorkerProxy():
                                 stdout=open(os.devnull, 'w'))
         _, stderr = proc.communicate()
         if proc.returncode != 0:
+            if stderr.strip().endswith('Connection timed out'):
+                raise SSHConnectTimeout()
             raise subprocess.CalledProcessError(proc.returncode, cmd,
                                                 output=stderr)
 
