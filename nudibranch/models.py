@@ -644,10 +644,17 @@ class Submission(BasicBase, Base):
         return sum(x.points for x in self.testable_results
                    if include_hidden or not x.testable.is_hidden)
 
-    def testables_pending(self):
-        """Return the set of testables that _can_ execute and have yet to."""
-        return (set(self.project.testables)
-                - self.verification_results.missing_testables()
+    def testables_pending(self, prune=False):
+        """Return the set of testables that _can_ execute and have yet to.
+
+        If prune is true, filter out hidden testables.
+
+        """
+        if prune:
+            tbs = set(x for x in self.project.testables if not x.is_hidden)
+        else:
+            tbs = set(self.project.testables)
+        return (tbs - self.verification_results.missing_testables()
                 - set(x.testable for x in self.testable_results))
 
     def testables_succeeded(self):

@@ -85,7 +85,7 @@
       </ul>
     </div>
 
-    <div class="alert" tal:condition="submission.verified_at and not pending and not diff_table and not has_issues">
+    <div class="alert" tal:condition="submission.verified_at and not pending and not diff_table and not testable_issues">
       It appears that there is nothing to do.
     </div>
 
@@ -100,25 +100,25 @@
       </ul>
     </div>
 
+    <!-- Output test groups with failures -->
+    <div tal:repeat="status sorted(testable_issues)" class="alert alert-error">
+      <h4>Test Group Failed: ${status.testable.name} <span class="badge badge-important">${status.testable.points()} points</span></h4>
+      <div>${status.issue}</div>
+      <pre tal:condition="status.show_make_output" class="make_output">${status.testable_result.make_results}</pre>
+      <ul tal:condition="status.errors">
+	<li tal:repeat="(file, errors) sorted(status.errors.items())">
+	  <strong>${file}</strong>
+          <div class="label label-important"
+               tal:repeat="error errors">${error}</div>
+	</li>
+      </ul>
+    </div>
+
     <!-- Test case summary block -->
     <div tal:condition="diff_table"
          tal:replace="structure diff_table"></div>
 
-    <!-- For each test group, reasons for failure (if applicable) -->
-    <div tal:repeat="status sorted(testable_statuses)" tal:omit-tag="">
-      <div class="alert alert-error" tal:condition="status.issue">
-        <h4>Test Group Failed: ${status.testable.name} <span class="badge badge-important">${status.testable.points()} points</span></h4>
-        <div>${status.issue}</div>
-        <pre tal:condition="status.show_make_output" class="make_output">${status.testable_result.make_results}</pre>
-        <ul tal:condition="status.errors">
-	  <li tal:repeat="(file, errors) sorted(status.errors.items())">
-	    <strong>${file}</strong>
-            <div class="label label-important"
-                 tal:repeat="error errors">${error}</div>
-	  </li>
-        </ul>
-      </div>
-    </div>
+  <!-- END content -->
   </div>
 
   <div metal:fill-slot="eof_content">

@@ -696,6 +696,20 @@ def project_requeue(request, project):
                                      source=MATCHDICT))
 def project_test_case_generate(request, submission):
     project = submission.project
+    if project.status == u'locked':
+        raise HTTPConflict('The project is already locked.')
+    # Verify the submission is okay to use
+    if not submission.verification_results:
+        raise HTTPConflict('The submission has not been verified.')
+    if submission.testables_pending():
+        raise HTTPConflict('The submission has pending test groups.')
+    # Look for testables with issues
+    by_testable = {x.testable: x for x in submission.testable_results}
+    for testable in submission.project.testables:
+        if TestableStatus(testable, by_testable.get(testable),
+                          submission.verification_results.errors).issue:
+            raise HTTPConflict('The submission contains failing test groups.')
+
     # Mark the project and its testables as locked
     project.status = u'locked'
     for testable in project.testables:
@@ -1031,22 +1045,22 @@ def submission_view(request, submission, as_user):
         files = {x.filename: x.file for x in submission.files
                  if x.filename not in extra_files}
         warnings = submission.verification_results.warnings
-        pending = submission.testables_pending()
+        pending = submission.testables_pending(prune=not submission_admin)
 
-        # Testable statuses
-        by_testable = {}
-        for testable_result in submission.testable_results:
-            by_testable[testable_result.testable] = testable_result
-        testable_statuses = [
-            TestableStatus(testable, by_testable.get(testable),
-                           submission.verification_results.errors)
-            for testable in (set(submission.project.testables) - pending)
-            if submission_admin or not testable.is_hidden]
-        # Prune pending
-        pending = [x for x in pending if submission_admin or not x.is_hidden]
+        # Build all testables' statuses
+        # Testables that failed verification do not have a TestableResult
+        by_testable = {x.testable: x for x in submission.testable_results}
+        testable_issues = []
+        # Add testables which have issues (verification or build)
+        for testable in (set(submission.project.testables) - pending):
+            if submission_admin or not testable.is_hidden:
+                ts = TestableStatus(testable, by_testable.get(testable),
+                                    submission.verification_results.errors)
+                if ts.issue:
+                    testable_issues.append(ts)
     else:
         extra_files = files = pending = warnings = None
-        testable_statuses = []
+        testable_issues = []
 
     if submission.testables_succeeded():
         # Decode utf-8 and ignore errors until the data is diffed in unicode.
@@ -1065,7 +1079,6 @@ def submission_view(request, submission, as_user):
     return {'diff_table': diff_table,
             'extra_files': extra_files,
             'files': files,
-            'has_issues': any(x.issue for x in testable_statuses),
             'next_sub': next_sub,
             'next_group': next_group,
             'pending': pending,
@@ -1073,7 +1086,7 @@ def submission_view(request, submission, as_user):
             'prev_group': prev_group,
             'submission': submission,
             'submission_admin': submission_admin,
-            'testable_statuses': testable_statuses,
+            'testable_issues': testable_issues,
             'warnings': warnings}
 
 
