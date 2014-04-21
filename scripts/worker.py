@@ -121,7 +121,8 @@ class Worker(object):
             self.run_tests(self.data['test_cases'])
             result['status'] = 'success'
         except (MakeFailed, NonexistentExecutable) as exc:
-            result['make'] = exc.message
+            # Ignore invalid utf-8 characters
+            result['make'] = exc.message.decode('utf-8', 'ignore')
             result['status'] = 'make_failed' if isinstance(exc, MakeFailed) \
                 else 'nonexistent_executable'
         # Save results
