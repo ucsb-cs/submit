@@ -227,6 +227,7 @@ def main():
             return 0
         except Exception:
             traceback.print_exc(file=fp)
+            raise
         finally:
             fp.write('{date} {key} {machine} {status} in {delta} seconds\n'
                      .format(date=datetime.now(), key=wp.data['key'],
