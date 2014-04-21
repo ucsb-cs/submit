@@ -279,13 +279,14 @@ class WorkerProxy():
             key=self.private_key_file, user=self.account, host=machine,
             command=command, options=options)
         proc = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
-                                stdout=open(os.devnull, 'w'))
-        _, stderr = proc.communicate()
+                                stdout=subprocess.PIPE)
+        stdout, stderr = proc.communicate()
         if proc.returncode != 0:
             if stderr.strip().endswith('Connection timed out'):
                 raise SSHConnectTimeout()
+            output = stdout + '\n' + stderr if stdout else stderr
             raise subprocess.CalledProcessError(proc.returncode, cmd,
-                                                output=stderr)
+                                                output=output)
 
 
 def main():
