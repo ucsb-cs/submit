@@ -10,6 +10,7 @@ import socket
 import sys
 import tempfile
 import time
+import traceback
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT
 
@@ -224,6 +225,8 @@ def main():
             wp.run()
             status = 'success'
             return 0
+        except Exception:
+            traceback.print_exc()
         finally:
             fp.write('{date} {key} {machine} {status} in {delta} seconds\n'
                      .format(date=datetime.now(), key=wp.data['key'],

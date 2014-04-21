@@ -57,8 +57,8 @@ def main():
     engine = engine_from_config(settings, 'sqlalchemy.')
     Session.configure(bind=engine)
 
-    #delete_inactive_users(Session)
-    #update_umail_users()
+    # delete_inactive_users(Session)
+    # update_umail_users()
 
     match_to_umail()
 
