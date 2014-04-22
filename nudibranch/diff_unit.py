@@ -69,10 +69,6 @@ class DiffExtraInfo(object):
                     .format(self._extra)]
         elif self._status == 'timed_out':
             return ['Your program timed out']
-        # TODO: renable exit status checking
-        #elif self._status == 'success' and self._extra != 0:
-        #    return ['Your program terminated with exit code {0}'
-        #            .format(self._extra)]
         else:
             return []
 

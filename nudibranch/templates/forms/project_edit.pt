@@ -1,7 +1,7 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
-    <h1>Editing <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a>
-      <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+    <h1>Editing <a href="${request.route_path('class_item', class_id=project.class_.id)}">${project.class_.name}</a>
+      <a href="${request.route_path('project_item_summary', project_id=project.id)}">${project.name}</a>
       <button class="btn btn-warning" id="requeue">
         <i class="icon-white icon-repeat"></i> Requeue Latest Submissions
       </button>

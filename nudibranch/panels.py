@@ -16,7 +16,7 @@ def navbar(context, request):
         if request.user.is_admin:
             nav.append(nav_item('Create Class', path('class_new')))
         else:
-            nav.append(nav_item('Join Class', path('class_join_list')))
+            nav.append(nav_item('Join Class', path('user_join')))
         nav.append(nav_item('Logout', '#', 'logout_btn'))
         title += ' ({})'.format(request.user.name)
     else:

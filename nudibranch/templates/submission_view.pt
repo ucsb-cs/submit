@@ -1,11 +1,11 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
     <h1>
-      <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a>
+      <a href="${request.route_path('class_item', class_id=submission.project.class_.id)}">${submission.project.class_.name}</a>
       <a tal:condition="submission_admin"
-         href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a>
+         href="${request.route_path('project_item_summary', project_id=submission.project.id)}">${submission.project.name}</a>
       <a tal:condition="not submission_admin"
-         href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
+         href="${request.route_path('project_item_detailed_user', project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
       Submission Results
     </h1>
     ${panel('js_test')}
@@ -64,7 +64,6 @@
            href="${request.route_path('file_item', sha1sum=file.sha1, filename=filename)}">
           <i class="icon-white icon-search"></i> ${filename}</a>
       </div>
-
     </div>
 
     <div class="alert" tal:condition="not submission.verified_at">

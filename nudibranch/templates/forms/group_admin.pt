@@ -1,6 +1,6 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
-    <h1>Group management for <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a></h1>
+    <h1>Group management for <a href="${request.route_path('project_item_summary', project_id=project.id)}">${project.name}</a></h1>
     ${panel('js_test')}
 
     <div class="alert alert-info">Max Group Members: ${project.group_max}</div>
@@ -14,8 +14,8 @@
 
     <h3>Select groups to merge</h3>
     <form role="form" name="input"
-          action="${request.route_path('project_group_admin', project_id=project.id)}"
-          method="PUT" onsubmit="return form_request(this, 'put', true);">
+          action="${request.route_path('project_group', project_id=project.id)}"
+          method="PUT" onsubmit="return form_request(this, 'JOIN', true);">
       <label class="checkbox" tal:repeat="(name, id) sorted(selectable)">
         <input type="checkbox" name="user_ids[]" value="${id}"> ${name}
       </label>

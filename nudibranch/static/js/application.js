@@ -111,9 +111,10 @@ function process_file(handler) {
         setTimeout(function() {  // Perform asynchronously
             var base64 = window.btoa(data);
             var sha1 = hex_sha1(data);
-            var url = '/file/info/' + sha1;
+            var url = '/file/' + sha1 + '/_';
             console.log('Checking if ' + sha1 + ' exists');
-            $.ajax({url: url, complete: function(xhr) {  // Test if file exists
+            $.ajax({url: url, type: 'INFO', complete: function(xhr) {
+                // Test if file exists
                 var submit = false;
                 if (xhr.status == 200) {
                     submit = !$.parseJSON(xhr.responseText)['owns_file'];

@@ -1,9 +1,9 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
-    <h1><a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}
+    <h1><a href="${request.route_path('class_item', class_id=project.class_.id)}">${project.class_.name}</a> ${project.name}
       <a class="btn btn-warning" href="${request.route_path('project_edit', project_id=project.id)}"><i class="icon-white icon-pencil"></i> Edit</a>
       <a class="btn btn-success" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
-      <a class="btn btn-info" href="${request.route_path('project_group_admin', project_id=project.id)}"><i class="icon-white icon-share"></i> Join Groups</a>
+      <a class="btn btn-info" href="${request.route_path('group_admin', project_id=project.id)}"><i class="icon-white icon-share"></i> Join Groups</a>
       <a class="btn btn-inverse" tal:condition="recent_submissions" href="${request.route_path('project_item_download', project_id=project.id)}"><i class="icon-white icon-download"></i> Download Submissions</a>      
     </h1>
 
@@ -64,7 +64,7 @@
               <div tal:repeat="group_submission group_submissions">
                 ${structure: group_submission.time_score(request, admin=True)}
               </div>
-              <a class="btn btn-mini" tal:condition="group in group_truncated" href="${request.route_path('project_item_detailed', class_name=request.matchdict['class_name'], project_id=request.matchdict['project_id'], group_id=group.id)}"> More Submissions</a>
+              <a class="btn btn-mini" tal:condition="group in group_truncated" href="${request.route_path('project_item_detailed', project_id=request.matchdict['project_id'], group_id=group.id)}"> More Submissions</a>
             </td>
           </tr>
         </tbody>

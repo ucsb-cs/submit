@@ -3,16 +3,16 @@
     <h1 tal:condition="can_edit">
       <a href="${request.route_path('project_edit', project_id=project.id)}"
          class="btn btn-warning btn-large">edit</a>
-      <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> <a href="${request.route_path('project_item_summary', class_name=project.class_.name, project_id=project.id)}">${project.name}</a>
+      <a href="${request.route_path('class_item', class_id=project.class_.id)}">${project.class_.name}</a> <a href="${request.route_path('project_item_summary', project_id=project.id)}">${project.name}</a>
     </h1>
-    <h1 tal:condition="not can_edit"><a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a> ${project.name}</h1>
+    <h1 tal:condition="not can_edit"><a href="${request.route_path('class_item', class_id=project.class_.id)}">${project.class_.name}</a> ${project.name}</h1>
 
     <div tal:condition="can_edit" class="alert alert-info">
       <div class="pull-left" tal:condition="prev_group">Previous group:
-        <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
+        <a href="${request.route_path('project_item_detailed', project_id=project.id, group_id=prev_group.id)}">${prev_group.users_str}</a>
       </div>
       <div class="pull-right clearfix" tal:condition="next_group">Next group:
-        <a href="${request.route_path('project_item_detailed', class_name=project.class_.name, project_id=project.id, group_id=next_group.id)}">${next_group.users_str}</a>
+        <a href="${request.route_path('project_item_detailed', project_id=project.id, group_id=next_group.id)}">${next_group.users_str}</a>
       </div>
       <div class="clearfix"></div>
     </div>

@@ -1,24 +1,41 @@
 <metal:block use-macro="main_template">
   <div metal:fill-slot="content">
-    <h1>Submission Results</h1>
-    <div>Student(s): ${submission.group.users_str}
-      <span tal:condition="not submission_admin and
-                           request.user.can_join_group(submission.project)">(<a href="${request.route_path('project_group',
-                                                                                      project_id=submission.project.id)}">Join Group</a>)</span>
-    </div>
-    <div>Class: <a href="${request.route_path('class_item', class_name=submission.project.class_.name)}">${submission.project.class_.name}</a></div>
-    <div tal:condition="submission_admin">Project: <a href="${request.route_path('project_item_summary', class_name=submission.project.class_.name, project_id=submission.project.id)}">${submission.project.name}</a></div>
-    <div tal:condition="not submission_admin">
-      Project: <a href="${request.route_path('project_item_detailed_user', class_name=submission.project.class_.name, project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
-    </div>
-    <div>Submitted: ${submission.created_at} <span tal:condition="submission.is_late">[late]</span></div>
+    <h1>
+      <a href="${request.route_path('class_item', class_id=submission.project.class_.id)}">${submission.project.class_.name}</a>
+      <a href="${request.route_path('project_item_detailed_user', project_id=submission.project.id, username=request.user.username)}">${submission.project.name}</a>
+      Submission Results
+    </h1>
 
-    <h4>Submission Files</h4>
-    <ul tal:condition="submission.files">
-      <li tal:repeat="f sorted(submission.files)">
-        <a href="${request.route_path('file_item', sha1sum=f.file.sha1, filename=f.filename)}">${f.filename}</a>
-      </li>
-    </ul>
+    <div class="alert alert-info">
+      <div class="pull-left" tal:condition="prev_sub">
+        <a class="btn btn-primary btn-mini" href="${request.route_path('submission_item', submission_id=prev_sub.id)}"><i class="icon-white icon-arrow-left"></i> Submission</a>
+      </div>
+      <div class="pull-right" tal:condition="next_sub">
+        <a class="btn btn-primary btn-mini" href="${request.route_path('submission_item', submission_id=next_sub.id)}">Submission <i class="icon-white icon-arrow-right"></i></a>
+      </div>
+      <div class="pagination-centered clearfix">
+        <span tal:condition="request.user in submission.group.users"
+              tal:omit-tag="">
+          <a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=submission.project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
+          <a tal:condition="request.user.can_join_group(submission.project)"
+             class="btn btn-info btn-mini" href="${request.route_path('project_group', project_id=submission.project.id)}"><i class="icon-white icon-share"></i> Join Group</a>
+        </span>
+      </div>
+    </div>
+
+    <div class="well well small">
+      <div>Student(s): ${submission.group.users_str}</div>
+      <div>Submitted:
+        ${structure: submission.time_score(request, admin=submission_admin)}
+        <strong>Note</strong>: Score is tentative
+      </div>
+      <div tal:condition="files">Files:
+        <a class="btn btn-info btn-mini" target="_blank"
+           tal:repeat="(filename, file) sorted(files.items())"
+           href="${request.route_path('file_item', sha1sum=file.sha1, filename=filename)}">
+          <i class="icon-white icon-search"></i> ${filename}</a>
+      </div>
+    </div>
 
     <div class="alert">You can see the results of this submission in ${delay}.</div>
   </div>

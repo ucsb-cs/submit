@@ -9,7 +9,7 @@
       <h3>Student of</h3>
       <ul>
         <li tal:repeat="class_ classes_taking">
-	  <a href="${request.route_path('class_item', class_name=class_.name)}">${class_.name}</a>
+	  <a href="${request.route_path('class_item', class_id=class_.id)}">${class_.name}</a>
         </li>
       </ul>
     </div>
@@ -17,7 +17,7 @@
       <h3>Administrator of</h3>
       <ul>
         <li tal:repeat="class_ admin_classes">
-	  <a href="${request.route_path('class_item', class_name=class_.name)}">${class_.name}</a>
+	  <a href="${request.route_path('class_item', class_id=class_.id)}">${class_.name}</a>
           <span tal:condition="class_.is_locked">(Locked)</span>
         </li>
       </ul>
@@ -28,8 +28,8 @@
         <thead><tr><th>Class</th><th>Project</th><th>Group</th><th>Sub Info</th></tr></thead>
         <tbody>
           <tr tal:repeat="sub admin_subs">
-            <td><a href="${request.route_path('class_item', class_name=sub.project.class_.name)}">${sub.project.class_.name}</a></td>
-            <td><a href="${request.route_path('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a></td>
+            <td><a href="${request.route_path('class_item', class_id=sub.project.class_.id)}">${sub.project.class_.name}</a></td>
+            <td><a href="${request.route_path('project_item_summary', project_id=sub.project.id)}">${sub.project.name}</a></td>
             <td>${sub.group.users_str}</td>
             <td>${structure: sub.time_score(request, admin=True)}</td>
           </tr>
@@ -42,10 +42,10 @@
         <thead><tr><th>Class</th><th>Project</th><th>Sub Info</th></tr></thead>
         <tbody>
           <tr tal:repeat="sub user_subs">
-            <td><a href="${request.route_path('class_item', class_name=sub.project.class_.name)}">${sub.project.class_.name}</a></td>
+            <td><a href="${request.route_path('class_item', class_id=sub.project.class_.id)}">${sub.project.class_.name}</a></td>
             <td tal:define="class_admin sub.project.class_.is_admin(request.user)">
-              <a tal:condition="class_admin" href="${request.route_path('project_item_summary', class_name=sub.project.class_.name, project_id=sub.project.id)}">${sub.project.name}</a>
-              <a tal:condition="not class_admin" href="${request.route_path('project_item_detailed_user', class_name=sub.project.class_.name, project_id=sub.project.id, username=request.user.username)}">${sub.project.name}</a>
+              <a tal:condition="class_admin" href="${request.route_path('project_item_summary', project_id=sub.project.id)}">${sub.project.name}</a>
+              <a tal:condition="not class_admin" href="${request.route_path('project_item_detailed_user', project_id=sub.project.id, username=request.user.username)}">${sub.project.name}</a>
             </td>
             <td>${structure: sub.time_score(request)}</td>
           </tr>

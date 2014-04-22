@@ -10,7 +10,10 @@ from pyramid_addons.validation import (SOURCE_MATCHDICT, String, TextNumber,
                                        Validator)
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict,
                                     HTTPForbidden, HTTPNotFound)
+from pyramid_mailer import get_mailer
+from pyramid_mailer.message import Message
 from pyramid.response import FileResponse
+from pyramid.settings import asbool
 from sqlalchemy.exc import IntegrityError
 from tempfile import NamedTemporaryFile
 from zipfile import ZipFile
@@ -350,6 +353,17 @@ def project_file_delete(request, project_file):
     # Delete the file
     Session.delete(project_file)
     return http_ok(request, redir_location=redir_location)
+
+
+def send_email(request, recipients, subject, body):
+    # If in development mode send email to exception email
+    if asbool(request.registry.settings.get('development_mode', False)):
+        recipients = [request.registry.settings['exc_mail_to']]
+
+    if isinstance(recipients, basestring):
+        recipients = [recipients]
+    message = Message(subject=subject, recipients=recipients, body=body)
+    return get_mailer(request).send(message)
 
 
 def test_case_verification(function):

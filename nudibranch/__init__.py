@@ -24,34 +24,27 @@ def add_routes(config):
     config.add_route('build_file', '/build_file')
     config.add_route('build_file_item', '/build_file/{build_file_id}')
     config.add_route('class', '/class')
-    config.add_route('class.admins', '/class/{class_name}/admins'),
-    config.add_route('class_join_list', '/class_join_list')
-    config.add_route('class_item', '/class/{class_name}')
+    config.add_route('class.admins', '/class/{class_id}/admins'),
+    config.add_route('class_item', '/class/{class_id}')
     config.add_route('execution_file', '/execution_file')
     config.add_route('execution_file_item',
                      '/execution_file/{execution_file_id}')
     config.add_route('file', '/file')
-    config.add_route('file_item_info', '/file/info/{sha1sum}')
     config.add_route('file_item', '/file/{sha1sum}/{filename}')
     config.add_route('file_verifier', '/file_verifier')
     config.add_route('file_verifier_item', '/file_verifier/{file_verifier_id}')
     config.add_route('password_reset', '/password_reset')
     config.add_route('password_reset_item', '/password_reset/{token}')
-    config.add_route('project', '/project')
-    config.add_route('project_clone', '/project/clone')
-    config.add_route('project_group', '/project/{project_id}/group')
-    config.add_route('project_group_admin',
-                     '/project/{project_id}/group_admin')
+    config.add_route('project', '/p')
+    config.add_route('project_group', '/p/{project_id}/group')
     config.add_route('project_group_item',
-                     '/project/{project_id}/group/{group_request_id}')
-    config.add_route('project_info', '/project/{project_id}')
-    config.add_route('project_item_download', 'project/download/{project_id}')
-    config.add_route('project_item_summary',
-                     '/class/{class_name}/{project_id}')
-    config.add_route('project_item_detailed',
-                     '/class/{class_name}/{project_id}/{group_id}')
+                     '/p/{project_id}/group/{group_request_id}')
+    config.add_route('project_info', '/p/{project_id}/info')
+    config.add_route('project_item_download', '/p/{project_id}/download')
+    config.add_route('project_item_summary', '/p/{project_id}')
+    config.add_route('project_item_detailed', '/p/{project_id}/g/{group_id}')
     config.add_route('project_item_detailed_user',
-                     '/class/{class_name}/{project_id}/u/{username}')
+                     '/p/{project_id}/u/{username}')
     config.add_route('session', '/session')
     config.add_route('submission', '/submission')
     config.add_route('submission_item', '/submission/{submission_id}')
@@ -61,18 +54,18 @@ def add_routes(config):
     config.add_route('testable', '/testable')
     config.add_route('testable_item', '/testable/{testable_id}')
     config.add_route('user', '/user')
-    config.add_route('user_class_join', '/user/{username}/{class_name}')
     config.add_route('user_item', '/user/{username}')
     config.add_route('zipfile_download', '/zipfile_download/{submission_id}')
 
     # Form view routes
     config.add_route('class_new', '/form/class')
-    config.add_route('class_edit', '/form/class/{class_name}')
-    config.add_route('project_new', '/form/class/{class_name}/project')
+    config.add_route('class_edit', '/form/class/{class_id}')
+    config.add_route('project_new', '/form/class/{class_id}/project')
     config.add_route('project_edit', '/form/project/{project_id}')
-    config.add_route('submission_new', '/form/submit/{project_id}')
+    config.add_route('group_admin', '/form/project/{project_id}/group')
+    config.add_route('submission_new', '/form/project/{project_id}/submission')
     config.add_route('user_new', '/form/user')
-    config.add_route('user_edit', '/form/user/{username}')
+    config.add_route('user_join', '/form/user/join')
 
 
 def main(global_config, **settings):

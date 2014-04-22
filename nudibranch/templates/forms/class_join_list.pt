@@ -8,9 +8,8 @@
     <div tal:condition="classes">
       <div tal:repeat="class_ classes">
 	<form role="form" name="input"
-              action="${request.route_path('user_class_join',
-                      class_name=class_.name, username=request.user.username)}"
-	      onsubmit="return form_request(this, 'POST');">
+              action="${request.route_path('class_item', class_id=class_.id)}"
+	      onsubmit="return form_request(this, 'JOIN');">
           <button class="btn btn-default">Join ${class_.name}</button>
 	</form>
       </div>

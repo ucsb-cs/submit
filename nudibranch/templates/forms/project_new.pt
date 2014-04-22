@@ -23,8 +23,8 @@
     <span tal:condition="clone_projects" tal:omit-tag="">
       <hr>
       <h3>Clone an Existing Project</h3>
-      <form role="form" name="input" action="${request.route_path('project_clone')}"
-	    onsubmit="return form_request(this, 'PUT');">
+      <form role="form" name="input" action="${request.route_path('project')}"
+	    onsubmit="return form_request(this, 'CLONE');">
         <div class="form-group">
           <select name="project_id">
             <option value="">--Select a project to clone--</option>
@@ -40,5 +40,9 @@
         <button class="btn btn-success">Clone Selected Project</button>
       </form>
     </span>
+  </div>
+
+  <div metal:fill-slot="eof_content">
+    <script src="${request.static_path('nudibranch:static/js/sha1.js')}"></script>
   </div>
 </metal:block>

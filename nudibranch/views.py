@@ -18,8 +18,6 @@ from pyramid.security import forget, remember
 from pyramid.settings import asbool
 from pyramid.view import (forbidden_view_config, notfound_view_config,
                           view_config)
-from pyramid_mailer import get_mailer
-from pyramid_mailer.message import Message
 from sqlalchemy.exc import IntegrityError
 from .diff_render import HTMLDiff
 from .exceptions import GroupWithException, InvalidId
@@ -28,7 +26,7 @@ from .helpers import (
     EditableDBThing, TestableStatus, TextDate, ViewableDBThing, UmailAddress,
     clone, fetch_request_ids, file_verifier_verification, prepare_renderable,
     prev_next_submission, prev_next_group, project_file_create,
-    project_file_delete, test_case_verification, zip_response)
+    project_file_delete, send_email, test_case_verification, zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -106,9 +104,7 @@ def build_file_delete(request, build_file):
 
 
 @view_config(route_name='class.admins', renderer='json', request_method='PUT')
-@validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
-                                 validator=String('class_name'),
-                                 source=MATCHDICT),
+@validate(class_=EditableDBThing('class_id', Class, source=MATCHDICT),
           user=AnyDBThing('email', User, fetch_by='username',
                           validator=String('email')))
 def class_admins_add(request, class_, user):
@@ -127,9 +123,7 @@ def class_admins_add(request, class_, user):
 @view_config(route_name='class.admins', request_method='GET',
              permission='authenticated',
              renderer='templates/forms/class_admins.pt')
-@validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
-                                 validator=String('class_name'),
-                                 source=MATCHDICT))
+@validate(class_=EditableDBThing('class_id', Class, source=MATCHDICT))
 def class_admins_view(request, class_):
     return {'class_': class_}
 
@@ -155,21 +149,22 @@ def class_edit(request):
     return {'classes': sorted(Class.query_by().all())}
 
 
-@view_config(route_name='class_join_list', request_method='GET',
-             permission='authenticated',
-             renderer='templates/forms/class_join_list.pt')
-def class_join_list(request):
-    # get all the classes that the given user is not in, and let the
-    # user optionally join them
-    all_classes = frozenset(Class.query_by(is_locked=False).all())
-    user_classes = frozenset(request.user.classes)
-    return {'classes': sorted(all_classes - user_classes)}
+@view_config(route_name='class_item', request_method='JOIN',
+             permission='authenticated', renderer='json')
+@validate(class_=AnyDBThing('class_id', Class, source=MATCHDICT))
+def class_join(request, class_):
+    if class_.is_locked:
+        raise HTTPBadRequest('Invalid class')
+    request.user.classes.append(class_)
+    request.session.flash('You have joined {}'.format(class_.name),
+                          'successes')
+    url = request.route_path('user_item', username=request.user.username)
+    return http_created(request, redir_location=url)
 
 
 @view_config(route_name='class_item', request_method='GET',
              renderer='templates/class_view.pt', permission='authenticated')
-@validate(class_=AnyDBThing('class_name', Class, fetch_by='name',
-                            validator=String('class_name'), source=MATCHDICT))
+@validate(class_=AnyDBThing('class_id', Class, source=MATCHDICT))
 def class_view(request, class_):
     class_admin = class_.is_admin(request.user)
     recent_subs = None
@@ -221,7 +216,7 @@ def file_create(request, b64data, sha1sum):
     return {'file_id': file_.id}
 
 
-@view_config(route_name='file_item_info', request_method='GET',
+@view_config(route_name='file_item', request_method='INFO',
              permission='authenticated', renderer='json')
 @validate(file_=ViewableDBThing('sha1sum', File, fetch_by='sha1',
                                 validator=SHA1_VALIDATOR, source=MATCHDICT))
@@ -370,9 +365,8 @@ def password_reset_create(request, username):
                                       token=password_reset.get_token())
         body = ('Visit the following link to reset your password:\n\n{0}'
                 .format(reset_url))
-        message = Message(subject='{0} password reset email'.format(site_name),
-                          recipients=[user.username], body=body)
-        get_mailer(request).send(message)
+        send_email(request, recipients=user.username, body=body,
+                   subject='{0} password reset email'.format(site_name))
         return http_ok(request,
                        message='A password reset link will be emailed to you.')
     else:
@@ -412,7 +406,7 @@ def password_reset_item(request, username, password, reset):
     return http_ok(request, redir_location=redir_location)
 
 
-@view_config(route_name='project_clone', request_method='PUT',
+@view_config(route_name='project', request_method='CLONE',
              permission='authenticated', renderer='json')
 @validate(class_=EditableDBThing('class_id', Class),
           name=String('name', min_length=2),
@@ -503,12 +497,12 @@ def project_download(request, project):
 @validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
 def project_edit(request, project):
     action = request.route_path('project_item_summary',
-                                class_name=project.class_.name,
+                                class_id=project.class_.id,
                                 project_id=project.id)
     return {'project': project, 'action': action}
 
 
-@view_config(route_name='project_group_admin', request_method='PUT',
+@view_config(route_name='project_group', request_method='JOIN',
              permission='authenticated', renderer='json')
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT),
           users=List('user_ids', ViewableDBThing('', User), min_elements=2,
@@ -523,14 +517,16 @@ def project_group_admin_join(request, project, users):
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('Could not join the users at this time.')
+    redir_location = request.route_path('group_admin', project_id=project.id)
     if not group:
-        return http_gone(request, redir_location=request.url)
+        return http_gone(request, redir_location=redir_location)
     request.session.flash('Made group: {}'.format(group.users_str),
                           'successes')
-    return http_ok(request, redir_location=request.url)
+    redir_location = request.route_path('group_admin', project_id=project.id)
+    return http_ok(request, redir_location=redir_location)
 
 
-@view_config(route_name='project_group_admin', request_method='GET',
+@view_config(route_name='group_admin', request_method='GET',
              renderer='templates/forms/group_admin.pt',
              permission='authenticated')
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
@@ -569,8 +565,7 @@ def project_group_request_confirm(request, project, group_request):
     return http_ok(request, redir_location=url)
 
 
-@view_config(route_name='project_group', renderer='json',
-             request_method='PUT')
+@view_config(route_name='project_group', renderer='json', request_method='PUT')
 @validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
           username=String('email'))
 def project_group_request_create(request, project, username):
@@ -600,10 +595,9 @@ def project_group_request_create(request, project, username):
             'group for "{}". Please visit the following link to confirm or '
             'deny the request:\n\n{}'
             .format(project.class_.name, request.user, project.name, url))
-    message = Message(subject='{}: {} "{}" Group Request'
-                      .format(site_name, project.class_.name, project.name),
-                      recipients=[user.username], body=body)
-    get_mailer(request).send(message)
+    send_email(request, recipients=user.username, body=body,
+               subject='{}: {} "{}" Group Request'
+               .format(site_name, project.class_.name, project.name))
     request.session.flash('Request to {} sent via email.'.format(user),
                           'successes')
     return http_ok(request, redir_location=request.url)
@@ -664,9 +658,7 @@ def project_info(request, project):
 @view_config(route_name='project_new', request_method='GET',
              renderer='templates/forms/project_new.pt',
              permission='authenticated')
-@validate(class_=EditableDBThing('class_name', Class, fetch_by='name',
-                                 validator=String('class_name'),
-                                 source=MATCHDICT))
+@validate(class_=EditableDBThing('class_id', Class, source=MATCHDICT))
 def project_new(request, class_):
     dummy_project = DummyTemplateAttr(None)
     dummy_project.class_ = class_
@@ -739,16 +731,13 @@ def project_test_case_generate(request, submission):
           makefile=ViewableDBThing('makefile_id', File, optional=True),
           is_ready=TextNumber('is_ready', min_value=0, max_value=1,
                               optional=True),
-          class_name=String('class_name', source=MATCHDICT),
           deadline=TextDate('deadline', optional=True),
           delay_minutes=TextNumber('delay_minutes', min_value=0,
                                    optional=True, default=0),
           group_max=TextNumber('group_max', min_value=1),
           project=EditableDBThing('project_id', Project, source=MATCHDICT))
-def project_update(request, name, makefile, is_ready, class_name, deadline,
-                   delay_minutes, group_max, project):
-    if project.class_.name != class_name:
-        raise HTTPNotFound()
+def project_update(request, name, makefile, is_ready, deadline, delay_minutes,
+                   group_max, project):
     # Fix timezone if it doesn't exist
     if project.deadline and deadline and not deadline.tzinfo:
         deadline = deadline.replace(tzinfo=project.deadline.tzinfo)
@@ -770,13 +759,9 @@ def project_update(request, name, makefile, is_ready, class_name, deadline,
              request_method=('GET', 'HEAD'),
              renderer='templates/project_view_detailed.pt',
              permission='authenticated')
-@validate(class_name=String('class_name', source=MATCHDICT),
-          project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
+@validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
           group=ViewableDBThing('group_id', Group, source=MATCHDICT))
-def project_view_detailed(request, class_name, project, group):
-    # Additional verification
-    if project.class_.name != class_name:
-        raise HTTPNotFound()
+def project_view_detailed(request, project, group):
     submissions = Submission.query_by(project=project, group=group)
     if not submissions:
         raise HTTPNotFound()
@@ -803,15 +788,14 @@ def project_view_detailed(request, class_name, project, group):
              renderer='templates/project_view_detailed.pt',
              request_method=('GET', 'HEAD'),
              permission='authenticated')
-@validate(class_name=String('class_name', source=MATCHDICT),
-          project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
+@validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
           user=ViewableDBThing('username', User, fetch_by='username',
                                validator=String('username'), source=MATCHDICT))
-def project_view_detailed_user(request, class_name, project, user):
+def project_view_detailed_user(request, project, user):
     group_assoc = user.fetch_group_assoc(project)
     if group_assoc:
         url = request.route_path('project_item_detailed',
-                                 class_name=class_name, project_id=project.id,
+                                 project_id=project.id,
                                  group_id=group_assoc.group_id)
         raise HTTPFound(location=url)
     return {'project': project,
@@ -827,9 +811,8 @@ def project_view_detailed_user(request, class_name, project, user):
 @view_config(route_name='project_item_summary', request_method=('GET', 'HEAD'),
              renderer='templates/project_view_summary.pt',
              permission='authenticated')
-@validate(class_name=String('class_name', source=MATCHDICT),
-          project=ViewableDBThing('project_id', Project, source=MATCHDICT))
-def project_view_summary(request, class_name, project):
+@validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
+def project_view_summary(request, project):
     submissions = {}
     group_truncated = set()
     # Fetch recent submissions
@@ -1022,7 +1005,12 @@ def submission_view(request, submission, as_user):
             update=request.user in submission.group.users)
         if delay:
             request.override_renderer = 'templates/submission_delay.pt'
+            files = {x.filename: x.file for x in submission.files}
+            prev_sub, next_sub = prev_next_submission(submission)
             return {'delay': '{0:.1f} minutes'.format(delay),
+                    'files': files,
+                    'next_sub': next_sub,
+                    'prev_sub': prev_sub,
                     'submission': submission,
                     'submission_admin': actual_admin}
 
@@ -1290,28 +1278,13 @@ def testable_delete(request, testable):
     return http_ok(request, redir_location=redir_location)
 
 
-@view_config(route_name='user_class_join', request_method='POST',
-             permission='authenticated', renderer='json')
-@validate(class_=AnyDBThing('class_name', Class, fetch_by='name',
-                            validator=String('class_name'), source=MATCHDICT),
-          username=String('username', min_length=6, max_length=64,
-                          source=MATCHDICT))
-def user_class_join(request, class_, username):
-    if request.user.username != username:
-        raise HTTPBadRequest('Invalid username')
-    if class_.is_locked:
-        raise HTTPBadRequest('Invalid class')
-    request.user.classes.append(class_)
-    request.session.flash('You have joined {}'.format(class_.name),
-                          'successes')
-    url = request.route_path('user_item', username=request.user.username)
-    return http_created(request, redir_location=url)
-
-
 @view_config(route_name='user', request_method='PUT', renderer='json')
 @validate(identity=UmailAddress('email', min_length=16, max_length=64),
-          password=WhiteSpaceString('password', min_length=6))
-def user_create(request, identity, password):
+          password=WhiteSpaceString('password', min_length=6),
+          verification=WhiteSpaceString('verification'))
+def user_create(request, identity, password, verification):
+    if password != verification:
+        raise HTTPBadRequest('password and verification do not match')
     username, name = identity
     Session.add(User(name=name, username=username, password=password,
                      is_admin=False))
@@ -1323,6 +1296,17 @@ def user_create(request, identity, password):
     redir_location = request.route_path('session',
                                         _query={'username': username})
     return http_created(request, redir_location=redir_location)
+
+
+@view_config(route_name='user_join', request_method='GET',
+             permission='authenticated',
+             renderer='templates/forms/class_join_list.pt')
+def user_join(request):
+    # get all the classes that the given user is not in, and let the
+    # user optionally join them
+    all_classes = frozenset(Class.query_by(is_locked=False).all())
+    user_classes = frozenset(request.user.classes)
+    return {'classes': sorted(all_classes - user_classes)}
 
 
 @view_config(route_name='user_new', request_method='GET',

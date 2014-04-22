@@ -2,8 +2,8 @@
   <div metal:fill-slot="content">
     <h1>Group Management</h1>
     ${panel('js_test')}
-    <h3>Class:  <a href="${request.route_path('class_item', class_name=project.class_.name)}">${project.class_.name}</a></h3>
-    <h3>Project: <a href="${request.route_path('project_item_detailed_user', class_name=project.class_.name, project_id=project.id, username=request.user.username)}">${project.name}</a></h3>
+    <h3>Class:  <a href="${request.route_path('class_item', class_id=project.class_.id)}">${project.class_.name}</a></h3>
+    <h3>Project: <a href="${request.route_path('project_item_detailed_user', project_id=project.id, username=request.user.username)}">${project.name}</a></h3>
     <div class="alert alert-info">
       <div>Max Group Members: ${project.group_max}</div>
       <div>Members: ${members}</div>

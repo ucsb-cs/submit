@@ -16,7 +16,6 @@ from urlparse import urljoin
 class Synchronize(object):
     PATHS = {'auth':           'session',
              'file_item':      'file/{sha1sum}/_',
-             'file_item_info': 'file/info/{sha1sum}',
              'test_case':      'test_case',
              'test_case_item': 'test_case/{test_case_id}',
              'testable':       'testable',
@@ -131,11 +130,11 @@ class Synchronize(object):
         if self.debug:
             print('\t' + message)
 
-    def request(self, url, method='get', **data):
+    def request(self, url, method='get', **kwargs):
         time.sleep(self.request_delay)
-        args = (json.dumps(data),) if data else ()
-        retval = getattr(self.session, method.lower())(
-            url, *args, verify=False, timeout=self.request_timeout)
+        data = json.dumps(kwargs) if kwargs else None
+        retval = self.session.request(method, url, data=data, verify=False,
+                                      timeout=self.request_timeout)
         # Handle outage issues
         if retval.status_code == 502:
             print('The submission site is unexpectedly down. Please email '
@@ -149,16 +148,15 @@ class Synchronize(object):
 
     def send_file(self, data):
         sha1sum = hashlib.sha1(data).hexdigest()
-        test_url = self.url('file_item_info', sha1sum=sha1sum)
-        upload_url = self.url('file_item', sha1sum=sha1sum)
+        url = self.url('file_item', sha1sum=sha1sum)
 
         # Have we already uploaded the file?
-        response = self.request(test_url, 'GET')
+        response = self.request(url, 'INFO')
         self.msg('Test file: {0}'.format(response.status_code))
         if response.status_code == 200:
             return response.json()['file_id']
         # Upload the file
-        response = self.request(upload_url, 'PUT',
+        response = self.request(url, 'PUT',
                                 b64data=base64.b64encode(data).decode('ascii'))
         self.msg('Send file: {0}'.format(response.status_code))
         if response.status_code == 200:

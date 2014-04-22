@@ -15,7 +15,7 @@
     <h3>Existing Classes</h3>
     <ul>
       <li tal:repeat="class_ classes">
-        <a href="${request.route_path('class_item', class_name=class_.name)}">${class_.name}</a> <span tal:condition="class_.is_locked">(Locked)</span>
+        <a href="${request.route_path('class_item', class_id=class_.id)}">${class_.name}</a> <span tal:condition="class_.is_locked">(Locked)</span>
       </li>
     </ul>
   </div>

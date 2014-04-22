@@ -15,8 +15,7 @@ from urlparse import urljoin
 class Submit(object):
     PATHS = {'auth':           'session',
              'file_item':      'file/{sha1sum}/_',
-             'file_item_info': 'file/info/{sha1sum}',
-             'project_item':   'class/{class_name}/{project_id}/u/{email}',
+             'project_item':   '/p/{project_id}/u/{email}',
              'submission':     'submission'}
 
     def __init__(self, config_section):
@@ -86,8 +85,7 @@ class Submit(object):
         if self.debug:
             print('\t' + message)
 
-    def make_submission(self, project, file_mapping):
-        _, project_id = project.split(':')
+    def make_submission(self, project_id, file_mapping):
         file_ids = []
         filenames = []
         for file_id, filename in file_mapping:
@@ -108,11 +106,11 @@ class Submit(object):
             print ('Submission failed.')
         return 3
 
-    def request(self, url, method='get', **data):
+    def request(self, url, method='get', **kwargs):
         time.sleep(self.request_delay)
-        args = (json.dumps(data),) if data else ()
-        retval = getattr(self.session, method.lower())(
-            url, *args, verify=False, timeout=self.request_timeout)
+        data = json.dumps(kwargs) if kwargs else None
+        retval = self.session.request(method, url, data=data, verify=False,
+                                      timeout=self.request_timeout)
         # Handle outage issues
         if retval.status_code == 502:
             print('The submission site is unexpectedly down. Please email '
@@ -145,16 +143,15 @@ class Submit(object):
         print('Sending {0}'.format(os.path.basename(the_file.name)))
         data = the_file.read()
         sha1sum = hashlib.sha1(data).hexdigest()
-        test_url = self.url('file_item_info', sha1sum=sha1sum)
-        upload_url = self.url('file_item', sha1sum=sha1sum)
+        url = self.url('file_item', sha1sum=sha1sum)
 
         # Have we already uploaded the file?
-        response = self.request(test_url, 'GET')
+        response = self.request(url, 'INFO')
         self.msg('Test file: {0}'.format(response.status_code))
         if response.status_code == 200 and response.json()['owns_file']:
             return response.json()['file_id']
         # Upload the file
-        response = self.request(upload_url, 'PUT',
+        response = self.request(url, 'PUT',
                                 b64data=base64.b64encode(data).decode('ascii'))
         self.msg('Send file: {0}'.format(response.status_code))
         if response.status_code == 200:
@@ -184,12 +181,8 @@ class Submit(object):
     def url(self, resource, **kwargs):
         return urljoin(self._url, self.PATHS[resource]).format(**kwargs)
 
-    def verify_access(self, project):
-        class_name, project_id = project.split(':')
-        url = self.url('project_item',
-                       class_name=class_name,
-                       project_id=project_id,
-                       email=self.email)
+    def verify_access(self, project_id):
+        url = self.url('project_item', project_id=project_id, email=self.email)
         response = self.request(url, 'HEAD')
         self.msg('Access test: {0}'.format(response.status_code))
         return response.status_code in [200, 302]
@@ -203,7 +196,9 @@ def main():
     args = parser.parse_args()
 
     client = Submit(args.config)
-    return client.submit(args.project, args.files)
+    # Backwards compatability
+    project_id = args.project.rsplit(':', 1)[-1]
+    return client.submit(project_id, args.files)
 
 
 if __name__ == '__main__':
