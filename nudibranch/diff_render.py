@@ -3,7 +3,6 @@ import difflib
 _file_template = """
 <div id="diff_table_div">
 %(summary)s
-%(legend)s
 %(table)s
 </div>
 <script type="text/javascript">
@@ -234,9 +233,10 @@ class HTMLDiff(difflib.HtmlDiff):
 
     def _make_test_summary(self):
         """Return html tables for failed and passed tests."""
-        template = ('<h3 style="color:{2}">{0} Tests</h3>'
+        template = ('<div class="pull-left well well-small">'
+                    '<h3 style="color:{2}">{0} Tests</h3>'
                     '<table border="1">\n  <tr><th>Test Group</th>'
-                    '<th>Test Name</th><th>Value</th></tr>{1}</table>')
+                    '<th>Test Name</th><th>Value</th></tr>{1}</table></div>')
         failed = passed = ''
         for diff, html in sorted(self._mapping.items()):
             if html:
@@ -245,17 +245,18 @@ class HTMLDiff(difflib.HtmlDiff):
                 passed += diff.html_header_row()
 
         output = ''
-        if failed:
-            output += template.format('Failed', failed, 'red')
         if passed:
             output += template.format('Passed', passed, 'green')
-        return output
+        if failed:
+            output += template.format('Failed', failed, 'red')
+        if self._show_legend:
+            output += ('<div class="pull-left well well-small">{}</div>'
+                       .format(self._legend))
+        return '<div class="row-fluid">{}</div>'.format(output)
 
     def make_whole_file(self):
         tables = [x[1] for x in sorted(self._mapping.items()) if x[1]]
-        legend = self._legend if self._show_legend else ''
         return self._file_template % {'summary': self._make_test_summary(),
-                                      'legend': legend,
                                       'table': '\n'.join(tables)}
 
     def _line_wrapper(self, diffs, hide_expected):
