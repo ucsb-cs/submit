@@ -25,7 +25,7 @@
       <div>
         <label class="control-label" for="group_max">Maximum Group Size</label>
         <div class="controls">
-          <input class="input-small" type="number" name="group_max" id="group_max" value="${project.group_max}">
+          <input class="input-small" type="number" min="1" name="group_max" id="group_max" value="${project.group_max}">
         </div>
       </div>
       <div>
@@ -37,13 +37,14 @@
       <div>
         <label class="control-label" for="delay_minutes">Results Delay</label>
         <div class="controls">
-          <input class="input-small" type="number" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}"> minutes
+          <input class="input-small" type="number" min="1" name="delay_minutes" id="delay_minutes" value="${project.delay_minutes}"> minutes
         </div>
       </div>
       <div>
         <label class="control-label" for="makefile">Makefile</label>
         <div class="controls">
-          <a class="btn btn-info btn-mini" tal:condition="project.makefile" href="${request.route_path('file_item', sha1sum=project.makefile.sha1, filename='Makefile')}">
+          <a class="btn btn-info btn-mini" tal:condition="project.makefile" href="${request.route_path('file_item', sha1sum=project.makefile.sha1, filename='Makefile')}"
+             target="_blank">
             <i class="icon-white icon-search"></i> Existing Makefile</a>
           <input name="makefile_id" id="makefile" type="file">
         </div>

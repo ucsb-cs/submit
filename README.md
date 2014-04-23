@@ -162,3 +162,8 @@ use whatever naming schema you want. The following are just an example.
 0. Test passwordless ssh access
 
         ssh -i nb_worker_rsa nb_worker0@localhost
+
+
+### Generate an alembic revision
+
+    alembic -c INI_PATH revision --autogenerate -m "MSG"

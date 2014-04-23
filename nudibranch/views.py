@@ -732,8 +732,7 @@ def project_test_case_generate(request, submission):
           is_ready=TextNumber('is_ready', min_value=0, max_value=1,
                               optional=True),
           deadline=TextDate('deadline', optional=True),
-          delay_minutes=TextNumber('delay_minutes', min_value=0,
-                                   optional=True, default=0),
+          delay_minutes=TextNumber('delay_minutes', min_value=1),
           group_max=TextNumber('group_max', min_value=1),
           project=EditableDBThing('project_id', Project, source=MATCHDICT))
 def project_update(request, name, makefile, is_ready, deadline, delay_minutes,

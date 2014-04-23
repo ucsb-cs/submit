@@ -397,8 +397,8 @@ class Project(BasicBase, Base):
                                cascade='all, delete-orphan')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     deadline = Column(DateTime(timezone=True), nullable=True)
-    delay_minutes = Column(Integer, nullable=False, default=0,
-                           server_default='0')
+    delay_minutes = Column(Integer, nullable=False, default=1,
+                           server_default='1')
     execution_files = relationship(ExecutionFile, backref='project',
                                    cascade='all, delete-orphan')
     file_verifiers = relationship('FileVerifier', backref='project',
@@ -616,9 +616,6 @@ class Submission(BasicBase, Base):
             return self._delay
 
         now = datetime.now(UTC())
-        if self.project.deadline and self.project.deadline < now:
-            self._delay = None
-            return None  # Don't delay after the project's deadline
         zero = timedelta(0)
         delay = self.project.delay - (now - self.created_at)
         if delay <= zero:  # Never delay longer than the project's delay time
