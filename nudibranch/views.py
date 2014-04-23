@@ -847,7 +847,8 @@ def project_view_summary(request, project):
         max_score = max(best_scores)
         mean = numpy.mean(best_scores)
         median = numpy.median(best_scores)
-        bins = [x * possible for x in [0, .6, .7, .8, .9, 1, 1]]
+        bins = [x * possible for x in [0, 0, .6, .7, .8, .9, 1, 1]]
+        bins[1] = min(1, bins[2])
         hist, _ = numpy.histogram(normed, range=(0, possible), bins=bins)
     else:
         hist = max_score = mean = median = None

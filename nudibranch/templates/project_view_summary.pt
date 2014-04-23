@@ -23,16 +23,29 @@
           function drawChart() {
           var data = google.visualization.arrayToDataTable([
           ['Score', 'Count'],
-          ['100%', ${hist[5]}],
-          ['90%-100%', ${hist[4]}],
-          ['80%-90%', ${hist[3]}],
-          ['70%-80%', ${hist[2]}],
-          ['60%-70%', ${hist[1]}],
-          ['Below 60%', ${hist[0]}]
+          ['100%', ${hist[6]}],
+          ['90%-100%', ${hist[5]}],
+          ['80%-90%', ${hist[4]}],
+          ['70%-80%', ${hist[3]}],
+          ['60%-70%', ${hist[2]}],
+          ['Below 60%', ${hist[1]}],
+          ['0%', ${hist[0]}]
           ]);
+          var options = {
+              title: 'Groups by Score (${num_groups} groups)',
+              pieSliceText: 'value', width: 500,
+              slices: {
+                  0: { color: '#3A87AD' },
+                  1: { color: '#468847' },
+                  2: { color: 'lightgreen' },
+                  3: { color: 'gold' },
+                  4: { color: '#f89406' },
+                  5: { color: '#b94a48' },
+                  6: { color: 'black' }
+              }
+          };
           var chart = new google.visualization.PieChart($('#piechart')[0]);
-          chart.draw(data, {title: 'Groups by Score (${num_groups} groups)',
-          pieSliceText: 'value', width: 500});
+          chart.draw(data, options);
           }
         </script>
       </div>
