@@ -113,7 +113,7 @@ class HTMLDiff(difflib.HtmlDiff):
         """\t<a href="javascript:void(0)" onclick="hideAll(""" + \
         """'difflib_chg_{0}_top');">Hide All</a>\n""" + \
         "</p>"
-    FAILING_BLOCK = '\n'.join(['<div class="fail-block" id="{}">',
+    FAILING_BLOCK = '\n'.join(['<div class="well well-small" id="{}">',
                                '  <h4>{}: {}</h4>', '  {}', '</div>'])
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
@@ -137,7 +137,7 @@ class HTMLDiff(difflib.HtmlDiff):
         self._show_legend = False
 
     def add_renderable(self, renderable):
-        value = renderable.custom_output + (renderable.get_issue() or '')
+        value = renderable.custom_output
         if renderable.show_diff_table():
             self._show_legend = True
             self._last_collapsed = False
@@ -147,9 +147,13 @@ class HTMLDiff(difflib.HtmlDiff):
                     self._prefix[1])
                 table = '{0}{1}{0}'.format(show_hide, table)
             value += table
-        self._mapping[renderable] = None if not value else \
-            self.FAILING_BLOCK.format(renderable.id, renderable.group,
-                                      renderable.name, value)
+        name = renderable.name
+        issue = renderable.get_issue()
+        if issue:
+            name += '  -- {}'.format(issue)
+        self._mapping[renderable] = None if not (value or issue) else \
+            self.FAILING_BLOCK.format(renderable.id, renderable.group, name,
+                                      value)
 
     def make_table(self, renderable):
         """Makes unique anchor prefixes so that multiple tables may exist
