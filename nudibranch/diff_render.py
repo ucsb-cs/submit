@@ -113,7 +113,8 @@ class HTMLDiff(difflib.HtmlDiff):
         """\t<a href="javascript:void(0)" onclick="hideAll(""" + \
         """'difflib_chg_{0}_top');">Hide All</a>\n""" + \
         "</p>"
-    FAILING_TEST_BLOCK = '<h3 id="{0}" style="color:red">{1}: {2}</h3>\n{3}'
+    FAILING_BLOCK = '\n'.join(['<div class="fail-block" id="{}">',
+                               '  <h4>{}: {}</h4>', '  {}', '</div>'])
     NEXT_ID_CHANGE = ' id="difflib_chg_{0}_{1}"'
     NEXT_HREF = '<a href="#difflib_chg_{0}_{1}">n</a>'
     NEXT_HREF_TOP = '<a href="#difflib_chg_{0}_top">t</a>'
@@ -124,43 +125,41 @@ class HTMLDiff(difflib.HtmlDiff):
     EMPTY_FILE = '<td></td><td>&nbsp;Empty File&nbsp;</td>'
     MAX_SAME_LINES_BEFORE_SHOW_HIDE = 5  # must be >= 4
 
-    def __init__(self, diffs=[], points_possible=0,
-                 num_reveal_limit=MAX_NUM_REVEALS):
-        """Set num_reveal_limit to None to not reveal"""
+    def __init__(self, points_possible=0, num_reveal_limit=MAX_NUM_REVEALS):
         super(HTMLDiff, self).__init__(wrapcolumn=LINE_WRAP)
         self._legend = _legend
         self._table_template = _table_template
         self._file_template = _file_template
         self._last_collapsed = False
-        self._diff_html = {}  # maps a diff to html
+        self._mapping = {}  # maps a renderable to html
         self._num_reveal_limit = num_reveal_limit
         self._points_possible = points_possible
-        for d in diffs:
-            self.add_renderable(d)
+        self._show_legend = False
 
-    def add_renderable(self, diff):
-        self._diff_html[diff] = self._make_html_for_diff(diff)
+    def add_renderable(self, renderable):
+        value = renderable.custom_output + (renderable.get_issue() or '')
+        if renderable.show_diff_table():
+            self._show_legend = True
+            self._last_collapsed = False
+            table = self.make_table(renderable)
+            if self._last_collapsed:
+                show_hide = self.SHOW_HIDE_INSTRUMENTATION.format(
+                    self._prefix[1])
+                table = '{0}{1}{0}'.format(show_hide, table)
+            value += table
+        self._mapping[renderable] = None if not value else \
+            self.FAILING_BLOCK.format(renderable.id, renderable.group,
+                                      renderable.name, value)
 
-    def _make_html_for_diff(self, diff):
-        inner = diff.extra_display()
-        if diff.should_show_table():
-            inner += self._make_table_for_diff(diff)
-        inner += diff.wrong_things_html()
-        if not inner:
-            return None
-        return self.FAILING_TEST_BLOCK.format(diff.name_id(),
-                                              diff.escaped_group(),
-                                              diff.escaped_name(), inner)
-
-    def make_table(self, diff):
+    def make_table(self, renderable):
         """Makes unique anchor prefixes so that multiple tables may exist
         on the same page without conflict."""
         self._make_prefix()
-        diffs = diff._diff._diff
+        diffs = renderable.diff._diff
 
         # set up iterator to wrap lines that exceed desired width
         if self._wrapcolumn:
-            diffs = self._line_wrapper(diffs, diff._diff.hide_expected)
+            diffs = self._line_wrapper(diffs, renderable.diff.hide_expected)
 
         # collect up from/to lines and flags into lists (also format the lines)
         fromlist, tolist, flaglist = self._collect_lines(diffs)
@@ -229,23 +228,13 @@ class HTMLDiff(difflib.HtmlDiff):
                 color = color.format('#e3ffe3')
         return self.TD_DIFF_HEADER.format(id, linenum, color, text)
 
-    def _make_table_for_diff(self, diff):
-        """Assumes that we should show the table for the diff"""
-        self._last_collapsed = False
-        table = self.make_table(diff)
-        if self._last_collapsed:
-            show_hide = self.SHOW_HIDE_INSTRUMENTATION.format(
-                self._prefix[1])
-            table = '{0}{1}{0}'.format(show_hide, table)
-        return table
-
     def _make_test_summary(self):
         """Return html tables for failed and passed tests."""
         template = ('<h3 style="color:{2}">{0} Tests</h3>'
                     '<table border="1">\n  <tr><th>Test Group</th>'
                     '<th>Test Name</th><th>Value</th></tr>{1}</table>')
         failed = passed = ''
-        for diff, html in sorted(self._diff_html.items()):
+        for diff, html in sorted(self._mapping.items()):
             if html:
                 failed += diff.html_header_row()
             else:
@@ -258,18 +247,12 @@ class HTMLDiff(difflib.HtmlDiff):
             output += template.format('Passed', passed, 'green')
         return output
 
-    def legend_html(self):
-        if any(x.should_show_table() for x in self._diff_html):
-            return "<hr>{0}<hr>".format(self._legend)
-        else:
-            return ""
-
     def make_whole_file(self):
-        tables = [x[1] for x in sorted(self._diff_html.items()) if x[1]]
-        return self._file_template % dict(
-            summary=self._make_test_summary(),
-            legend=self.legend_html(),
-            table='<hr>\n'.join(tables))
+        tables = [x[1] for x in sorted(self._mapping.items()) if x[1]]
+        legend = self._legend if self._show_legend else ''
+        return self._file_template % {'summary': self._make_test_summary(),
+                                      'legend': legend,
+                                      'table': '\n'.join(tables)}
 
     def _line_wrapper(self, diffs, hide_expected):
         diffs = limit_revealed_lines_to(diffs, self._num_reveal_limit,

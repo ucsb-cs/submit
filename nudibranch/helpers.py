@@ -390,44 +390,44 @@ def test_case_verification(function):
 
 
 def prepare_renderable(request, test_case_result, is_admin):
-    """Return a completed DiffWithMetadata object."""
+    """Return a completed Renderable."""
     test_case = test_case_result.test_case
-    extra = DiffExtraInfo(test_case_result.status, test_case_result.extra)
-    diff = None
-    if test_case.output_type == 'image':
-        if test_case_result.diff:
-            url = request.route_path('file_item', filename='_',
-                                     _query={'raw': 1},
-                                     sha1sum=test_case_result.diff.sha1)
-            return ImageOutput(test_case.id, test_case.testable.name,
-                               test_case.name, test_case.points, extra, url)
-        diff = Diff('', 'waiting on image\n')
-    elif test_case.output_type == 'text':
-        msg = 'Text output is not completely handled\n'
-        diff = Diff('', msg)
-    elif not test_case_result.diff:  # Outputs match
-        diff = Diff('', '')
-    if diff:  # Hack for unhandled output:
-        diff.hide_expected = False
-        return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
-                                test_case.name, test_case.points, extra)
+    file_directory = request.registry.settings['file_directory']
+    sha1 = test_case_result.diff.sha1 if test_case_result.diff else None
+    kwargs = {'number': test_case.id, 'group': test_case.testable.name,
+              'name': test_case.name, 'points': test_case.points,
+              'status': test_case_result.status,
+              'extra': test_case_result.extra}
 
-    # Actual diff output
+    if test_case.output_type == 'image':
+        url = request.route_path('file_item', filename='_', _query={'raw': 1},
+                                 sha1sum=sha1) if sha1 else None
+        return ImageOutput(url=url, **kwargs)
+    elif test_case.output_type == 'text':
+        content = None
+        if sha1:
+            with open(File.file_path(file_directory, sha1)) as fp:
+                content = fp.read()
+        return TextOutput(content=content, **kwargs)
+    elif not test_case_result.diff:  # Outputs match
+        return DiffWithMetadata(diff=None, **kwargs)
+
     try:
-        diff_file = File.file_path(request.registry.settings['file_directory'],
-                                   test_case_result.diff.sha1)
-        diff = pickle.load(open(diff_file))
-        diff.hide_expected = not is_admin and test_case.hide_expected
+        with open(File.file_path(file_directory, sha1)) as fp:
+            diff = pickle.load(fp)
+        import pprint
+        pprint.pprint(diff)
     except (AttributeError, EOFError):
-        diff = Diff('', 'submit system mismatch -- requeue submission\n')
-        diff.hide_expected = False
-    except:
-        msg = 'unexected error -- requeue submission\n'
-        msg += traceback.format_exc(1)
-        diff = Diff('', msg)
-        diff.hide_expected = False
-    return DiffWithMetadata(diff, test_case.id, test_case.testable.name,
-                            test_case.name, test_case.points, extra)
+        content = 'submit system mismatch -- requeue submission'
+        content += traceback.format_exc(1)
+        return TextOutput(content=content, **kwargs)
+    except Exception:
+        content = 'unexected error -- requeue submission\n'
+        content += traceback.format_exc(1)
+        return TextOutput(content=content, **kwargs)
+
+    diff.hide_expected = not is_admin and test_case.hide_expected
+    return DiffWithMetadata(diff=diff, **kwargs)
 
 
 def zip_response(request, filename, files):
@@ -455,5 +455,5 @@ def zip_response(request, filename, files):
 
 
 # Avoid cyclic import
-from .diff_unit import Diff, DiffWithMetadata, DiffExtraInfo, ImageOutput
+from .diff_unit import DiffWithMetadata, ImageOutput, TextOutput
 from .models import BuildFile, File, FileVerifier, Session, Submission

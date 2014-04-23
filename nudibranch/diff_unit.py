@@ -47,153 +47,84 @@ def dmp_to_mdiff(diffs):
         yield item
 
 
-class DiffExtraInfo(object):
-    '''TestCaseResult can either have a signal thrown or have a normal
-    exit status.  This abstracts that away.'''
-
-    def __init__(self, status, extra):
-        self._status = status
-        self._extra = extra
-
-    def should_show_table(self):
-        return self._status != 'nonexistent_executable'
-
-    def wrong_things(self):
-        """Returns a list of strings describing the error."""
-        if self._status == 'nonexistent_executable':
-            return ['The expected executable was not produced during make']
-        elif self._status == 'output_limit_exceeded':
-            return ['Your program produced too much output']
-        elif self._status == 'signal':
-            return ['Your program terminated with signal {0}'
-                    .format(self._extra)]
-        elif self._status == 'timed_out':
-            return ['Your program timed out']
-        else:
-            return []
-
-
-class DiffRenderable(object):
-    '''Something that can be rendered with HTMLDiff.
-    This is intended to be abstract'''
-
-    INCORRECT_HTML_TEST_NAME = '<a href="#{0}" style="color:red">{1}</a>'
-    CORRECT_HTML_TEST_NAME = \
-        '<p style="color:green;margin:0;padding:0;">{0}</p>'
+class Renderable(object):
+    INCORRECT = '<a href="#{1}" style="color:red">{0}</a>'
+    CORRECT = '<p style="color:green;margin:0;padding:0;">{0}</p>'
     HTML_ROW = '<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>'
 
-    def __init__(self, test_num, test_group, test_name, test_points):
-        self.test_num = test_num
-        self.test_group = test_group
-        self.test_name = test_name
-        self.test_points = test_points
+    MAPPING = {
+        'nonexistent_executable': ('The expected executable was not produced '
+                                   'during make'),
+        'output_limit_exceeded': 'Your program produced too much output',
+        'signal': 'Your program terminated with signal {0}',
+        'timed_out': 'Your program timed out'}
 
-    def is_correct(self):
-        raise NotImplemented
-
-    def should_show_table(self):
-        '''Whether or not we should show the diff table with diff results'''
-        raise NotImplemented
-
-    def wrong_things(self):
-        '''Returns a list of strings describing everything that's wrong'''
-        raise NotImplemented
-
-    def wrong_things_html(self):
-        list_items = ["<li>{0}</li>".format(escape(thing))
-                      for thing in self.wrong_things()]
-        if list_items:
-            return "<ul>{0}</ul>".format("\n".join(list_items))
-        return ''
-
-    def extra_display(self):
-        return ''
-
-    def escaped_group(self):
-        return escape(self.test_group)
-
-    def escaped_name(self):
-        return escape(self.test_name)
+    def __init__(self, number, group, name, points, status, extra):
+        self.number = number
+        self.group = esc(group)
+        self.name = esc(name)
+        self.points = points
+        self.status = status
+        self.extra = extra
+        self.custom_output = ''
+        self.id = '{}_{}'.format(number, esc(name))
 
     def __cmp__(self, other):
-        groups = cmp(alphanum_key(self.test_group),
-                     alphanum_key(other.test_group))
-        if groups == 0:
-            names = cmp(alphanum_key(self.test_name),
-                        alphanum_key(other.test_name))
-            if names == 0:
-                return self.test_num - other.test_num
-            else:
-                return names
-        else:
+        groups = cmp(alphanum_key(self.group),
+                     alphanum_key(other.group))
+        if groups != 0:
             return groups
+        names = cmp(alphanum_key(self.name),
+                    alphanum_key(other.name))
+        if names != 0:
+            return names
+        return self.number - other.number
 
-    def name_id(self):
-        return "{0}_{1}".format(int(self.test_num),
-                                self.escaped_name())
+    def get_issue(self):
+        if self.status in self.MAPPING:
+            return esc(self.MAPPING[self.status].format(self.extra))
+        return None
 
-    def html_test_name(self):
-        if not self.is_correct():
-            return self.INCORRECT_HTML_TEST_NAME.format(self.name_id(),
-                                                        self.escaped_name())
-        else:
-            return self.CORRECT_HTML_TEST_NAME.format(self.escaped_name())
+    def show_diff_table(self):
+        return False
 
     def html_header_row(self):
-        return self.HTML_ROW.format(self.escaped_group(),
-                                    self.html_test_name(),
-                                    self.test_points)
+        tmp = self.CORRECT if self.get_issue() is None else self.INCORRECT
+        return self.HTML_ROW.format(self.group, tmp.format(self.name, self.id),
+                                    self.points)
 
 
-class DiffWithMetadata(DiffRenderable):
-    '''Wraps around a Diff to impart additional functionality.
-    Not intended to be stored.'''
+class DiffWithMetadata(Renderable):
+    def __init__(self, diff, **kwargs):
+        """Diff is None when the outputs match."""
+        super(DiffWithMetadata, self).__init__(**kwargs)
+        self.diff = diff
 
-    def __init__(self, diff, test_num, test_group, test_name,
-                 test_points, extra_info):
-        super(DiffWithMetadata, self).__init__(
-            test_num, test_group, test_name, test_points)
-        self._diff = diff
-        self.extra_info = extra_info
+    def show_diff_table(self):
+        return self.status != 'nonexistent_executable' and \
+            self.diff is not None and self.diff.show_diff_table()
 
-    def is_correct(self):
-        return len(self.wrong_things()) == 0
-
-    def outputs_match(self):
-        return self._diff.outputs_match()
-
-    def should_show_table(self):
-        return self._diff.should_show_table() and \
-            self.extra_info.should_show_table()
-
-    def wrong_things(self):
-        """Returns a list of strings describing everything that's wrong"""
-        extra_wrong = self.extra_info.wrong_things()
-        if extra_wrong:
-            return extra_wrong
-        return self._diff.wrong_things()
+    def get_issue(self):
+        issue = super(DiffWithMetadata, self).get_issue()
+        return issue if issue else (esc(self.diff.get_issue()) if self.diff
+                                    else None)
 
 
-class ImageOutput(DiffRenderable):
+class ImageOutput(Renderable):
     """Show output image if available."""
-    def __init__(self, test_num, test_group, test_name, test_points,
-                 extra_info, image_url):
-        super(ImageOutput, self).__init__(test_num, test_group, test_name,
-                                          test_points)
-        self.extra_info = extra_info
-        self.image_url = image_url
+    def __init__(self, image_url, **kwargs):
+        super(ImageOutput, self).__init__(**kwargs)
+        if image_url:
+            self.custom_output = ('<img class="result_image" src="{}" />'
+                                  .format(image_url))
 
-    def extra_display(self):
-        return '<img class="result_image" src="{0}" />'.format(self.image_url)
 
-    def is_correct(self):
-        return False
-
-    def should_show_table(self):
-        return False
-
-    def wrong_things(self):
-        return self.extra_info.wrong_things()
+class TextOutput(Renderable):
+    """Show text output if available."""
+    def __init__(self, content, **kwargs):
+        super(TextOutput, self).__init__(**kwargs)
+        if content:
+            self.custom_output = '<pre><code>{}</code></pre>'.format(content)
 
 
 class Diff(object):
@@ -265,27 +196,27 @@ class Diff(object):
     def outputs_match(self):
         return self._diff is None
 
-    def should_show_table(self):
-        '''Determines whether or not an HTML table showing this result
-        should be made.  This is whenever the results didn't match and
-        the student at least attempted to produce output'''
+    def show_diff_table(self):
+        """Show the table when outputs differ and the student has output.
+
+        Do not show student output when the expected output is empty.
+
+        """
         return not self.outputs_match() and not \
             (self.given_empty and not self.correct_empty)
 
-    def wrong_things(self):
-        retval = []
+    def get_issue(self):
         if self.correct_empty and not self.given_empty:
-            retval.append('Your program should not have produced output.')
+            return 'Your program should not have produced output.'
         elif self.given_empty and not self.correct_empty:
-            retval.append('Your program should have produced output.')
+            return 'Your program should have produced output.'
         elif self.correct_newline and self.given_newline is False:
-            retval.append('Your program\'s output should end with a newline.')
+            return 'Your program\'s output should end with a newline.'
         elif self.correct_newline is False and self.given_newline:
-            retval.append('Your program\'s output should not end '
-                          'with a newline.')
+            return 'Your program\'s output should not end with a newline.'
         elif not self.outputs_match():
-            retval.append('Your program\'s output did not match the expected.')
-        return retval
+            return 'Your program\'s output did not match the expected.'
+        return None
 
     def _make_diff(self, correct, given):
         """Return the intermediate representation of the diff."""
@@ -298,6 +229,5 @@ class Diff(object):
         return list(dmp_to_mdiff(diffs))
 
 
-def escape(string):
-    return xml.sax.saxutils.escape(string, {'"': "&quot;",
-                                            "'": "&apos;"})
+def esc(string):
+    return xml.sax.saxutils.escape(string, {'"': "&quot;", "'": "&apos;"})

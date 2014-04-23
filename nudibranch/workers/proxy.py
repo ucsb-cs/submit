@@ -35,12 +35,12 @@ def compute_diff(test_case, test_case_result, output_file, base_file_path):
     Return whether or not the outputs match.
 
     """
-    expected_output = open(File.file_path(base_file_path,
-                                          test_case.expected.sha1)).read()
+    with open(File.file_path(base_file_path, test_case.expected.sha1)) as fp:
+        expected_output = fp.read()
+    actual_output = ''
     if os.path.isfile(output_file):
-        actual_output = open('tc_{0}'.format(test_case.id)).read()
-    else:
-        actual_output = ''
+        with open('tc_{0}'.format(test_case.id)) as fp:
+            actual_output = fp.read()
     unit = Diff(expected_output, actual_output)
     if not unit.outputs_match():
         test_case_result.diff = File.fetch_or_create(pickle.dumps(unit),
@@ -140,8 +140,8 @@ class WorkerProxy():
 
         # Create dictionary of completed test_cases
         if os.path.isfile('test_cases'):
-            results = dict((int(x[0]), x[1]) for x
-                           in json.load(open('test_cases')).items())
+            with open('test_cases') as fp:
+                results = {int(x[0]): x[1] for x in json.load(fp).items()}
         else:
             results = {}
 
