@@ -127,6 +127,7 @@
     <script src="${request.static_path('nudibranch:static/js/diff.js')}"></script>
     <script>
       $(function() {
+          pageLoaded('diff_table_div');
           $("#requeue").on("click", function(event) {
               if (confirm("Are you sure you want to requeue this submission?")) {
                   $.ajax({url: window.location.href, type: 'put',

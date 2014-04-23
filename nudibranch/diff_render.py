@@ -5,9 +5,7 @@ _file_template = """
 %(summary)s
 %(table)s
 </div>
-<script type="text/javascript">
-  pageLoaded('diff_table_div');
-</script>"""
+"""
 
 _table_template = """
     <table class="diff" id="difflib_chg_%(prefix)s_top"
