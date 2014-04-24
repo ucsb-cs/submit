@@ -26,7 +26,7 @@
       <div class="pagination-centered clearfix">
         <span tal:condition="request.user in submission.group.users"
               tal:omit-tag="">
-          <a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=submission.project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
+          <a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=submission.project.id)}"><i class="icon-white icon-upload"></i> Make Submission</a>
           <a tal:condition="request.user.can_join_group(submission.project)"
              class="btn btn-info btn-mini" href="${request.route_path('project_group', project_id=submission.project.id)}"><i class="icon-white icon-share"></i> Join Group</a>
         </span>

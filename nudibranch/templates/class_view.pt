@@ -28,7 +28,7 @@
           </span>
           <td tal:condition="not class_admin"><a href="${request.route_path('project_item_detailed_user', project_id=project.id, username=request.user.username)}">${project.name}</a></td>
           <td>
-            <a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
+            <a class="btn btn-success btn-mini" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make Submission</a>
             <span tal:condition="project.deadline" class="badge">${project.deadline}</span>
           </td>
         </tr>

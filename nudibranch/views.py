@@ -682,6 +682,23 @@ def project_requeue(request, project):
     return http_ok(request, redir_location=request.url)
 
 
+@view_config(route_name='project_scores', request_method='GET',
+             permission='authenticated')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
+def project_scores(request, project):
+    rows = ['Name, Email, Group ID, Score (On Time), Score']
+    _, best_ontime, best = project.process_submissions()
+    for group, (sub, points) in best.items():
+        on_time = best_ontime[group][1] if group in best_ontime else ''
+        for user in group.users:
+            rows.append('{}, {}, {}, {}, {}'
+                        .format(user.name, user.username, group.id,
+                                points, on_time))
+    disposition = 'attachment; filename="{0}.csv"'.format(project.name)
+    return Response(body='\n'.join(rows), content_type=str('text/csv'),
+                    content_disposition=disposition)
+
+
 @view_config(route_name='submission_item_gen', renderer='json',
              request_method='PUT', permission='authenticated')
 @validate(submission=EditableDBThing('submission_id', Submission,
@@ -812,35 +829,9 @@ def project_view_detailed_user(request, project, user):
              permission='authenticated')
 @validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
 def project_view_summary(request, project):
-    submissions = {}
-    group_truncated = set()
-    # Fetch recent submissions
-    recent_submissions = (Submission.query_by(project=project)
-                          .order_by(Submission.created_at.desc())
-                          .limit(16).all())
-
     # Compute student stats
-    by_group = {}
-    best_ontime = {}
-    best = {}
-    admins = set(project.class_.admins)
+    by_group, best_ontime, best = project.process_submissions()
     possible = project.points_possible(include_hidden=True)
-    for sub in sorted(project.submissions, key=lambda x: x.created_at):
-        is_student = not set(sub.group.users) & admins
-        points = sub.points(include_hidden=True)
-        if sub.group in by_group:
-            by_group[sub.group].append(sub)
-            if is_student:
-                if points > best[sub.group][1]:
-                    best[sub.group] = sub, points
-                if not sub.is_late and points > best_ontime[sub.group][1]:
-                    best_ontime[sub.group] = sub, points
-        else:
-            by_group[sub.group] = [sub]
-            if is_student:
-                best[sub.group] = sub, points
-                if not sub.is_late:
-                    best_ontime[sub.group] = sub, points
     if best:
         best_scores = numpy.array([x[1] for x in best.values()])
         normed = [min(x[1], possible) for x in best.values()]
@@ -854,6 +845,8 @@ def project_view_summary(request, project):
         hist = max_score = mean = median = None
 
     # Find most recent for each group
+    submissions = {}
+    group_truncated = set()
     for group in project.groups:
         if group in by_group:
             newest = by_group[group][:-4:-1]
@@ -871,6 +864,10 @@ def project_view_summary(request, project):
 
         else:
             submissions[group] = []
+    # The 16 most recent submissions
+    recent_submissions = (Submission.query_by(project=project)
+                          .order_by(Submission.created_at.desc())
+                          .limit(16).all())
     return {'group_truncated': group_truncated,
             'hist': hist,
             'max': max_score,

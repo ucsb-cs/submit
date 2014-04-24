@@ -2,9 +2,10 @@
   <div metal:fill-slot="content">
     <h1><a href="${request.route_path('class_item', class_id=project.class_.id)}">${project.class_.name}</a> ${project.name}
       <a class="btn btn-warning" href="${request.route_path('project_edit', project_id=project.id)}"><i class="icon-white icon-pencil"></i> Edit</a>
-      <a class="btn btn-success" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make a Submission</a>
+      <a class="btn btn-success" href="${request.route_path('submission_new', project_id=project.id)}"><i class="icon-white icon-upload"></i> Make Submission</a>
       <a class="btn btn-info" href="${request.route_path('group_admin', project_id=project.id)}"><i class="icon-white icon-share"></i> Join Groups</a>
-      <a class="btn btn-inverse" tal:condition="recent_submissions" href="${request.route_path('project_item_download', project_id=project.id)}"><i class="icon-white icon-download"></i> Download Submissions</a>      
+      <a class="btn btn-primary" tal:condition="recent_submissions" href="${request.route_path('project_scores', project_id=project.id)}"><i class="icon-white icon-th-list"></i> Scores CSV</a>      
+      <a class="btn btn-inverse" tal:condition="recent_submissions" href="${request.route_path('project_item_download', project_id=project.id)}"><i class="icon-white icon-download"></i> Submissions Zip</a>
     </h1>
 
     <div tal:condition="recent_submissions">

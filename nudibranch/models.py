@@ -462,6 +462,29 @@ class Project(BasicBase, Base):
                     for test_case in testable.test_cases
                     if include_hidden or not testable.is_hidden])
 
+    def process_submissions(self):
+        by_group = {}
+        best_ontime = {}
+        best = {}
+        admins = set(self.class_.admins)
+        for sub in sorted(self.submissions, key=lambda x: x.created_at):
+            is_student = not set(sub.group.users) & admins
+            points = sub.points(include_hidden=True)
+            if sub.group in by_group:
+                by_group[sub.group].append(sub)
+                if is_student:
+                    if points > best[sub.group][1]:
+                        best[sub.group] = sub, points
+                    if not sub.is_late and points > best_ontime[sub.group][1]:
+                        best_ontime[sub.group] = sub, points
+            else:
+                by_group[sub.group] = [sub]
+                if is_student:
+                    best[sub.group] = sub, points
+                    if not sub.is_late:
+                        best_ontime[sub.group] = sub, points
+        return by_group, best_ontime, best
+
     def recent_submissions(self):
         """Generate a list of the most recent submissions for each user.
 
