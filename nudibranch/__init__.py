@@ -83,7 +83,7 @@ def main(global_config, **settings):
     authen = AuthTktAuthenticationPolicy(secret=settings['auth_secret'],
                                          callback=group_finder, secure=True,
                                          include_ip=False, hashalg='sha512',
-                                         wild_domain=False)
+                                         wild_domain=False, max_age=5000000)
     author = ACLAuthorizationPolicy()
     session_factory = UnencryptedCookieSessionFactoryConfig(
         settings['cookie_secret'])
