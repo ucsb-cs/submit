@@ -106,7 +106,7 @@ def build_file_delete(request, build_file):
 @view_config(route_name='class.admins', renderer='json', request_method='PUT')
 @validate(class_=EditableDBThing('class_id', Class, source=MATCHDICT),
           user=AnyDBThing('email', User, fetch_by='username',
-                          validator=String('email')))
+                          validator=EmailAddress('email')))
 def class_admins_add(request, class_, user):
     if user in class_.admins:
         raise HTTPConflict('That user is already an admin for the class.')
@@ -345,7 +345,7 @@ def home(request):
 
 @view_config(route_name='password_reset', request_method='PUT',
              renderer='json')
-@validate(username=String('email'))
+@validate(username=EmailAddress('email'))
 def password_reset_create(request, username):
     if username == 'admin':
         raise HTTPConflict('Hahaha, nice try!')
@@ -389,7 +389,7 @@ def password_reset_edit_item(request, reset):
 
 @view_config(route_name='password_reset_item', renderer='json',
              request_method='PUT')
-@validate(username=String('email'),
+@validate(username=EmailAddress('email'),
           password=WhiteSpaceString('password', min_length=6),
           reset=AnyDBThing('token', PasswordReset, fetch_by='reset_token',
                            validator=UUID_VALIDATOR, source=MATCHDICT))
@@ -567,7 +567,7 @@ def project_group_request_confirm(request, project, group_request):
 
 @view_config(route_name='project_group', renderer='json', request_method='PUT')
 @validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT),
-          username=String('email'))
+          username=EmailAddress('email'))
 def project_group_request_create(request, project, username):
     if not request.user.can_join_group(project):
         raise HTTPConflict('You cannot expand your group for this project.')
@@ -880,7 +880,8 @@ def project_view_summary(request, project):
 
 
 @view_config(route_name='session', request_method='PUT', renderer='json')
-@validate(username=String('email'), password=WhiteSpaceString('password'),
+@validate(username=EmailAddress('email'),
+          password=WhiteSpaceString('password'),
           next_path=String('next', optional=True))
 def session_create(request, username, password, next_path):
     development_mode = asbool(request.registry.settings.get('development_mode',

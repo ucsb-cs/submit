@@ -100,7 +100,7 @@ class DBThing(Validator):
 
     def run(self, value, errors, request):
         """Return the object if valid and available, otherwise None."""
-        self.id_validator(value, errors, request)
+        value = self.id_validator(value, errors, request)
         if errors:
             return None
         if self.fetch_by:
