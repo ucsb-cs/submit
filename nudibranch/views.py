@@ -6,9 +6,9 @@ import transaction
 from base64 import b64decode
 from hashlib import sha1
 from pyramid_addons.helpers import (http_created, http_gone, http_ok)
-from pyramid_addons.validation import (Enum, List, String, RegexString,
-                                       TextNumber, WhiteSpaceString, validate,
-                                       SOURCE_GET,
+from pyramid_addons.validation import (EmailAddress, Enum, List, String,
+                                       RegexString, TextNumber,
+                                       WhiteSpaceString, validate, SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict, HTTPError,
                                     HTTPFound, HTTPNotFound, HTTPOk,

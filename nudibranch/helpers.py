@@ -6,8 +6,8 @@ import pika
 import re
 import traceback
 from pyramid_addons.helpers import http_created, http_ok
-from pyramid_addons.validation import (SOURCE_MATCHDICT, String, TextNumber,
-                                       Validator)
+from pyramid_addons.validation import (SOURCE_MATCHDICT, EmailAddress,
+                                       TextNumber, Validator)
 from pyramid.httpexceptions import (HTTPBadRequest, HTTPConflict,
                                     HTTPForbidden, HTTPNotFound)
 from pyramid_mailer import get_mailer
@@ -67,15 +67,12 @@ class TextDate(Validator):
             return value
 
 
-class UmailAddress(String):
+class UmailAddress(EmailAddress):
 
     """A validator to verify that a umail address is correct."""
 
-    def __init__(self, *args, **kwargs):
-        super(UmailAddress, self).__init__(*args, lowercase=True, **kwargs)
-
     def run(self, value, errors, *args):
-        retval = super(String, self).run(value.strip(), errors, *args)
+        retval = super(UmailAddress, self).run(value.lower(), errors, *args)
         if errors:
             return retval
         if not retval.endswith('@umail.ucsb.edu'):
