@@ -412,8 +412,6 @@ def prepare_renderable(request, test_case_result, is_admin):
     try:
         with open(File.file_path(file_directory, sha1)) as fp:
             diff = pickle.load(fp)
-        import pprint
-        pprint.pprint(diff)
     except (AttributeError, EOFError):
         content = 'submit system mismatch -- requeue submission'
         content += traceback.format_exc(1)

@@ -6,7 +6,7 @@ import transaction
 from base64 import b64decode
 from hashlib import sha1
 from pyramid_addons.helpers import (http_created, http_gone, http_ok)
-from pyramid_addons.validation import (EmailAddress, Enum, List, String,
+from pyramid_addons.validation import (EmailAddress, Enum, List, Or, String,
                                        RegexString, TextNumber,
                                        WhiteSpaceString, validate, SOURCE_GET,
                                        SOURCE_MATCHDICT as MATCHDICT)
@@ -880,7 +880,7 @@ def project_view_summary(request, project):
 
 
 @view_config(route_name='session', request_method='PUT', renderer='json')
-@validate(username=EmailAddress('email'),
+@validate(username=Or('email', EmailAddress(''), String('')),
           password=WhiteSpaceString('password'),
           next_path=String('next', optional=True))
 def session_create(request, username, password, next_path):
