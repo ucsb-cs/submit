@@ -565,7 +565,8 @@ class Submission(BasicBase, Base):
     created_by_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     group = relationship(Group, backref='submissions')
     group_id = Column(Integer, ForeignKey('group.id'), nullable=False)
-    files = relationship('SubmissionToFile', backref='submission')
+    files = relationship('SubmissionToFile', backref='submission',
+                         cascade='all, delete-orphan')
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
     test_case_results = relationship('TestCaseResult', backref='submission',
                                      cascade='all, delete-orphan')
@@ -1052,10 +1053,11 @@ class UserToGroup(Base):
     __tablename__ = 'user_to_group'
     created_at = Column(DateTime(timezone=True), default=func.now(),
                         nullable=False)
-    group = relationship('Group', backref='group_assocs')
+    group = relationship('Group', backref='group_assocs', cascade='all')
     group_id = Column(Integer, ForeignKey('group.id'), index=True,
                       nullable=False)
-    project = relationship('Project', backref='group_assocs')
+    project = relationship('Project', backref=backref(
+            'group_assocs', cascade='all, delete-orphan'))
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
     user = relationship('User',
                         backref=backref('groups_assocs', cascade='all'))
