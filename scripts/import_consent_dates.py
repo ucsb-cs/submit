@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 import pytz
 import sys
+import transaction
 
 TZ = pytz.timezone('America/Los_Angeles')
 
@@ -25,8 +26,10 @@ def to_date(user):
 def fetch_consent_data(filename):
     people = []
     with open(filename) as fp:
-        for line in fp:
-            _, last, first, email, cdate, _, _ = line.split(',')
+        for i, line in enumerate(fp):
+            if i == 0:
+                continue
+            _, last, first, email, cdate, _, _, _ = line.split(',')
             people.append({'last': last.strip().lower(),
                            'first': first.strip().lower(),
                            'email': email.strip().lower(),
@@ -63,10 +66,7 @@ def main():
                 print 'updating'
                 user.consent_at = by_email[user.username]
             del by_email[user.username]
-
-    import transaction
     transaction.commit()
-
     print('Matched {} out of {} ({} remaining)'
           .format(len(matched), total, len(by_email)))
 
