@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from nudibranch.models import Class, Session, User
+from nudibranch.models import Class, File, Session, User
 from pyramid.paster import get_appsettings, setup_logging
 from sqlalchemy import engine_from_config, not_
 import os
@@ -88,6 +88,17 @@ def delete_inactive_classes():
     transaction.commit()
 
 
+def delete_unlinked_files(base_path):
+    #meta_sha1s = {x.sha1 for x in File.query_by().all()}
+    #print(len(meta_sha1s))
+    sha1s = set()
+    for root, dirs, files in os.walk(base_path):
+        if files:
+            for filename in files:
+                sha1s.add(''.join(root.rsplit('/', 2)[1:] + [filename]))
+    print(len(sha1s))
+
+
 def delete_unused_projects():
     for class_ in locked_classes():
         for project in class_.projects:
@@ -111,8 +122,9 @@ def main():
     Session.configure(bind=engine)
 
     #delete_unused_projects()
-    delete_inactive_classes()
-    delete_inactive_users()
+    #delete_inactive_classes()
+    #delete_inactive_users()
+    delete_unlinked_files(settings['file_directory'])
 
 
     if False:
