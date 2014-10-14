@@ -112,11 +112,11 @@ class DiffWithMetadata(Renderable):
 
 class ImageOutput(Renderable):
     """Show output image if available."""
-    def __init__(self, image_url, **kwargs):
+    def __init__(self, url, **kwargs):
         super(ImageOutput, self).__init__(**kwargs)
-        if image_url:
+        if url:
             self.custom_output = ('<img class="result_image" src="{}" />'
-                                  .format(image_url))
+                                  .format(url))
 
 
 class TextOutput(Renderable):

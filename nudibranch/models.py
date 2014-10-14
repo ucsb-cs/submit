@@ -1056,8 +1056,9 @@ class UserToGroup(Base):
     group = relationship('Group', backref='group_assocs', cascade='all')
     group_id = Column(Integer, ForeignKey('group.id'), index=True,
                       nullable=False)
-    project = relationship('Project', backref=backref(
-            'group_assocs', cascade='all, delete-orphan'))
+    project = relationship(
+        'Project',
+        backref=backref('group_assocs', cascade='all, delete-orphan'))
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
     user = relationship('User',
                         backref=backref('groups_assocs', cascade='all'))
