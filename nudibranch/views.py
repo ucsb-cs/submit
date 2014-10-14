@@ -881,7 +881,7 @@ def project_view_summary(request, project):
 
 @view_config(route_name='session', request_method='PUT', renderer='json')
 @validate(username=Or('email', EmailAddress(''), String('')),
-          password=WhiteSpaceString('password'),
+          password=WhiteSpaceString('password', min_length=6),
           next_path=String('next', optional=True))
 def session_create(request, username, password, next_path):
     development_mode = asbool(request.registry.settings.get('development_mode',
@@ -1278,19 +1278,36 @@ def testable_delete(request, testable):
 
 @view_config(route_name='user', request_method='PUT', renderer='json')
 @validate(identity=UmailAddress('email', min_length=16, max_length=64),
-          password=WhiteSpaceString('password', min_length=6),
-          verification=WhiteSpaceString('verification'))
-def user_create(request, identity, password, verification):
-    if password != verification:
-        raise HTTPBadRequest('password and verification do not match')
+          verification=String('verification'))
+def user_create(request, identity, verification):
     username, name = identity
-    Session.add(User(name=name, username=username, password=password,
-                     is_admin=False))
+    if username != verification:
+        raise HTTPBadRequest('email and verification do not match')
+
+    # Set the password to blank
+    # Session creation requires at least 6 characters)
+    new_user = User(name=name, username=username, password='', is_admin=False)
+    Session.add(new_user)
     try:
         Session.flush()
     except IntegrityError:
         raise HTTPConflict('User \'{0}\' already exists'.format(username))
-    request.session.flash('Account created!', 'successes')
+
+    password_reset = PasswordReset.generate(new_user)
+    Session.add(password_reset)
+    try:
+        Session.flush()
+    except IntegrityError:
+        raise HTTPConflict('Error creating password reset.')
+    site_name = request.registry.settings['site_name']
+    reset_url = request.route_url('password_reset_item',
+                                  token=password_reset.get_token())
+    body = ('Visit the following link to reset your password:\n\n{0}'
+            .format(reset_url))
+    send_email(request, recipients=username, body=body,
+               subject='{0} password reset email'.format(site_name))
+    request.session.flash('Account created and a password reset email has '
+                          'been sent!', 'successes')
     redir_location = request.route_path('session',
                                         _query={'username': username})
     return http_created(request, redir_location=redir_location)

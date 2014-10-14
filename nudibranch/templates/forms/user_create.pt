@@ -11,16 +11,10 @@
                name="email" id="email">
       </div>
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" class="form-control" placeholder="Create a password"
-               name="password" id="password">
-      </div>
-      <div class="form-group">
-        <label for="verification">Confirm Password</label>
-        <input type="password" class="form-control" placeholder="Retype the password"
+        <label for="verification">Confirm Email</label>
+        <input type="email" class="form-control" placeholder="Retype the email"
                name="verification" id="verification">
       </div>
-
       <button class="btn btn-success"><i class="icon-white icon-user"></i>
           Create Account</button>
     </form>
