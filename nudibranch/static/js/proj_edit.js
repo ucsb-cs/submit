@@ -10,7 +10,7 @@ function hfd(lhs, rhs) {
     group.appendTo(retval);
     return retval;
 }
-function files_form(category, info, ids) {
+function files_form(category, info, ids, unique) {
     var lcn = null;
     var new_title = '<i class="icon-white icon-file"></i> New';
     if (category == 0) {
@@ -30,6 +30,9 @@ function files_form(category, info, ids) {
     lcn = lcn || name.replace(' ', '_').toLowerCase();
     var retval = $('<div class="pull-left well well-small"><h3>Select {0}s\
 </h3>'._format(name));
+    var cb_class = 'cb_{0}_{1}'._format(unique, category);
+    $('<p>(<a onclick="$(\'.' + cb_class + '\').prop(\'checked\', true);">Select All</a>) |\
+(<a onclick="$(\'.' + cb_class + '\').prop(\'checked\', false);">Select None</a>)</p>'._format(cb_class)).appendTo(retval);
     for (var i = 0; i < info.length; ++i) {
         var f = info[i];
         var checked = $.inArray(f['id'], ids) != -1 ? 'checked="checked"' : '';
@@ -49,8 +52,8 @@ View</a>'._format(file_path, f['file_hex'], f['name'])
 icon-pencil"></i> Edit</span>'._format(f['id']);
         }
         var rhs = '<label class="checkbox"><input type="checkbox" name="{0}_\
-ids[]" value="{1}" {2}>  {3}</label>'._format(lcn, f['id'], checked,
-                                              f['name']);
+ids[]" value="{1}" class="{2}" {3}>  {4}</label>'._format(
+                   lcn, f['id'], cb_class, checked, f['name']);
         var div = $('<div>');
         $('<div class="pull-left">').append($(lhs)).appendTo(div);
         $('<div class="pull-left" style="margin-left:5px">').append($(rhs))
@@ -80,9 +83,12 @@ function testable_div(info) {
                   ' onsubmit="return form_request(this, \'{1}\', true);"/>')
                  ._format(action, method));
     var row = $('<div class="row-fluid">');
-    files_form(0, build_files, info['build_files']).appendTo(row);
-    files_form(1, execution_files, info['execution_files']).appendTo(row);
-    files_form(2, expected_files, info['expected_files']).appendTo(row);
+    files_form(0, build_files, info['build_files'],
+               info['id']).appendTo(row);
+    files_form(1, execution_files, info['execution_files'],
+               info['id']).appendTo(row);
+    files_form(2, expected_files, info['expected_files'],
+               info['id']).appendTo(row);
     row.appendTo(form);
     hfd('<label for="testable_name_{0}">Testable Name</label>'
         ._format(info['id']),
