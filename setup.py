@@ -2,7 +2,6 @@
 
 import os
 import re
-import sys
 from setuptools import setup, find_packages
 
 PACKAGE_NAME = 'submit'
@@ -34,30 +33,15 @@ requires = [
     'sqlalchemy>=0.7.8',
     'zope.sqlalchemy>=0.7.1']
 
-if '--production' == sys.argv[-1]:
-    requires.extend(['psycopg2', 'uwsgi>=1.2.4'])
-    sys.argv.pop()
-else:
-    requires.extend(['flake8', 'pyramid_debugtoolbar', 'waitress'])
-
 setup(name=PACKAGE_NAME,
-      version=VERSION,
-      description=('submit is a submission web service designed for '
-                   'programming assignments'),
-      long_description=README,
+      author='Bryce Boe',
+      author_email='bboe@cs.ucsb.edu',
       classifiers=["Programming Language :: Python",
                    "Framework :: Pylons",
                    "Topic :: Internet :: WWW/HTTP",
-                   "Topic :: Internet :: WWW/HTTP :: WSGI :: Application", ],
-      author='Bryce Boe',
-      author_email='bboe@cs.ucsb.edu',
-      url='https://github.com/ucsb-cs/submit',
-      keywords='web pyramid pylons',
-      packages=find_packages(),
-      include_package_data=True,
-      zip_safe=False,
-      install_requires=requires,
-      tests_require=requires,
+                   "Topic :: Internet :: WWW/HTTP :: WSGI :: Application"],
+      description=('submit is a submission web service designed for '
+                   'programming assignments'),
       entry_points="""\
       [paste.app_factory]
       main = {package}:main
@@ -65,4 +49,14 @@ setup(name=PACKAGE_NAME,
       worker_verification = {package}.workers.verification:main
       worker_proxy = {package}.workers.proxy:main
       """.format(package=PACKAGE_NAME),
-      )
+      extras_require={'dev': ['flake8', 'pyramid_debugtoolbar', 'waitress'],
+                      'prod': ['psycopg2', 'uwsgi>=1.2.4']},
+      include_package_data=True,
+      install_requires=requires,
+      keywords='web pyramid pylons',
+      license='Simplified BSD License',
+      long_description=README,
+      packages=find_packages(),
+      url='https://github.com/ucsb-cs/submit',
+      version=VERSION,
+      zip_safe=False)

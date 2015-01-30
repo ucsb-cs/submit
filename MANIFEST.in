@@ -1,2 +1,2 @@
-include *.ini *.cfg *.md
-recursive-include submit *.ico *.css *.pt *.js
+include *.ini *.md *.txt
+recursive-include submit *.css *.pt *.js

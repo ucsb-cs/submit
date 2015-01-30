@@ -26,7 +26,7 @@ ${panel('messages')}
     <metal:content define-slot="content" />
     <hr>
     <footer>
-      &copy; 2014 Bryce Boe
+      &copy; 2012 Bryce Boe
     </footer>
   </div>
 
