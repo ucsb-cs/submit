@@ -32,6 +32,13 @@ from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Submission, SubmissionToFile, TestCase, Testable, User,
                      UserToGroup)
 
+# Hack for old pickle files
+# TODO: Migrate this data to not use pickle
+import sys
+import submit
+sys.modules['nudibranch'] = submit
+sys.modules['nudibranch.diff_unit'] = submit.diff_unit
+sys.modules['nudibranch.models'] = submit.models
 
 # A few reoccuring validators
 OUTPUT_SOURCE = Enum('output_source', 'stdout', 'stderr', 'file')

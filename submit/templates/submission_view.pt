@@ -121,10 +121,10 @@
   </div>
 
   <div metal:fill-slot="eof_content">
-    <link rel="stylesheet" href="${request.static_path('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}" type="text/css" media="screen">
-    <link href="${request.static_path('nudibranch:static/css/diff.css')}" rel="stylesheet">
+    <link rel="stylesheet" href="${request.static_path('submit:static/smoothness/jquery-ui-1.9.2.custom.css')}" type="text/css" media="screen">
+    <link href="${request.static_path('submit:static/css/diff.css')}" rel="stylesheet">
     <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
-    <script src="${request.static_path('nudibranch:static/js/diff.js')}"></script>
+    <script src="${request.static_path('submit:static/js/diff.js')}"></script>
     <script>
       $(function() {
           pageLoaded('diff_table_div');

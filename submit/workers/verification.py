@@ -1,7 +1,7 @@
 import amqp_worker
-from nudibranch.models import Submission, configure_sql
-from nudibranch import workers
 from sqlalchemy import engine_from_config
+from .. import workers
+from ..models import Submission, configure_sql
 
 
 @workers.wrapper
