@@ -138,7 +138,7 @@ class Synchronize(object):
         # Handle outage issues
         if retval.status_code == 502:
             print('The submission site is unexpectedly down. Please email '
-                  'bboe@cs.ucsb.edu with the URL: {0}'.format(url))
+                  'support@cs.ucsb.edu with the URL: {0}'.format(url))
             sys.exit(1)
         elif retval.status_code == 503:
             print('The submission site is temporarily down for maintenance. '

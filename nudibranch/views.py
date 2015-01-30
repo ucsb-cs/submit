@@ -975,7 +975,8 @@ def submission_create(request, project, file_ids, filenames):
              permission='authenticated')
 @validate(project=AccessibleDBThing('project_id', Project, source=MATCHDICT))
 def submission_new(request, project):
-    return {'project': project}
+    return {'project': project,
+            'submit_path': request.registry.settings['submit_path']}
 
 
 @view_config(route_name='submission_item', renderer='json',
