@@ -20,9 +20,16 @@
     </form>
 
     <div class="alert">
-      If you do not have a umail address please send an email to bboe _at_
-      cs.ucsb.edu from the email you wish to register from along with your full
-      name and the class name for which you require an account.
+      <p>All students <em>should</em> have a umail account. If you are a
+        student who does not, please send an email to your instructor from the
+        desired email account. In this email ask your instructor to send an
+        email to support@cs.ucsb.edu verifying that you are a student of their
+        class who does not have a umail account.</p>
+
+      <p>If you are an instructor or TA and would like your submit.cs account
+        to be associated with your CS account email, please send an email to
+        support@cs.ucsb.edu with your CS account name, and the class that you
+        are an instructor or TA for.</p>
     </div>
   </div>
 </metal:block>

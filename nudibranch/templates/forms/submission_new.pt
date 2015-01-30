@@ -19,7 +19,7 @@
       </form>
     </fieldset>
     <div class="alert">You can also submit through a csil machine via
-      <code>~bboe/bin/submit -p ${project.id} ${project.submit_string()}</code>
+      <code>${submit_path} -p ${project.id} ${project.submit_string()}</code>
       <div><strong>Note</strong>: Files in brackets indicate partial
         submissions can be made without those files. However, omitting these
         files does not necessarily mean you will receive partial credit for
