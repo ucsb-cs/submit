@@ -25,14 +25,14 @@ combination. Also, if you are not familiar with git, please go through the
 
 0. Check out the source
 
-        git clone git@github.com:ucsb-cs-education/nudibranch.git
+        git clone git@github.com:ucsb-cs/submit.git
 
 0. Create the virtual environment
 
     These examples use `~/.venv` as the virtual environment location,
     however, feel free to use whatever you prefer.
 
-        virtualenv ~/.venv/nudibranch
+        virtualenv ~/.venv/submit
 
         # If python2 is not the default for your virtualenv you will want to
         # add -p /path/to/python/2/bin
@@ -40,11 +40,11 @@ combination. Also, if you are not familiar with git, please go through the
 0. Load the virtual environment (Note: you will need to run this everytime you
 open a new terminal to run the project's commands)
 
-        source ~/.venv/nudibranch/bin/activate
+        source ~/.venv/submit/bin/activate
 
 0. Install the package and its dependencies in development mode
 
-        cd nudibranch
+        cd submit
         python setup.py develop
 
 0. Install some development and testing tools
@@ -53,7 +53,7 @@ open a new terminal to run the project's commands)
 
 0. Run the project in development
 
-        # From the `first nudibranch` directory (contains development.ini)
+        # From the `first submit` directory (contains development.ini)
         pserve development.ini --reload
 
     At this point you can connect to the service with your web browser at:
@@ -63,14 +63,6 @@ open a new terminal to run the project's commands)
 
 
 # Working with the source
-
-## Developing Tests
-
-Test cases should be added to each view method in
-`nudibranch/tests.py`. Multiple test cases should be written for each view to
-cover every possible path through the view.
-
-To run the tests execute `python setup.py test -q`.
 
 ## Commiting code
 
@@ -142,26 +134,26 @@ use whatever naming schema you want. The following are just an example.
 
 0. Create a ssh keypair for all the workers (this need only be done once)
 
-        ssh-keygen -C "nudibranch worker" -N "" -f nb_worker_rsa
-        # Save nb_worker_rsa in a secure location (you'll need its path for the
+        ssh-keygen -C "submit worker" -N "" -f worker_rsa
+        # Save worker_rsa in a secure location (you'll need its path for the
         # ini file).
 
 0. Create a user account
 
-        sudo adduser --disabled-password nb_worker0
+        sudo adduser --disabled-password worker0
 
 0. Set umask 077 (700 permissisions) for the new account
 
-        echo umask 077 | sudo -u nb_worker0 -i tee -a .profile
+        echo umask 077 | sudo -u worker0 -i tee -a .profile
 
 0. Configure passwordless ssh access to the account using the ssh key
 
-        sudo -u nb_worker0 -i mkdir .ssh
-        cat nb_worker_rsa.pub | sudo -u nb_worker0 -i tee -a .ssh/authorized_keys
+        sudo -u worker0 -i mkdir .ssh
+        cat worker_rsa.pub | sudo -u worker0 -i tee -a .ssh/authorized_keys
 
 0. Test passwordless ssh access
 
-        ssh -i nb_worker_rsa nb_worker0@localhost
+        ssh -i worker_rsa worker0@localhost
 
 
 ### Generate an alembic revision
