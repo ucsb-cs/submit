@@ -1,7 +1,7 @@
 from pyramid_layout.panel import panel_config
 
 
-@panel_config(name='navbar', renderer='nudibranch:templates/panels/navbar.pt')
+@panel_config(name='navbar', renderer='templates/panels/navbar.pt')
 def navbar(context, request):
     def nav_item(name, url, item_id=None):
         active = request.current_route_path() == url
@@ -25,8 +25,7 @@ def navbar(context, request):
     return {'nav': nav, 'title': title}
 
 
-@panel_config(name='messages',
-              renderer='nudibranch:templates/panels/messages.pt')
+@panel_config(name='messages', renderer='templates/panels/messages.pt')
 def messages(context, request):
     return {x: request.session.pop_flash(x) for x in
             ('errors', 'infos', 'successes', 'warnings')}

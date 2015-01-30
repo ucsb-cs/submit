@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from nudibranch.models import User, Session
+from submit.models import User, Session
 from pyramid_mailer.mailer import Mailer
 from pyramid_mailer.message import Message
 from pyramid.paster import get_appsettings, setup_logging

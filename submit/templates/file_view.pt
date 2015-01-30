@@ -6,8 +6,8 @@
     <pre><code>${contents}</code></pre>
   </div>
   <div metal:fill-slot="eof_content">
-    <link href="${request.static_path('nudibranch:static/css/highlight_github.css')}" rel="stylesheet">
-    <script src="${request.static_path('nudibranch:static/js/highlight.pack.js')}"></script>
+    <link href="${request.static_path('static/css/highlight_github.css')}" rel="stylesheet">
+    <script src="${request.static_path('static/js/highlight.pack.js')}"></script>
     <script>
       hljs.tabReplace = '    ';
       hljs.initHighlightingOnLoad();

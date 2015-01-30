@@ -5,13 +5,13 @@ import pickle
 import random
 import subprocess
 import time
-from .exceptions import HandledError, SSHConnectTimeout
 from heapq import heappop, heappush
-from nudibranch import workers
-from nudibranch.diff_unit import Diff
-from nudibranch.models import (File, Session, Submission, TestCaseResult,
-                               Testable, TestableResult, configure_sql)
 from sqlalchemy import engine_from_config
+from .exceptions import HandledError, SSHConnectTimeout
+from .. import workers
+from ..diff_unit import Diff
+from ..models import (File, Session, Submission, TestCaseResult, Testable,
+                      TestableResult, configure_sql)
 
 
 def set_expected_files(testable, results, base_file_path):

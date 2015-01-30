@@ -1,16 +1,16 @@
 """Contains a list of Exceptions used in this project."""
 
 
-class NudibranchException(Exception):
+class SubmitException(Exception):
 
-    """Superclass for all Nudibranch exceptions."""
+    """Superclass for all Submit exceptions."""
 
 
-class GroupWithException(NudibranchException):
+class GroupWithException(SubmitException):
 
     """Indicates there are too many users to join a group."""
 
 
-class InvalidId(NudibranchException):
+class InvalidId(SubmitException):
 
     """Indicates that the id to fetch doesn't exist."""

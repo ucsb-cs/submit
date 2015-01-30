@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from nudibranch.models import Session, Submission
+from submit.models import Session, Submission
 import ldap
 import sys
 

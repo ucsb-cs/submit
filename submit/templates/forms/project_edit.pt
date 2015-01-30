@@ -429,9 +429,9 @@
     </div>
   </div>
   <div metal:fill-slot="eof_content">
-    <link rel="stylesheet" href="${request.static_path('nudibranch:static/smoothness/jquery-ui-1.9.2.custom.css')}" type="text/css" media="screen">
+    <link rel="stylesheet" href="${request.static_path('static/smoothness/jquery-ui-1.9.2.custom.css')}" type="text/css" media="screen">
     <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
-    <script src="${request.static_path('nudibranch:static/js/sha1.js')}"></script>
+    <script src="${request.static_path('static/js/sha1.js')}"></script>
     <script>
       var build_file_path = '${request.route_path('build_file')}';
       var build_files = ${project.build_files_json()};
@@ -443,6 +443,6 @@
       var proj_id = ${project.id};
       var testables = ${project.testables_json()};
     </script>
-    <script src="${request.static_path('nudibranch:static/js/proj_edit.js')}"></script>
+    <script src="${request.static_path('static/js/proj_edit.js')}"></script>
   </div>
 </metal:block>

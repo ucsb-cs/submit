@@ -27,7 +27,7 @@
     </div>
   </div>
   <div metal:fill-slot="eof_content">
-    <script src="${request.static_path('nudibranch:static/js/sha1.js')}"></script>
+    <script src="${request.static_path('static/js/sha1.js')}"></script>
     <script>
       $(document).ready(function() {
           new UploadApp();

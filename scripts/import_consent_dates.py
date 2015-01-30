@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from nudibranch.models import User, Session
+from submit.models import User, Session
 from pyramid.paster import get_appsettings, setup_logging
 from sqlalchemy import engine_from_config
 from datetime import datetime
