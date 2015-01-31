@@ -3,6 +3,14 @@ from sqlalchemy import engine_from_config
 from .. import workers
 from ..models import Submission, configure_sql
 
+# Hack for old pickle files
+# TODO: Migrate this data to not use pickle
+import submit
+import sys
+sys.modules['nudibranch'] = submit
+sys.modules['nudibranch.diff_unit'] = submit.diff_unit
+sys.modules['nudibranch.models'] = submit.models
+
 
 @workers.wrapper
 def do_work(submission_id, update_project=False):

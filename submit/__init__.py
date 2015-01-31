@@ -8,7 +8,7 @@ from .helpers import get_queue_func
 from .models import configure_sql, create_schema, populate_database
 from .security import get_user, group_finder
 
-__version__ = '1.0rc5'
+__version__ = '1.0rc6'
 
 
 class Root(object):
