@@ -236,5 +236,13 @@ def main():
                              status=status, delta=time.time() - start))
 
 
+# Hack for old pickle files
+# TODO: Migrate this data to not use pickle
+import submit
+sys.modules['nudibranch'] = submit
+sys.modules['nudibranch.diff_unit'] = submit.diff_unit
+sys.modules['nudibranch.models'] = submit.models
+
+
 if __name__ == '__main__':
     sys.exit(main())
