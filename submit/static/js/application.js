@@ -30,6 +30,7 @@ function form_request(form, method, skip_empty) {
         console.log(js_form);
         $.ajax({url: form.action, data: jsonified_form, type: method,
                 complete: handle_response, error: handle_error,
+                contentType: "application/json; charset=utf-8",
                 timeout: 30000});
     });
     return false;  // Ensure the form submission doesn't actually happen
