@@ -1,2 +1,2 @@
 include *.ini *.md *.txt
-recursive-include submit *.css *.pt *.js *.py
+recursive-include submit *.css *.html *.js *.png *.pt *.py
