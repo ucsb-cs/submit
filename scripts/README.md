@@ -1,6 +1,6 @@
 # submit.py
 
-To configure `submit.py` make the necessary changes to `nudibanch.ini` and
+To configure `submit.py` make the necessary changes to `submit.ini` and
 store the file either in `~/.config/` (on Linux) or in whatever directory you
 run submit.py from.
 
