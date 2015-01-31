@@ -24,7 +24,7 @@
       <hr>
       <h3>Clone an Existing Project</h3>
       <form role="form" name="input" action="${request.route_path('project')}"
-	    onsubmit="return form_request(this, 'CLONE');">
+            onsubmit="return form_request(this, 'CLONE');">
         <div class="form-group">
           <select name="project_id">
             <option value="">--Select a project to clone--</option>
@@ -43,6 +43,6 @@
   </div>
 
   <div metal:fill-slot="eof_content">
-    <script src="${request.static_path('static/js/sha1.js')}"></script>
+    <script src="${request.static_path('submit:static/js/sha1.js')}"></script>
   </div>
 </metal:block>

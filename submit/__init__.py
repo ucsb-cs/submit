@@ -8,7 +8,7 @@ from .helpers import get_queue_func
 from .models import configure_sql, create_schema, populate_database
 from .security import get_user, group_finder
 
-__version__ = '1.0rc1'
+__version__ = '1.0rc2'
 
 
 class Root(object):
@@ -77,13 +77,17 @@ def main(global_config, **settings):
     # Initialize the database
     engine = engine_from_config(settings, 'sqlalchemy.')
     configure_sql(engine)
+
+    secure_cookies = True
     if 'pyramid_debugtoolbar' in settings['pyramid.includes']:
         create_schema(global_config['__file__'])
         populate_database()
+        secure_cookies = False
 
     # Configure the webapp
     authen = AuthTktAuthenticationPolicy(secret=settings['auth_secret'],
-                                         callback=group_finder, secure=True,
+                                         callback=group_finder,
+                                         secure=secure_cookies,
                                          include_ip=False, hashalg='sha512',
                                          wild_domain=False, max_age=5000000)
     author = ACLAuthorizationPolicy()
