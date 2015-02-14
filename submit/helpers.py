@@ -176,6 +176,39 @@ class ViewableDBThing(DBThing):
         return thing
 
 
+def add_user(request, name, username, verification, redir_location=None):
+    if username != verification:
+        raise HTTPBadRequest('email and verification do not match')
+
+    # Set the password to blank
+    new_user = User(name=name, username=username, password='', is_admin=False)
+    Session.add(new_user)
+    try:
+        Session.flush()
+    except IntegrityError:
+        raise HTTPConflict('User \'{0}\' already exists'.format(username))
+
+    password_reset = PasswordReset.generate(new_user)
+    Session.add(password_reset)
+    try:
+        Session.flush()
+    except IntegrityError:
+        raise HTTPConflict('Error creating password reset.')
+    site_name = request.registry.settings['site_name']
+    reset_url = request.route_url('password_reset_item',
+                                  token=password_reset.get_token())
+    body = ('Please visit the following link to complete your account '
+            'creation:\n\n{0}'.format(reset_url))
+    send_email(request, recipients=username, body=body,
+               subject='{0} password reset email'.format(site_name))
+    request.session.flash('Account creation initiated. Instructions for '
+                          'completion have been emailed to {0}.'
+                          .format(username), 'successes')
+    redir_location = redir_location or request.route_path(
+        'session', _query={'username': username})
+    return http_created(request, redir_location=redir_location)
+
+
 def alphanum_key(string):
     """Return a comparable tuple with extracted number segments.
 
@@ -451,4 +484,5 @@ def zip_response(request, filename, files):
 
 # Avoid cyclic import
 from .diff_unit import DiffWithMetadata, ImageOutput, TextOutput
-from .models import BuildFile, File, FileVerifier, Session, Submission
+from .models import (BuildFile, File, FileVerifier, PasswordReset, Session,
+                     Submission, User)

@@ -24,9 +24,10 @@ from .exceptions import GroupWithException, InvalidId
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
     EditableDBThing, TestableStatus, TextDate, ViewableDBThing, UmailAddress,
-    clone, fetch_request_ids, file_verifier_verification, prepare_renderable,
-    prev_next_submission, prev_next_group, project_file_create,
-    project_file_delete, send_email, test_case_verification, zip_response)
+    add_user, clone, fetch_request_ids, file_verifier_verification,
+    prepare_renderable, prev_next_submission, prev_next_group,
+    project_file_create, project_file_delete, send_email,
+    test_case_verification, zip_response)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -1289,36 +1290,17 @@ def testable_delete(request, testable):
           verification=String('verification'))
 def user_create(request, identity, verification):
     username, name = identity
-    if username != verification:
-        raise HTTPBadRequest('email and verification do not match')
+    return add_user(request, name, username, verification)
 
-    # Set the password to blank
-    # Session creation requires at least 6 characters)
-    new_user = User(name=name, username=username, password='', is_admin=False)
-    Session.add(new_user)
-    try:
-        Session.flush()
-    except IntegrityError:
-        raise HTTPConflict('User \'{0}\' already exists'.format(username))
 
-    password_reset = PasswordReset.generate(new_user)
-    Session.add(password_reset)
-    try:
-        Session.flush()
-    except IntegrityError:
-        raise HTTPConflict('Error creating password reset.')
-    site_name = request.registry.settings['site_name']
-    reset_url = request.route_url('password_reset_item',
-                                  token=password_reset.get_token())
-    body = ('Visit the following link to reset your password:\n\n{0}'
-            .format(reset_url))
-    send_email(request, recipients=username, body=body,
-               subject='{0} password reset email'.format(site_name))
-    request.session.flash('Account created and a password reset email has '
-                          'been sent!', 'successes')
-    redir_location = request.route_path('session',
-                                        _query={'username': username})
-    return http_created(request, redir_location=redir_location)
+@view_config(route_name='user', request_method='ADMINPUT', renderer='json',
+             permission='admin')
+@validate(name=String('name', min_length=5),
+          username=String('email', min_length=6, max_length=64),
+          verification=String('verification'))
+def user_create_special(request, name, username, verification):
+    return add_user(request, name, username, verification,
+                    request.route_path('user_new_special'))
 
 
 @view_config(route_name='user_join', request_method='GET',
@@ -1335,6 +1317,13 @@ def user_join(request):
 @view_config(route_name='user_new', request_method='GET',
              renderer='templates/forms/user_create.pt')
 def user_edit(request):
+    return {}
+
+
+@view_config(route_name='user_new_special', request_method='GET',
+             renderer='templates/forms/user_create_special.pt',
+             permission='admin')
+def user_edit_special(request):
     return {}
 
 

@@ -1,0 +1,29 @@
+<metal:block use-macro="main_template">
+  <div metal:fill-slot="content">
+    <h1>Create New Account</h1>
+    ${panel('js_test')}
+
+    <form role="form" name="input" action="${request.route_path('user')}"
+          method="POST" onsubmit="return form_request(this, 'adminput', true);">
+
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" name="name" id="name" placeholder="Enter the person's full name"><br/>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" class="form-control" placeholder="Enter email"
+               name="email" id="email">
+      </div>
+      <div class="form-group">
+        <label for="verification">Confirm Email</label>
+        <input type="email" class="form-control" placeholder="Retype the email"
+               name="verification" id="verification">
+      </div>
+      <button class="btn btn-success"><i class="icon-white icon-user"></i>
+          Create Account</button>
+    </form>
+
+  </div>
+</metal:block>

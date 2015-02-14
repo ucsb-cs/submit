@@ -8,7 +8,7 @@ from .helpers import get_queue_func
 from .models import configure_sql, create_schema, populate_database
 from .security import get_user, group_finder
 
-__version__ = '1.0rc7'
+__version__ = '1.0rc8'
 
 
 class Root(object):
@@ -68,6 +68,7 @@ def add_routes(config):
     config.add_route('group_admin', '/form/project/{project_id}/group')
     config.add_route('submission_new', '/form/project/{project_id}/submission')
     config.add_route('user_new', '/form/user')
+    config.add_route('user_new_special', '/form/user_special')
     config.add_route('user_join', '/form/user/join')
 
 
