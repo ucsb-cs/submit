@@ -21,14 +21,19 @@
 
     <div class="alert">
       <p>All students <em>should</em> have a umail account. If you are a
-        student who does not, please send an email to your instructor from the
-        desired email account. In this email ask your instructor to send an
-        email to support@cs.ucsb.edu verifying that you are a student of their
-        class who does not have a umail account.</p>
+        student who does not, please follow the instructions at the following
+        link to have your umail account created:<br>
+        <a href="https://secure.identity.ucsb.edu/manager/">https://secure.identity.ucsb.edu/manager/</a></p>
+
+      <p>In the event you are unable to create a umail account send an email to
+        your instructor from the desired email account. In this email ask your
+        instructor to send an email to submit@cs.ucsb.edu verifying that you
+        are a student of their class explaining the reason why you do not have
+        a umail account.</p>
 
       <p>If you are an instructor or TA and would like your submit.cs account
         to be associated with your CS account email, please send an email to
-        support@cs.ucsb.edu with your CS account name, and the class that you
+        submit@cs.ucsb.edu with your CS account name, and the class that you
         are an instructor or TA for.</p>
     </div>
   </div>
