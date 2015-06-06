@@ -23,6 +23,10 @@ EXECUTION_FILES_PATH = 'execution_files'
 MAX_FILE_SIZE = 81920
 TIME_LIMIT = 4
 
+# Prepare Child Environemtn to disable CCACHE
+CHILD_ENV = os.environ.copy()
+CHILD_ENV.update(CCACHE_DISABLE='1')
+
 
 def log_msg(msg):
     print('{} {}'.format(datetime.now(), msg))
@@ -72,7 +76,7 @@ class Worker(object):
             poll = select.epoll()
             main_pipe = Popen(args, stdin=stdin, stdout=PIPE, stderr=stderr,
                               cwd=tmp_dir, preexec_fn=os.setsid,
-                              executable=executable)
+                              executable=executable, env=CHILD_ENV)
             poll.register(main_pipe.stdout, select.EPOLLIN | select.EPOLLHUP)
             do_poll = True
             start = time.time()
@@ -132,7 +136,8 @@ class Worker(object):
     def make_project(self, executable, target):
         """Build the project and verify the executable exists."""
         command = 'make -f ../Makefile -C {0} {1}'.format(SRC_PATH, target)
-        pipe = Popen(command, shell=True, stdout=PIPE, stderr=STDOUT)
+        pipe = Popen(command, shell=True, stdout=PIPE, stderr=STDOUT,
+                     env=CHILD_ENV)
         output = pipe.communicate()[0]
         if pipe.returncode != 0:
             raise MakeFailed(output)
