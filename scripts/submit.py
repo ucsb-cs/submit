@@ -109,7 +109,7 @@ class Submit(object):
     def request(self, url, method='get', **kwargs):
         time.sleep(self.request_delay)
         data = json.dumps(kwargs) if kwargs else None
-        retval = self.session.request(method, url, data=data, verify=False,
+        retval = self.session.request(method, url, data=data,
                                       timeout=self.request_timeout)
         # Handle outage issues
         if retval.status_code == 502:
