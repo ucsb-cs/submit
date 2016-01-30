@@ -32,6 +32,14 @@ def log_msg(msg):
     print('{} {}'.format(datetime.now(), msg))
 
 
+class TimeoutAlarm(Exception):
+    pass
+
+
+def alarm_handler(_, _a):
+    raise TimeoutAlarm
+
+
 class Worker(object):
     @staticmethod
     def execute(command, stderr=None, stdin=None, stdout=None, files=None,
@@ -92,7 +100,15 @@ class Worker(object):
                     if event == select.POLLHUP:
                         poll.unregister(file_descriptor)
                         do_poll = False
-            main_status = main_pipe.wait()
+
+            signal.signal(signal.SIGALRM, alarm_handler)
+            signal.alarm(time_limit)
+            try:
+                main_status = main_pipe.wait()
+                signal.alarm(0)
+            except TimeoutAlarm:
+                os.killpg(main_pipe.pid, signal.SIGKILL)
+                raise TimeoutException()
             if main_status < 0:
                 raise SignalException(-1 * main_status)
             return main_status
