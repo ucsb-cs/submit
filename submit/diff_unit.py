@@ -221,7 +221,7 @@ class Diff(object):
     def _make_diff(self, correct, given):
         """Return the intermediate representation of the diff."""
         dmp = DMP()
-        dmp.Diff_Timeout = 0
+        dmp.Diff_Timeout = 4
         text1, text2, array = dmp.diff_linesToChars(correct, given)
         diffs = dmp.diff_main(text1, text2)
         dmp.diff_cleanupSemantic(diffs)
