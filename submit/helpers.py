@@ -82,7 +82,7 @@ class UmailAddress(EmailAddress):
         try:
             name = fetch_name_by_umail(retval)
         except Exception as exc:
-            self.add_error(exc.message)
+            self.add_error(errors, exc.message)
             return retval
         if not name:
             self.add_error(errors, 'does not appear to be a valid umail email')
