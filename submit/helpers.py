@@ -79,7 +79,11 @@ class UmailAddress(EmailAddress):
             self.add_error(errors, 'must end with @umail.ucsb.edu')
             return retval
         # Fetch name
-        name = fetch_name_by_umail(retval)
+        try:
+            name = fetch_name_by_umail(retval)
+        except Exception as exc:
+            self.add_error(exc.message)
+            return retval
         if not name:
             self.add_error(errors, 'does not appear to be a valid umail email')
             return retval
@@ -289,8 +293,10 @@ def fetch_name_by_umail(umail):
     if 'initials' in data:
         fullname = '{} {} {}'.format(extract('givenname'), extract('initials'),
                                      extract('sn'))
-    else:
+    elif 'cn' in data:
         fullname = extract('cn')
+    else:
+        raise Exception('Missing required LDAP information')
     return fullname
 
 
