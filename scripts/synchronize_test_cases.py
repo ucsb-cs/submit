@@ -20,7 +20,7 @@ class Synchronize(object):
              'test_case':      'test_case',
              'test_case_item': 'test_case/{test_case_id}',
              'testable':       'testable',
-             'project_info':   'project/{project_id}'}
+             'project_info':   'p/{project_id}/info'}
 
     @staticmethod
     def _get_config(section):
