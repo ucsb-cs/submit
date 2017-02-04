@@ -71,8 +71,9 @@ class UmailAddress(EmailAddress):
 
     """A validator to verify that a umail address is correct."""
 
-    def run(self, value, errors, *args):
-        retval = super(UmailAddress, self).run(value.lower(), errors, *args)
+    def run(self, value, errors, request, *args):
+        retval = super(UmailAddress, self).run(value.lower(), errors, request,
+                                               *args)
         if errors:
             return retval
         if not retval.endswith('@umail.ucsb.edu'):
@@ -80,7 +81,7 @@ class UmailAddress(EmailAddress):
             return retval
         # Fetch name
         try:
-            name = fetch_name_by_umail(retval)
+            name = fetch_name_by_umail(retval, request)
         except Exception as exc:
             self.add_error(errors, exc.message)
             return retval
@@ -273,7 +274,7 @@ def fetch_request_ids(item_ids, cls, attr_name, verification_list=None):
     return items
 
 
-def fetch_name_by_umail(umail):
+def fetch_name_by_umail(umail, request):
     def extract(item):
         if len(data[item]) == 1:
             return data[item][0]
@@ -281,8 +282,13 @@ def fetch_name_by_umail(umail):
 
     uid = umail.split('@')[0]
 
+    # Return the portion before @umail.ucsb.edu if ldap_uri is not provided
+    ldap_uri = request.registry.settings.get('ldap_uri')
+    if not ldap_uri:
+        return uid
+
     # connect to ldap
-    ldap_conn = ldap.initialize('ldaps://directory.ucsb.edu')
+    ldap_conn = ldap.initialize(ldap_uri)
     ldap_conn.protocol_version = ldap.VERSION3
     results = ldap_conn.search_s(
         'o=ucsb', ldap.SCOPE_ONELEVEL, filterstr='uid={}'.format(uid),
