@@ -27,7 +27,7 @@ from .helpers import (
     add_user, clone, fetch_request_ids, file_verifier_verification,
     prepare_renderable, prev_next_submission, prev_next_group,
     project_file_create, project_file_delete, send_email,
-    test_case_verification, zip_response)
+    test_case_verification, zip_response,zip_response_adv)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -509,6 +509,25 @@ def project_edit(request, project):
                                 project_id=project.id)
     return {'project': project, 'action': action}
 
+@view_config(route_name='project_export',
+             request_method='GET', permission='autenticated',
+             renderer='json')
+@validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
+def project_export(request, project):
+    response = []
+    base_path = request.registry.settings['file_directory']
+    response.append(("text", "README.txt", """
+Project %s 
+This is a full copy of the testables and test cases in this project.
+It may be imported again using the import feature""" % project.name))
+    for testable in project.testables:
+        for test_case in testable.test_cases:
+            # TODO: refactor this to suport more of the options each testcase offers
+            filename = ("testables/%s/%s" % (testable.name, test_case.name))
+            response.append(("text", filename + ".args", test_case.args))
+            response.append(("file", filename + ".stdin", File.file_path(base_path,test_case.stdin.sha1)))
+            response.append(("file", filename + ".stdout", File.file_path(base_path,test_case.expected.sha1)))
+    return zip_response_adv(request, project.name + ".zip", response)
 
 @view_config(route_name='project_group', request_method='JOIN',
              permission='authenticated', renderer='json')
