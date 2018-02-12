@@ -1,3 +1,3 @@
-* [students](students/)
-* [instructors](instructors/)
-* [admins](admins/)
+* [students](students)
+* [instructors](instructors)
+* [admins](admins)
