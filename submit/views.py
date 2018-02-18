@@ -19,6 +19,7 @@ from pyramid.settings import asbool
 from pyramid.view import (forbidden_view_config, notfound_view_config,
                           view_config)
 from sqlalchemy.exc import IntegrityError
+from zipfile import ZipFile
 from .diff_render import HTMLDiff
 from .exceptions import GroupWithException, InvalidId
 from .helpers import (
@@ -509,6 +510,7 @@ def project_edit(request, project):
                                 project_id=project.id)
     return {'project': project, 'action': action}
 
+
 @view_config(route_name='project_export',
              request_method='GET', permission='autenticated',
              renderer='json')
@@ -528,6 +530,88 @@ It may be imported again using the import feature""" % project.name))
             response.append(("file", filename + ".stdin", File.file_path(base_path,test_case.stdin.sha1)))
             response.append(("file", filename + ".stdout", File.file_path(base_path,test_case.expected.sha1)))
     return zip_response_adv(request, project.name + ".zip", response)
+
+
+@view_config(route_name='project_import', request_method='POST',
+             permission='authenticated', renderer='json')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
+# @validate(file=ViewableDBThing('makefile_id', File, optional=False),
+#           project=EditableDBThing('project_id', Project, source=MATCHDICT))
+def project_import(request, project):
+    import_filename = request.POST['file'].filename
+    import_file = request.POST['file'].file
+    
+    # clear out the testables existing in the project 
+    project.testables[:] = []
+    transaction.commit() 
+
+    # create a file in the backing filesystem for each file in the zip archive!
+    base_path = request.registry.settings['file_directory']
+
+    with ZipFile(import_file,"r") as myzip:
+        # upload every file we were given to the backing store... this may not acutally be the best approach
+        submit_files = {path : File.fetch_or_create(myzip.read(path), base_path) for path in myzip.namelist()}
+
+        return myzip.namelist()
+
+
+
+
+    # request.session.flash('Project imported (TODO: actually import!)', 'successes')
+    # redir_location = request.route_path('project_edit', project_id=project.id)
+    # return http_ok(request, redir_location=redir_location)
+
+
+"""def test_case_update(request, name, args, expected, hide_expected,
+                     output_filename, output_source, output_type, points,
+                     stdin, test_case):
+    if not test_case.update(name=name, args=args, expected=expected,
+                            hide_expected=bool(hide_expected),
+                            output_filename=output_filename,
+                            output_type=output_type, points=points,
+                            source=output_source, stdin=stdin):
+        return http_ok(request, message='Nothing to change')
+    try:
+        Session.flush()
+    except IntegrityError:
+        raise HTTPConflict('That name already exists for the testable')
+    # Update the testable point score
+    test_case.testable.update_points()
+    request.session.flash('Updated TestCase {0}.'.format(test_case.name),
+                          'successes')
+    redir_location = request.route_path(
+        'project_edit', project_id=test_case.testable.project.id)
+    return http_ok(request, redir_location=redir_location)
+"""
+
+"""@view_config(route_name='project_item_summary', request_method='POST',
+             permission='authenticated', renderer='json')
+@validate(name=String('name', min_length=2),
+          makefile=ViewableDBThing('makefile_id', File, optional=True),
+          is_ready=TextNumber('is_ready', min_value=0, max_value=1,
+                              optional=True),
+          deadline=TextDate('deadline', optional=True),
+          delay_minutes=TextNumber('delay_minutes', min_value=1),
+          group_max=TextNumber('group_max', min_value=1),
+          project=EditableDBThing('project_id', Project, source=MATCHDICT))
+def project_update(request, name, makefile, is_ready, deadline, delay_minutes,
+                   group_max, project):
+    # Fix timezone if it doesn't exist
+    if project.deadline and deadline and not deadline.tzinfo:
+        deadline = deadline.replace(tzinfo=project.deadline.tzinfo)
+    if not project.update(name=name, makefile=makefile, deadline=deadline,
+                          delay_minutes=delay_minutes,
+                          group_max=group_max,
+                          status=u'ready' if bool(is_ready) else u'notready'):
+        return http_ok(request, message='Nothing to change')
+    try:
+        Session.flush()
+    except IntegrityError:
+        raise HTTPConflict('That project name already exists for the class')
+    request.session.flash('Project updated', 'successes')
+    redir_location = request.route_path('project_edit', project_id=project.id)
+    return http_ok(request, redir_location=redir_location)"""
+
 
 @view_config(route_name='project_group', request_method='JOIN',
              permission='authenticated', renderer='json')

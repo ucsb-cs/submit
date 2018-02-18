@@ -56,8 +56,36 @@
           </label>
           <input type="hidden" name="makefile_id" value="${project.makefile_id}">
           <button class="btn btn-warning">Update Project Settings</button>
+          <a class="btn btn-warning" href="${request.route_path('project_export', project_id=project.id)}">Download Project</a>
+          <a class="btn btn-warning" href="${request.route_path('project_import', project_id=project.id)}">Upload Project</a>
         </div>
       </div>
+    </form>
+
+    <!-- <form class="form-horizontal well" role="form" classid="project_form" name="input" action="/p/${project.id}/import"
+          onsubmit="return form_request(this, 'POST', true);">
+      <div>
+        <label class="control-label" for="file">File</label>
+        <div class="controls">
+          <input name="file_id" id="makefile" type="file">
+        </div>
+      </div>
+      <div>
+        <div class="controls">
+          <label class="checkbox">
+            <input type="checkbox" name="is_ready" value="1" tal:attributes="checked 'checked' if project.is_ready else None"> Ready for submissions
+          </label> 
+          <input type="hidden" name="makefile_id" value="${project.makefile_id}">
+          <button class="btn btn-warning">Update Project Settings</button>
+        </div>
+      </div>
+    </form> -->
+
+    <form action="/p/${project.id}/import" method="POST" accept-charset="utf-8"
+      enctype="multipart/form-data">
+        <label for="file">Upload Project</label>
+        <input id="file" name="file" type="file" value="" />
+        <input type="submit" value="submit" />
     </form>
 
     <h3><span class="help" title="A testable defines the parameters for a single executable that is produced from the student's submission.">Testables</span></h3>
