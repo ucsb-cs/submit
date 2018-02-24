@@ -751,7 +751,7 @@ class TestCase(BasicBase, Base):
                          nullable=False, server_default='diff')
     points = Column(Integer, nullable=False)
     source = Column(Enum('file', 'stderr', 'stdout', name='source'),
-                    nullable=False, server_default='stdout')
+                    nullable=False, server_default='rstdout')
     stdin = relationship(File, primaryjoin='File.id==TestCase.stdin_id',
                          backref='stdin_for')
     stdin_id = Column(Integer, ForeignKey('file.id'), nullable=True)

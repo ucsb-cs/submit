@@ -5,6 +5,7 @@ import os
 import transaction
 from base64 import b64decode
 from hashlib import sha1
+import itertools
 from pyramid_addons.helpers import (http_created, http_gone, http_ok)
 from pyramid_addons.validation import (EmailAddress, Enum, List, Or, String,
                                        RegexString, TextNumber,
@@ -18,10 +19,11 @@ from pyramid.security import forget, remember
 from pyramid.settings import asbool
 from pyramid.view import (forbidden_view_config, notfound_view_config,
                           view_config)
+import re 
 from sqlalchemy.exc import IntegrityError
 from zipfile import ZipFile
 from .diff_render import HTMLDiff
-from .exceptions import GroupWithException, InvalidId
+from .exceptions import GroupWithException, InvalidId, SubmitException
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
     EditableDBThing, TestableStatus, TextDate, ViewableDBThing, UmailAddress,
@@ -531,7 +533,6 @@ It may be imported again using the import feature""" % project.name))
             response.append(("file", filename + ".stdout", File.file_path(base_path,test_case.expected.sha1)))
     return zip_response_adv(request, project.name + ".zip", response)
 
-
 @view_config(route_name='project_import', request_method='POST',
              permission='authenticated', renderer='json')
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
@@ -540,10 +541,6 @@ It may be imported again using the import feature""" % project.name))
 def project_import(request, project):
     import_filename = request.POST['file'].filename
     import_file = request.POST['file'].file
-    
-    # clear out the testables existing in the project 
-    project.testables[:] = []
-    transaction.commit() 
 
     # create a file in the backing filesystem for each file in the zip archive!
     base_path = request.registry.settings['file_directory']
@@ -551,15 +548,56 @@ def project_import(request, project):
     with ZipFile(import_file,"r") as myzip:
         # upload every file we were given to the backing store... this may not acutally be the best approach
         submit_files = {path : File.fetch_or_create(myzip.read(path), base_path) for path in myzip.namelist()}
-
         return myzip.namelist()
 
+    file_list = sorted([path for path,v in submit_files.iteritems()])
 
+    # we now clear out all of the old testables
+    # TODO: back these up to a temporary location before reomoving them incase of encountering errors!
+    # alternatively only allow imports on empty projects ? 
+    project.testables[:] = []
+    transaction.commit() # TBD: determine the difference between this and Session.flush
+    
+    try: 
 
+        for testable_name, testable_files in itertools.groupby(file_list, key=lambda fname: re.match(r'testables/(\S-)/(.*)', fname).group(1)):
+            for testcase_name, testcase_files in itertools.groupby(file_list, key=lambda fname: re.match(r'testables/(\S+)/(.*)', fname).group(2)):
+                
+                try:
+                    stdout_filename = filter(lambda fname: fname.endswith(".stdout"))[0]
+                except:
+                    raise SubmitException("expected .stdout file to be defined for testables/%s/%s other valid files are .stdin and .args" % (testable_name, testcase_name))
+                
+                try:
+                    stdin_filename=filter(lambda fname: fname.endswith(".stdin"))[0]
+                except:
+                    stdin_filename = None
 
-    # request.session.flash('Project imported (TODO: actually import!)', 'successes')
-    # redir_location = request.route_path('project_edit', project_id=project.id)
-    # return http_ok(request, redir_location=redir_location)
+                try:
+                    args_filename=filter(lambda fname: fname.endswith(".args"))[0]
+                except:
+                    args_filename = None
+                
+
+                test_case = TestCase(name=name, args=args, expected=expected,
+                            hide_expected=bool(hide_expected),
+                            output_filename=output_filename,
+                            output_type=output_type, points=points,
+                            source=output_source, stdin=stdin, testable=testable)
+                for filename in testcase_files:
+                    if filename.endswith(".stdin"):
+                        
+                    elif filename.endswith(".stdout"):
+                        
+                    elif filename.endswith(".stderr"):
+                        
+                Session.add(test_case)
+
+    except SubmitException as error:
+        request.session.flash(str(error), 'errors')
+
+    redir_location = request.route_path('project_edit', project_id=project.id)
+    return http_ok(request, redir_location=redir_location)
 
 
 """def test_case_update(request, name, args, expected, hide_expected,
