@@ -21,6 +21,7 @@ from pyramid.view import (forbidden_view_config, notfound_view_config,
                           view_config)
 import re 
 from sqlalchemy.exc import IntegrityError
+import yaml
 from zipfile import ZipFile
 from .diff_render import HTMLDiff
 from .exceptions import GroupWithException, InvalidId, SubmitException
@@ -538,6 +539,7 @@ It may be imported again using the import feature""" % project.name))
 @validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
 # @validate(file=ViewableDBThing('makefile_id', File, optional=False),
 #           project=EditableDBThing('project_id', Project, source=MATCHDICT))
+
 def project_import(request, project):
     import_filename = request.POST['file'].filename
     import_file = request.POST['file'].file
@@ -548,108 +550,109 @@ def project_import(request, project):
     with ZipFile(import_file,"r") as myzip:
         # upload every file we were given to the backing store... this may not acutally be the best approach
         submit_files = {path : File.fetch_or_create(myzip.read(path), base_path) for path in myzip.namelist()}
-        return myzip.namelist()
+        #return myzip.namelist()
 
-    file_list = sorted([path for path,v in submit_files.iteritems()])
+        file_list = sorted([path for path,v in submit_files.iteritems()])
 
-    # we now clear out all of the old testables
-    # TODO: back these up to a temporary location before reomoving them incase of encountering errors!
-    # alternatively only allow imports on empty projects ? 
-    project.testables[:] = []
-    transaction.commit() # TBD: determine the difference between this and Session.flush
-    
-    try: 
+        # we now clear out all of the old testables
+        # TODO: back these up to a temporary location before reomoving them incase of encountering errors!
+        # alternatively only allow imports on empty projects ? 
+        project.testables[:] = []
 
-        for testable_name, testable_files in itertools.groupby(file_list, key=lambda fname: re.match(r'testables/(\S-)/(.*)', fname).group(1)):
-            for testcase_name, testcase_files in itertools.groupby(file_list, key=lambda fname: re.match(r'testables/(\S+)/(.*)', fname).group(2)):
+        class Filesystem(object):
+            #paths need to have trailing slashes
+            def __init__(self, file):
+                self._file = file
+                self._files = file.namelist()
+            def listdir(self, path):
+                pathlen = len(path)
+                files = [fname[pathlen:] for fname in self._files if fname.startswith(path)]
+                files = [fname for fname in files if '/' not in fname or fname.index('/') == len(fname)-1]
+                return files
+
+        def get_or_create_file(input, rootdir = "/"):
+            t = type(input)
+            if t == str:
+                return File.fetch_or_create(input, base_path)
+            if t == dict:
+                if "File" in input:
+                    fpath = os.path.join(rootdir, str(input["File"]))
+                    if fpath not in submit_files:
+                        raise SubmitException("File %s not found in project.zip")
+                    else:
+                        return submit_files[fpath.strip("/")]
+                elif "Text" in input: 
+                    return File.fetch_or_create(input, base_path)
+            raise SubmitException("Failed to load a file from the key")
+        
+        try:
+            fs = Filesystem(myzip)
+            root_dir = fs.listdir("")
+            if "project.yml" not in root_dir:
+                raise SubmitException("Expected '/project.yml' file in the project.zip.")
+            if len(fs.listdir("testables")) == 0:
+                request.session.flash("Nonfatal exception 'no testables defined' was encountered. Continuing", 'errors')
+            
+            project_yml = yaml.safe_load(myzip.read("project.yml").decode('utf-8'))
+
+            try:
+                if "Makefile" in project_yml:
+                    project.makefile = get_or_create_file(project_yml["Makefile"], rootdir="/")
                 
-                try:
-                    stdout_filename = filter(lambda fname: fname.endswith(".stdout"))[0]
-                except:
-                    raise SubmitException("expected .stdout file to be defined for testables/%s/%s other valid files are .stdin and .args" % (testable_name, testcase_name))
-                
-                try:
-                    stdin_filename=filter(lambda fname: fname.endswith(".stdin"))[0]
-                except:
-                    stdin_filename = None
+            except SubmitException as error:
+                raise SubmitException("Encountered excpetion: " + str(error) + " while processing project.yml")
 
-                try:
-                    args_filename=filter(lambda fname: fname.endswith(".args"))[0]
-                except:
-                    args_filename = None
-                
+            return project_yml
+        except SubmitException as error:
+            request.session.flash("Error: " + str(error), 'errors')
 
-                test_case = TestCase(name=name, args=args, expected=expected,
-                            hide_expected=bool(hide_expected),
-                            output_filename=output_filename,
-                            output_type=output_type, points=points,
-                            source=output_source, stdin=stdin, testable=testable)
-                for filename in testcase_files:
-                    if filename.endswith(".stdin"):
-                        
-                    elif filename.endswith(".stdout"):
-                        
-                    elif filename.endswith(".stderr"):
-                        
-                Session.add(test_case)
+        transaction.commit() # TBD: determine the difference between this and Session.flush
 
-    except SubmitException as error:
-        request.session.flash(str(error), 'errors')
+    # redir_location = request.route_path('project_edit', project_id=project.id)
+    # return http_ok(request, redir_location=redir_location)
 
-    redir_location = request.route_path('project_edit', project_id=project.id)
-    return http_ok(request, redir_location=redir_location)
+    #expected files are instances of file verifiers
 
 
-"""def test_case_update(request, name, args, expected, hide_expected,
-                     output_filename, output_source, output_type, points,
-                     stdin, test_case):
-    if not test_case.update(name=name, args=args, expected=expected,
-                            hide_expected=bool(hide_expected),
-                            output_filename=output_filename,
-                            output_type=output_type, points=points,
-                            source=output_source, stdin=stdin):
-        return http_ok(request, message='Nothing to change')
-    try:
-        Session.flush()
-    except IntegrityError:
-        raise HTTPConflict('That name already exists for the testable')
-    # Update the testable point score
-    test_case.testable.update_points()
-    request.session.flash('Updated TestCase {0}.'.format(test_case.name),
-                          'successes')
-    redir_location = request.route_path(
-        'project_edit', project_id=test_case.testable.project.id)
-    return http_ok(request, redir_location=redir_location)
-"""
+    # def testable_create(request, name, is_hidden, make_target, executable,
+    #                 build_file_ids, execution_file_ids, file_verifier_ids,
+    #                 project):
+    # if make_target and not project.makefile:
+    #     msg = 'make_target cannot be specified without a make file'
+    #     raise HTTPBadRequest(msg)
 
-"""@view_config(route_name='project_item_summary', request_method='POST',
-             permission='authenticated', renderer='json')
-@validate(name=String('name', min_length=2),
-          makefile=ViewableDBThing('makefile_id', File, optional=True),
-          is_ready=TextNumber('is_ready', min_value=0, max_value=1,
-                              optional=True),
-          deadline=TextDate('deadline', optional=True),
-          delay_minutes=TextNumber('delay_minutes', min_value=1),
-          group_max=TextNumber('group_max', min_value=1),
-          project=EditableDBThing('project_id', Project, source=MATCHDICT))
-def project_update(request, name, makefile, is_ready, deadline, delay_minutes,
-                   group_max, project):
-    # Fix timezone if it doesn't exist
-    if project.deadline and deadline and not deadline.tzinfo:
-        deadline = deadline.replace(tzinfo=project.deadline.tzinfo)
-    if not project.update(name=name, makefile=makefile, deadline=deadline,
-                          delay_minutes=delay_minutes,
-                          group_max=group_max,
-                          status=u'ready' if bool(is_ready) else u'notready'):
-        return http_ok(request, message='Nothing to change')
-    try:
-        Session.flush()
-    except IntegrityError:
-        raise HTTPConflict('That project name already exists for the class')
-    request.session.flash('Project updated', 'successes')
-    redir_location = request.route_path('project_edit', project_id=project.id)
-    return http_ok(request, redir_location=redir_location)"""
+    # try:
+    #     # Verify the ids actually exist and are associated with the project
+    #     build_files = fetch_request_ids(build_file_ids, BuildFile,
+    #                                     'build_file_id',
+    #                                     project.build_files)
+    #     execution_files = fetch_request_ids(execution_file_ids, ExecutionFile,
+    #                                         'execution_file_id')
+    #     file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
+    #                                        'file_verifier_id',
+    #                                        project.file_verifiers)
+    # except InvalidId as exc:
+    #     raise HTTPBadRequest('Invalid {0}'.format(exc.message))
 
+    # testable = Testable(name=name, is_hidden=bool(is_hidden),
+    #                     make_target=make_target,
+    #                     executable=executable, project=project,
+    #                     build_files=build_files,
+    #                     execution_files=execution_files,
+    #                     file_verifiers=file_verifiers)
+    # redir_location = request.route_path('project_edit', project_id=project.id)
+    # Session.add(testable)
+    # try:
+    #     Session.flush()
+    # except IntegrityError:
+    #     raise HTTPConflict('That name already exists for the project')
+    # return http_created(request, redir_location=redir_location,
+    #                     testable_id=testable.id)
+
+
+                    
+
+  
 
 @view_config(route_name='project_group', request_method='JOIN',
              permission='authenticated', renderer='json')
@@ -1325,6 +1328,7 @@ def test_case_update(request, name, args, expected, hide_expected,
           file_verifier_ids=List('file_verifier_ids',
                                  TextNumber('', min_value=0), optional=True),
           project=EditableDBThing('project_id', Project))
+
 def testable_create(request, name, is_hidden, make_target, executable,
                     build_file_ids, execution_file_ids, file_verifier_ids,
                     project):
