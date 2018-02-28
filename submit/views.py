@@ -549,7 +549,7 @@ def project_import(request, project):
 
     with ZipFile(import_file,"r") as myzip:
         # upload every file we were given to the backing store... this may not acutally be the best approach
-        submit_files = {path : File.fetch_or_create(myzip.read(path), base_path) for path in myzip.namelist()}
+        submit_files = {path.strip("/") : File.fetch_or_create(myzip.read(path), base_path) for path in myzip.namelist()}
         #return myzip.namelist()
 
         file_list = sorted([path for path,v in submit_files.iteritems()])
@@ -576,18 +576,20 @@ def project_import(request, project):
                 return File.fetch_or_create(input, base_path)
             if t == dict:
                 if "File" in input:
-                    fpath = os.path.join(rootdir, str(input["File"]))
+                    fpath = (os.path.join(rootdir, str(input["File"]))).strip("/")
                     if fpath not in submit_files:
-                        raise SubmitException("File %s not found in project.zip")
+                        raise SubmitException("File %s not found in project.zip" % fpath)
                     else:
-                        return submit_files[fpath.strip("/")]
+                        return submit_files[fpath]
                 elif "Text" in input: 
                     return File.fetch_or_create(input, base_path)
             raise SubmitException("Failed to load a file from the key")
         
+        #the root_dir should contain the yml, testables, makefile, execution files, and build files
         try:
             fs = Filesystem(myzip)
             root_dir = fs.listdir("")
+
             if "project.yml" not in root_dir:
                 raise SubmitException("Expected '/project.yml' file in the project.zip.")
             if len(fs.listdir("testables")) == 0:
@@ -598,18 +600,19 @@ def project_import(request, project):
             try:
                 if "Makefile" in project_yml:
                     project.makefile = get_or_create_file(project_yml["Makefile"], rootdir="/")
+
                 
             except SubmitException as error:
                 raise SubmitException("Encountered excpetion: " + str(error) + " while processing project.yml")
 
-            return project_yml
+            #return project_yml
         except SubmitException as error:
             request.session.flash("Error: " + str(error), 'errors')
 
-        transaction.commit() # TBD: determine the difference between this and Session.flush
+        #transaction.commit() # TBD: determine the difference between this and Session.flush
 
-    # redir_location = request.route_path('project_edit', project_id=project.id)
-    # return http_ok(request, redir_location=redir_location)
+        redir_location = request.route_path('project_edit', project_id=project.id)
+        return http_ok(request, redir_location=redir_location)
 
     #expected files are instances of file verifiers
 
@@ -649,7 +652,32 @@ def project_import(request, project):
     # return http_created(request, redir_location=redir_location,
     #                     testable_id=testable.id)
 
-
+# @view_config(route_name='project_item_summary', request_method='POST',
+#              permission='authenticated', renderer='json')
+# @validate(name=String('name', min_length=2),
+#           makefile=ViewableDBThing('makefile_id', File, optional=True),
+#           is_ready=TextNumber('is_ready', min_value=0, max_value=1,
+#                               optional=True),
+#           deadline=TextDate('deadline', optional=True),
+#           delay_minutes=TextNumber('delay_minutes', min_value=1),
+#           group_max=TextNumber('group_max', min_value=1),
+#           project=EditableDBThing('project_id', Project, source=MATCHDICT))
+# def project_update(request, name, makefile, is_ready, deadline, delay_minutes,
+#                    group_max, project):
+#     # Fix timezone if it doesn't exist
+#     if project.deadline and deadline and not deadline.tzinfo:
+#         deadline = deadline.replace(tzinfo=project.deadline.tzinfo)
+#     if not project.update(name=name, makefile=makefile, deadline=deadline,
+#                           delay_minutes=delay_minutes,
+#                           group_max=group_max,
+#                           status=u'ready' if bool(is_ready) else u'notready'):
+#         return http_ok(request, message='Nothing to change')
+#     try:
+#         Session.flush()
+#     except IntegrityError:
+#         raise HTTPConflict('That project name already exists for the class')
+#     request.session.flash('Project updated', 'successes')
+#     redir_location = request.route_path('project_edit', pro
                     
 
   
