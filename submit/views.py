@@ -569,7 +569,19 @@ def project_import(request, project):
                 files = [fname[pathlen:] for fname in self._files if fname.startswith(path)]
                 files = [fname for fname in files if '/' not in fname or fname.index('/') == len(fname)-1]
                 return files
+            def findroot(self,path=""):
+                folders = [folder for folder in self.listdir(path) if folder[-1:] == '/' and '__MAC' not in folder]
+                print(folders)
+                if ("project.yml" not in self.listdir(path)) and (len(folders) == 1):
+                    return self.findroot(folders[0])
+                elif "project.yml" in self.listdir(path):
+                    return path
+                else:
+                    raise SubmitException("Failed to find project.yml in root")
+                    
 
+        #need to refactor out submit files
+        #creating for makefile
         def get_or_create_file(input, rootdir = "/"):
             t = type(input)
             if t == str:
@@ -585,31 +597,86 @@ def project_import(request, project):
                     return File.fetch_or_create(input, base_path)
             raise SubmitException("Failed to load a file from the key")
         
+
+        #creating for expected files
+        
+
         #the root_dir should contain the yml, testables, makefile, execution files, and build files
         try:
             fs = Filesystem(myzip)
             root_dir = fs.listdir("")
 
-            if "project.yml" not in root_dir:
-                raise SubmitException("Expected '/project.yml' file in the project.zip.")
-            if len(fs.listdir("testables")) == 0:
+            try:
+                root_dir = fs.findroot()
+            except SubmitException as error:
+                raise SubmitException("Encountered excpetion: " + str(error) + " while finding project.yml")
+
+            if len(fs.listdir(os.path.join(root_dir, "testables"))) == 0:
                 request.session.flash("Nonfatal exception 'no testables defined' was encountered. Continuing", 'errors')
             
-            project_yml = yaml.safe_load(myzip.read("project.yml").decode('utf-8'))
+            project_yml = yaml.safe_load(myzip.read(root_dir + "project.yml").decode('utf-8'))
+            
+            #"importing" expected files
 
+
+            #importing makefile
             try:
                 if "Makefile" in project_yml:
-                    project.makefile = get_or_create_file(project_yml["Makefile"], rootdir="/")
-
+                    project.makefile = get_or_create_file(project_yml["Makefile"], rootdir=root_dir)
                 
             except SubmitException as error:
-                raise SubmitException("Encountered excpetion: " + str(error) + " while processing project.yml")
+                raise SubmitException("Encountered excpetion: " + str(error) + " while processing Makefile")
+            
+            #import execution files
+            try:
+
+                execution_dir = os.path.join(root_dir,"execution_files/")
+                project.execution_files = []
+                for file in fs.listdir(execution_dir):
+                    if file:
+                        file_obj = File.fetch_or_create(myzip.read(os.path.join(execution_dir, file)), base_path)
+                        exec_file = ExecutionFile(
+                            project = project,
+                            file = file_obj,
+                            filename = file
+                        )
+                        Session.add(exec_file)
+                        project.execution_files.append(exec_file)
+
+                    else:
+                        print("file: %s is empty" % file)
+            except:
+                raise SubmitException("Encountered exception while adding execution files")
+            
+
+            #importing build files
+
+            build_dir = os.path.join(root_dir,"build_files/")
+            project.build_files = []
+            for file in fs.listdir(build_dir):
+                if file:
+                    print("appending %s" % file)
+                    file_obj = File.fetch_or_create(myzip.read(os.path.join(execution_dir, file)), base_path)
+                    build_file = BuildFile(
+                        project = project,
+                        file = file_obj,
+                        filename = file
+                    )
+                    Session.add(build_file)
+                    project.build_files.append(build_file)
+
+                else:
+                    print("file: %s is empty" % file)
 
             #return project_yml
         except SubmitException as error:
             request.session.flash("Error: " + str(error), 'errors')
 
-        #transaction.commit() # TBD: determine the difference between this and Session.flush
+        try:
+            Session.flush()
+        except IntegrityError:
+            raise HTTPConflict('Session could not fluch, reccomending stool softeners')
+            
 
         redir_location = request.route_path('project_edit', project_id=project.id)
         return http_ok(request, redir_location=redir_location)
