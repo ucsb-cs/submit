@@ -525,6 +525,7 @@ def project_export(request, project):
 Project %s 
 This is a full copy of the testables and test cases in this project.
 It may be imported again using the import feature""" % project.name))
+
     def make_big_string(text, filename):
         def is_binary(str):
             return "\x00" in str or any(ord(x) > 0x80 for x in str)
@@ -537,28 +538,31 @@ It may be imported again using the import feature""" % project.name))
             }
         
     for testable in project.testables:
-        testable_yml = ("testables/%s/%s.yml" % (testable.name,testable.name))
+        # create a dictionary that will represent the testable
         testable_dict = {}
-        testable_dict["BuildFiles"] = [file.filename for file in project.build_files]
-        testable_dict["ExecutionFiles"] = [file.filename for file in project.execution_files]
-        testable_dict["ExpectedFiles"] = [file.filename for file in project.file_verifiers]
+        # I think these belong in project.yml, not sure if they are needed per assignment
+        # testable_dict["BuildFiles"] = [file.filename for file in project.build_files]
+        # testable_dict["ExecutionFiles"] = [file.filename for file in project.execution_files]
+        testable_dict["ExpectedFiles"] = [file.filename for file in testable.file_verifiers]
+        testable_dict["TestCases"] = {}
         for test_case in testable.test_cases:
+            # this is the basepath where we will write out long text objects if necessary
+            testcase_basepath = ("testables/%s/%s" % (testable.name, test_case.name)) 
+
+            # create a dict to hold the information for the test case!
             tc_dict = {}
-            filename = ("testables/%s/%s" % (testable.name, test_case.name))
             tc_dict["points"] = test_case.points
-            tc_dict["args"] = make_big_string(test_case.args, filename + ".args")
+            tc_dict["args"] = make_big_string(test_case.args, testcase_basepath + ".args")
             with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin, open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
-                tc_dict["stdin"] = make_big_string(fin.read(), filename + ".stdin")
-                tc_dict["stdout"] = make_big_string(fout.read(), filename + ".stdout")
-            testable_dict[test_case.name] = tc_dict
-            # TODO: refactor this to suport more of the options each testcase offers
-            #response.append(("text", filename + ".args", test_)
-            #response.append(("file", filename + ".stdin", File.file_path(base_path,test_case.stdin.sha1)))
-            #response.append(("file", filename + ".stdout", File.file_path(base_path,test_case.expected.sha1)))
-        response.append(("text",testable_yml,yaml.safe_dump(testable_dict, default_flow_style=False)))
-    print("I am a tag")
-    print(response)
-    print (testable_dict)
+                tc_dict["stdin"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
+                tc_dict["stdout"] = make_big_string(fout.read(), testcase_basepath + ".stdout")
+            testable_dict["TestCases"][test_case.name] = tc_dict
+
+        response.append((
+            "text",
+            "testables/%s/%s.yml" % (testable.name,testable.name),
+            yaml.safe_dump(testable_dict, default_flow_style=False)
+        ))
 
     return zip_response_adv(request, project.name + ".zip", response)
 
