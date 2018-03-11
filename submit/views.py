@@ -525,13 +525,41 @@ def project_export(request, project):
 Project %s 
 This is a full copy of the testables and test cases in this project.
 It may be imported again using the import feature""" % project.name))
+    def make_big_string(text, filename):
+        def is_binary(str):
+            return "\x00" in str or any(ord(x) > 0x80 for x in str)
+        if len(text) < 150 and not is_binary(text):
+            return text
+        else:
+            response.append(("file", filename, text))
+            return {
+                "File": filename
+            }
+        
     for testable in project.testables:
+        testable_yml = ("testables/%s/%s.yml" % (testable.name,testable.name))
+        testable_dict = {}
+        testable_dict["BuildFiles"] = [file.filename for file in project.build_files]
+        testable_dict["ExecutionFiles"] = [file.filename for file in project.execution_files]
+        testable_dict["ExpectedFiles"] = [file.filename for file in project.file_verifiers]
         for test_case in testable.test_cases:
-            # TODO: refactor this to suport more of the options each testcase offers
+            tc_dict = {}
             filename = ("testables/%s/%s" % (testable.name, test_case.name))
-            response.append(("text", filename + ".args", test_case.args))
-            response.append(("file", filename + ".stdin", File.file_path(base_path,test_case.stdin.sha1)))
-            response.append(("file", filename + ".stdout", File.file_path(base_path,test_case.expected.sha1)))
+            tc_dict["points"] = test_case.points
+            tc_dict["args"] = make_big_string(test_case.args, filename + ".args")
+            with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin, open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
+                tc_dict["stdin"] = make_big_string(fin.read(), filename + ".stdin")
+                tc_dict["stdout"] = make_big_string(fout.read(), filename + ".stdout")
+            testable_dict[test_case.name] = tc_dict
+            # TODO: refactor this to suport more of the options each testcase offers
+            #response.append(("text", filename + ".args", test_)
+            #response.append(("file", filename + ".stdin", File.file_path(base_path,test_case.stdin.sha1)))
+            #response.append(("file", filename + ".stdout", File.file_path(base_path,test_case.expected.sha1)))
+        response.append(("text",testable_yml,yaml.safe_dump(testable_dict, default_flow_style=False)))
+    print("I am a tag")
+    print(response)
+    print (testable_dict)
+
     return zip_response_adv(request, project.name + ".zip", response)
 
 @view_config(route_name='project_import', request_method='POST',
@@ -557,7 +585,7 @@ def project_import(request, project):
         # we now clear out all of the old testables
         # TODO: back these up to a temporary location before reomoving them incase of encountering errors!
         # alternatively only allow imports on empty projects ? 
-        project.testables[:] = []
+        #project.testables[:] = []
 
         class Filesystem(object):
             #paths need to have trailing slashes
