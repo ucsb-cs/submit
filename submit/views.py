@@ -532,17 +532,41 @@ It may be imported again using the import feature""" % project.name))
         if len(text) < 150 and not is_binary(text):
             return text
         else:
-            response.append(("file", filename, text))
+            response.append(("text", filename, text))
             return {
                 "File": filename
             }
+    project_yml_dict = {}
+    project_yml_dict["Name"] = project.name
+    project_yml_dict["ExpectedFiles"] = {
+        expected_file.filename : {
+            "CopyToExecution": expected_file.copy_to_execution,
+            "MinSize": expected_file.min_size,
+            "MaxSize": expected_file.max_size,
+            "MinLines": expected_file.min_lines,
+            "MaxLines": expected_file.max_lines,
+            "Optional": expected_file.optional,
+            "WarningRegex": expected_file.warning_regex,
+        } for expected_file in project.file_verifiers
+    }
+    
+    response.append(("text", "project.yml", yaml.safe_dump(project_yml_dict, default_flow_style=False)))
+    
+    if project.makefile is not None:
+        response.append(("file", "Makefile", File.file_path(base_path,project.makefile.sha1)))
         
+    for buildfile in project.build_files:
+        response.append(("file", "BuildFiles/" + buildfile.filename, File.file_path(base_path,buildfile.file.sha1)))
+
+    for execution in project.execution_files:
+        response.append(("file", "ExecutionFiles/" + execution.filename, File.file_path(base_path,execution.file.sha1)))
+        
+
     for testable in project.testables:
         # create a dictionary that will represent the testable
         testable_dict = {}
-        # I think these belong in project.yml, not sure if they are needed per assignment
-        # testable_dict["BuildFiles"] = [file.filename for file in project.build_files]
-        # testable_dict["ExecutionFiles"] = [file.filename for file in project.execution_files]
+        testable_dict["BuildFiles"] = [file.filename for file in testable.build_files]
+        testable_dict["ExecutionFiles"] = [file.filename for file in testable.execution_files]
         testable_dict["ExpectedFiles"] = [file.filename for file in testable.file_verifiers]
         testable_dict["TestCases"] = {}
         for test_case in testable.test_cases:
