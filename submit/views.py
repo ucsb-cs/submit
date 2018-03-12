@@ -556,10 +556,10 @@ It may be imported again using the import feature""" % project.name))
         response.append(("file", "Makefile", File.file_path(base_path,project.makefile.sha1)))
         
     for buildfile in project.build_files:
-        response.append(("file", "BuildFiles/" + buildfile.filename, File.file_path(base_path,buildfile.file.sha1)))
+        response.append(("file", "build_files/" + buildfile.filename, File.file_path(base_path,buildfile.file.sha1)))
 
     for execution in project.execution_files:
-        response.append(("file", "ExecutionFiles/" + execution.filename, File.file_path(base_path,execution.file.sha1)))
+        response.append(("file", "execution_files/" + execution.filename, File.file_path(base_path,execution.file.sha1)))
         
 
     for testable in project.testables:
@@ -712,7 +712,7 @@ def project_import(request, project):
             for file in fs.listdir(build_dir):
                 if file:
                     print("appending %s" % file)
-                    file_obj = File.fetch_or_create(myzip.read(os.path.join(execution_dir, file)), base_path)
+                    file_obj = File.fetch_or_create(myzip.read(os.path.join(build_dir, file)), base_path)
                     build_file = BuildFile(
                         project = project,
                         file = file_obj,
