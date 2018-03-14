@@ -575,11 +575,11 @@ It may be imported again using the import feature""" % project.name))
 
             # create a dict to hold the information for the test case!
             tc_dict = {}
-            tc_dict["points"] = test_case.points
-            tc_dict["args"] = make_big_string(test_case.args, testcase_basepath + ".args")
+            tc_dict["Points"] = test_case.points
+            tc_dict["Args"] = make_big_string(test_case.args, testcase_basepath + ".args")
             with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin, open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
-                tc_dict["stdin"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
-                tc_dict["stdout"] = make_big_string(fout.read(), testcase_basepath + ".stdout")
+                tc_dict["Stdin"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
+                tc_dict["Stdout"] = make_big_string(fout.read(), testcase_basepath + ".stdout")
             testable_dict["TestCases"][test_case.name] = tc_dict
 
         response.append((
@@ -654,14 +654,11 @@ def project_import(request, project):
             raise SubmitException("Failed to load a file from the key")
         
 
-        #creating for expected files
-        
-
+        #creating for expected files, testables, and buildfiles
         #the root_dir should contain the yml, testables, makefile, execution files, and build files
         try:
             fs = Filesystem(myzip)
             root_dir = fs.listdir("")
-
             try:
                 root_dir = fs.findroot()
             except SubmitException as error:
@@ -672,8 +669,29 @@ def project_import(request, project):
             
             project_yml = yaml.safe_load(myzip.read(root_dir + "project.yml").decode('utf-8'))
             
-            #"importing" expected files
 
+            #"importing" expected files
+            try:
+                if "ExpectedFiles" in project_yml:
+                    project.expected_files = []
+                    for file in project_yml["ExpectedFiles"]:
+                        expect_file = FileVerifier(
+                            filename = file,
+                            copy_to_execution = project_yml["ExpectedFiles"][file]["CopyToExecution"],
+                            min_size = project_yml["ExpectedFiles"][file]["MinSize"],
+                            max_size = project_yml["ExpectedFiles"][file]["MaxSize"],
+                            min_lines = project_yml["ExpectedFiles"][file]["MinLines"],
+                            max_lines = project_yml["ExpectedFiles"][file]["MaxLines"],
+                            optional = project_yml["ExpectedFiles"][file]["Optional"],
+                            project_id = project.id,
+                            warning_regex = project_yml["ExpectedFiles"][file]["WarningRegex"]
+                        ) 
+                        Session.add(expect_file)
+                        project.expected_files.append(expect_file)
+                else:
+                    print("file: %s is empty" % file)
+            except SubmitException as error:
+                raise SubmitException("Encountered excpetion: " + str(error) + " while processing Expected FIles")
 
             #importing makefile
             try:
@@ -706,7 +724,6 @@ def project_import(request, project):
             
 
             #importing build files
-
             build_dir = os.path.join(root_dir,"build_files/")
             project.build_files = []
             for file in fs.listdir(build_dir):
@@ -723,6 +740,47 @@ def project_import(request, project):
 
                 else:
                     print("file: %s is empty" % file)
+            
+            #importing testables
+            # try:
+            #     testables_dir = os.path.join(root_dir,"testables/")
+            #     project.testables = []
+
+            #     for testable_folder in fs.listdir(testables_dir):
+            #         print("HELLOOOOOO")
+            #         print(fs.listdir(testable_folder))
+            #         testable_yml = yaml.safe_load(myzip.read(os.path.join(testables_dir,testable_folder) + ("%s.yml" % testable_folder.strip("/"))).decode('utf-8'))
+
+            #         testable_file = Testable(
+            #             build_files = testable_yml["BuildFiles"],
+            #             executable = testable_yml["Exectable"],
+            #             #execution_files = testable_yml["ExecutionFiles"],
+            #             file_verifiers = testable_yml["ExpectedFiles"],
+            #             is_hidden = testable_yml["IsHidden"],
+            #             #make_target =  testable_yml["MakeTarget"],
+            #             name = testable_folder.strip("/"),
+            #             project_id = project.id,
+            #             test_cases = [test_case for test_case in testable_yml["TestCases"]]
+            #         )
+
+            #         # if "TestCases" in testable_folder:
+            #         #     for test_case_name in testable_yml["TestCases"]:
+            #         #         test_case = TestCase(
+            #         #             args = get_or_create_file(testable_yml["TestCases"][test_case_name]["Args"], rootdir=testable_folder),
+            #         #             expected =  get_or_create_file(testable_yml["TestCases"][test_case_name]["STDOUT"], rootdir=testable_folder),
+            #         #             hide_expected = testable_yml["TestCases"][test_case_name]["HideExpected"],
+            #         #             name = test_case_name,
+            #         #             points = testable_yml["TestCases"][test_case_name]["Points"]
+            #         #             stdin = get_or_create_file(testable_yml["TestCases"][test_case_name]["STDIN"], rootdir=testable_folder)
+            #         #     )
+                    
+            #         Session.add(testable_file)
+            #         project.testables.append(testable_file)
+
+
+
+            # except SubmitException as error:
+            #     raise SubmitException("Encountered exception while adding testables")
 
             #return project_yml
         except SubmitException as error:
