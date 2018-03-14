@@ -529,7 +529,7 @@ It may be imported again using the import feature""" % project.name))
     def make_big_string(text, filename):
         def is_binary(str):
             return "\x00" in str or any(ord(x) > 0x80 for x in str)
-        if len(text) < 150 and not is_binary(text):
+        if len(text) < 150 and "\n" not in text and not is_binary(text):
             return text
         else:
             response.append(("text", filename, text))
@@ -568,6 +568,9 @@ It may be imported again using the import feature""" % project.name))
         testable_dict["BuildFiles"] = [file.filename for file in testable.build_files]
         testable_dict["ExecutionFiles"] = [file.filename for file in testable.execution_files]
         testable_dict["ExpectedFiles"] = [file.filename for file in testable.file_verifiers]
+        testable_dict["MakeTarget"] = testable.make_target
+        testable_dict["Executable"] = testable.executable
+        testable_dict["IsHidden"] = testable.is_hidden
         testable_dict["TestCases"] = {}
         for test_case in testable.test_cases:
             # this is the basepath where we will write out long text objects if necessary
@@ -577,10 +580,15 @@ It may be imported again using the import feature""" % project.name))
             tc_dict = {}
             tc_dict["Points"] = test_case.points
             tc_dict["Args"] = make_big_string(test_case.args, testcase_basepath + ".args")
-            with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin, open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
-                tc_dict["Stdin"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
-                tc_dict["Stdout"] = make_big_string(fout.read(), testcase_basepath + ".stdout")
+            if test_case.stdin != None:
+                with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin:
+                    tc_dict["Stdin"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
+            if test_case.expected != None:
+                with open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
+                    tc_dict["Stdout"] = make_big_string(fout.read(), testcase_basepath + ".stdout")
             testable_dict["TestCases"][test_case.name] = tc_dict
+        
+
 
         response.append((
             "text",
@@ -635,6 +643,17 @@ def project_import(request, project):
                 else:
                     raise SubmitException("Failed to find project.yml in root")
                     
+        def build_file_tree(dirlist, fullpath=""):
+            dirs = filter(lambda x: "/" in x, dirlist)
+            files = filter(lambda x: "/" not in x, dirlist)
+            return dict({
+                dirname : build_file_tree([ x[x.index("/")+1:] for x in dirlist ], fullpath=fullpath + "/" + dirname)
+                for dirname, dirlist in itertools.groupby(dirs, lambda x: x[0 : x.index("/")])
+            }, **{
+                file : fullpath + "/" + file
+                for file in files
+            })
+
 
         #need to refactor out submit files
         #creating for makefile
@@ -663,7 +682,8 @@ def project_import(request, project):
                 root_dir = fs.findroot()
             except SubmitException as error:
                 raise SubmitException("Encountered excpetion: " + str(error) + " while finding project.yml")
-
+            
+            print("Testables", fs.listdir(os.path.join(root_dir, "testables")))
             if len(fs.listdir(os.path.join(root_dir, "testables"))) == 0:
                 request.session.flash("Nonfatal exception 'no testables defined' was encountered. Continuing", 'errors')
             
@@ -691,7 +711,7 @@ def project_import(request, project):
                 else:
                     print("file: %s is empty" % file)
             except SubmitException as error:
-                raise SubmitException("Encountered excpetion: " + str(error) + " while processing Expected FIles")
+                raise SubmitException("Encountered exception: " + str(error) + " while processing Expected FIles")
 
             #importing makefile
             try:
@@ -699,7 +719,7 @@ def project_import(request, project):
                     project.makefile = get_or_create_file(project_yml["Makefile"], rootdir=root_dir)
                 
             except SubmitException as error:
-                raise SubmitException("Encountered excpetion: " + str(error) + " while processing Makefile")
+                raise SubmitException("Encountered exception: " + str(error) + " while processing Makefile")
             
             #import execution files
             try:
