@@ -763,6 +763,9 @@ def project_import(request, project):
                             project_id = project.id
                         )
 
+
+                        #print(testable_yml["BuildFiles"])
+
                         testable_file.test_cases = []
                         if "TestCases" in testable_yml:
                             for test_case_name in testable_yml["TestCases"]:
@@ -778,6 +781,27 @@ def project_import(request, project):
                                 Session.add(test_cases)
                                 testable_file.test_cases.append(test_cases)  
                         
+                        testable_file.build_files = []
+                        if "BuildFiles" in testable_yml:
+                            for files in testable_yml["BuildFiles"]:
+                                build_file = BuildFile.fetch_by(project=project, filename=files)
+                                Session.add(build_file)
+                                testable_file.build_files.append(build_file)
+
+                        testable_file.execution_files = []
+                        if "ExecutionFiles" in testable_yml:
+                            for files in testable_yml["ExecutionFiles"]:
+                                execution_file = ExecutionFile.fetch_by(project=project, filename=files)
+                                Session.add(execution_file)
+                                testable_file.execution_files.append(execution_file)
+
+                        testable_file.file_verifiers = []
+                        if "ExpectedFiles" in testable_yml:
+                            for files in testable_yml["ExpectedFiles"]:
+                                expected_file = FileVerifier.fetch_by(project=project, filename=files)
+                                Session.add(expected_file)
+                                testable_file.file_verifiers.append(expected_file)  
+
                         Session.add(testable_file)
                         project.testables.append(testable_file)     
             except SubmitException as error:

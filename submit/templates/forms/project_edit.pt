@@ -57,7 +57,6 @@
           <input type="hidden" name="makefile_id" value="${project.makefile_id}">
           <button class="btn btn-warning">Update Project Settings</button>
           <a class="btn btn-warning" href="${request.route_path('project_export', project_id=project.id)}">Download Project</a>
-          <a class="btn btn-warning" href="${request.route_path('project_import', project_id=project.id)}">Upload Project</a>
         </div>
       </div>
     </form>
