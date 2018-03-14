@@ -742,43 +742,52 @@ def project_import(request, project):
                     print("file: %s is empty" % file)
             
             #importing testables
-            # try:
-            #     testables_dir = os.path.join(root_dir,"testables/")
-            #     project.testables = []
+            try:
+                testables_dir = os.path.join(root_dir,"testables/")
+                project.testables = []
 
-            #     for testable_folder in fs.listdir(testables_dir):
-            #         if "/" in testable_folder:
-            #             print(testable_folder)
-            #             testable_yml = yaml.safe_load(myzip.read(os.path.join(testables_dir,testable_folder) + ("%s.yml" % testable_folder.strip("/"))).decode('utf-8'))
 
-            #             testable_file = Testable(
-            #                 build_files = testable_yml["BuildFiles"],
-            #                 #executable = testable_yml["Executable"],
-            #                 execution_files = testable_yml["ExecutionFiles"],
-            #                 file_verifiers = testable_yml["ExpectedFiles"],
-            #                 is_hidden = testable_yml["IsHidden"],
-            #                 #make_target =  testable_yml["MakeTarget"],
-            #                 #name = testable_folder.strip("/"),
-            #                 project_id = project.id,
-            #                 #test_cases = [test_case for test_case in testable_yml["TestCases"]]
-            #             )
-
-            #             # if "TestCases" in testable_folder:
-            #             #     for test_case_name in testable_yml["TestCases"]:
-            #             #         test_case = TestCase(
-            #             #             args = get_or_create_file(testable_yml["TestCases"][test_case_name]["Args"], rootdir=testable_folder),
-            #             #             expected =  get_or_create_file(testable_yml["TestCases"][test_case_name]["STDOUT"], rootdir=testable_folder),
-            #             #             hide_expected = testable_yml["TestCases"][test_case_name]["HideExpected"],
-            #             #             name = test_case_name,
-            #             #             points = testable_yml["TestCases"][test_case_name]["Points"]
-            #             #             stdin = get_or_create_file(testable_yml["TestCases"][test_case_name]["STDIN"], rootdir=testable_folder)
-            #             #     )
+                for testable_folder in fs.listdir(testables_dir):
+                    if "/" in testable_folder:
+                        print(testable_folder)
+                        testable_yml = yaml.safe_load(myzip.read(os.path.join(testables_dir,testable_folder) + ("%s.yml" % testable_folder.strip("/"))).decode('utf-8'))
                         
-            #             Session.add(testable_file)
-            #             project.testables.append(testable_file)
+                        testable_file = Testable(
+                            #build_files = testable_yml["BuildFiles"],
+                            executable = testable_yml["Executable"],
+                            #execution_files = testable_yml["ExecutionFiles"],
+                            #file_verifiers = testable_yml["ExpectedFiles"],
+                            is_hidden = testable_yml["IsHidden"],
+                            #make_target =  testable_yml["MakeTarget"],
+                            name = testable_folder.strip("/"),
+                            project_id = project.id,
+                            #test_cases = 
+                        )
 
-            # except SubmitException as error:
-            #     raise SubmitException("Encountered exception while adding testables")
+                        Session.add(testable_file)
+                        project.testables.append(testable_file)
+                #need to refactor this too much going on
+                for testable_folder in fs.listdir(testables_dir):
+                    if "/" in testable_folder:
+                        testable_yml = yaml.safe_load(myzip.read(os.path.join(testables_dir,testable_folder) + ("%s.yml" % testable_folder.strip("/"))).decode('utf-8'))
+                        for testable in project.testables:
+                            testable.test_cases = []
+                            if "TestCases" in testable_yml:
+                                for test_case_name in testable_yml["TestCases"]:
+                                    test_cases = TestCase(
+                                        args = testable_yml["TestCases"][test_case_name]["Args"],
+                                        expected =  get_or_create_file(testable_yml["TestCases"][test_case_name]["STDOUT"], rootdir=testable_folder),
+                                        hide_expected = testable_yml["TestCases"][test_case_name]["HideExpected"],
+                                        name = test_case_name,
+                                        points = testable_yml["TestCases"][test_case_name]["Points"],
+                                        stdin = get_or_create_file(testable_yml["TestCases"][test_case_name]["STDIN"], rootdir=testable_folder)
+                                    )
+                                
+                                    Session.add(test_cases)
+                                    testable.test_cases.append(test_cases)       
+
+            except SubmitException as error:
+                raise SubmitException("Encountered exception while adding testables")
 
             #return project_yml
         except SubmitException as error:
