@@ -758,7 +758,7 @@ def project_import(request, project):
                             #execution_files = testable_yml["ExecutionFiles"],
                             #file_verifiers = testable_yml["ExpectedFiles"],
                             is_hidden = testable_yml["IsHidden"],
-                            #make_target =  testable_yml["MakeTarget"],
+                            make_target = testable_yml["MakeTarget"],
                             name = testable_folder.strip("/"),
                             project_id = project.id
                         )
