@@ -579,13 +579,16 @@ It may be imported again using the import feature""" % project.name))
             # create a dict to hold the information for the test case!
             tc_dict = {}
             tc_dict["Points"] = test_case.points
-            tc_dict["Args"] = make_big_string(test_case.args, testcase_basepath + ".args")
+            tc_dict["Command"] = make_big_string(test_case.args, testcase_basepath + ".args")
             if test_case.stdin != None:
                 with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin:
-                    tc_dict["Stdin"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
+                    tc_dict["Input"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
             if test_case.expected != None:
                 with open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
-                    tc_dict["Stdout"] = make_big_string(fout.read(), testcase_basepath + ".stdout")
+                    tc_dict["Output"] = make_big_string(fout.read(), testcase_basepath + "." + test_case.source)
+                    tc_dict["Output"]["Source"] = test_case.source
+                    if (tc_dict["Output"]["Source"] == "file"):
+                        tc_dict["Output"]["Source"] = test_case.output_filename
             testable_dict["TestCases"][test_case.name] = tc_dict
         
 
