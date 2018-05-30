@@ -5,6 +5,7 @@ import os
 import transaction
 from base64 import b64decode
 from hashlib import sha1
+import itertools
 from pyramid_addons.helpers import (http_created, http_gone, http_ok)
 from pyramid_addons.validation import (EmailAddress, Enum, List, Or, String,
                                        RegexString, TextNumber,
@@ -18,16 +19,19 @@ from pyramid.security import forget, remember
 from pyramid.settings import asbool
 from pyramid.view import (forbidden_view_config, notfound_view_config,
                           view_config)
+import re 
 from sqlalchemy.exc import IntegrityError
+import yaml
+from zipfile import ZipFile
 from .diff_render import HTMLDiff
-from .exceptions import GroupWithException, InvalidId
+from .exceptions import GroupWithException, InvalidId, SubmitException
 from .helpers import (
     AccessibleDBThing, DBThing as AnyDBThing, DummyTemplateAttr,
     EditableDBThing, TestableStatus, TextDate, ViewableDBThing, UmailAddress,
     add_user, clone, fetch_request_ids, file_verifier_verification,
     prepare_renderable, prev_next_submission, prev_next_group,
     project_file_create, project_file_delete, send_email,
-    test_case_verification, zip_response)
+    test_case_verification, zip_response,zip_response_adv)
 from .models import (BuildFile, Class, ExecutionFile, File, FileVerifier,
                      Group, GroupRequest, PasswordReset, Project, Session,
                      Submission, SubmissionToFile, TestCase, Testable, User,
@@ -509,6 +513,403 @@ def project_edit(request, project):
                                 project_id=project.id)
     return {'project': project, 'action': action}
 
+
+@view_config(route_name='project_export',
+             request_method='GET', permission='autenticated',
+             renderer='json')
+@validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
+def project_export(request, project):
+    response = []
+    base_path = request.registry.settings['file_directory']
+    response.append(("text", "README.txt", """
+Project %s 
+This is a full copy of the testables and test cases in this project.
+It may be imported again using the import feature""" % project.name))
+
+    def make_big_string(text, filename):
+        def is_binary(str):
+            return "\x00" in str or any(ord(x) > 0x80 for x in str)
+        if len(text) < 150 and "\n" not in text and not is_binary(text):
+            return text
+        else:
+            response.append(("text", filename, text))
+            return {
+                "File": filename
+            }
+    project_yml_dict = {}
+    project_yml_dict["Name"] = project.name
+    project_yml_dict["ExpectedFiles"] = {
+        expected_file.filename : {
+            "CopyToExecution": expected_file.copy_to_execution,
+            "MinSize": expected_file.min_size,
+            "MaxSize": expected_file.max_size,
+            "MinLines": expected_file.min_lines,
+            "MaxLines": expected_file.max_lines,
+            "Optional": expected_file.optional,
+            "WarningRegex": expected_file.warning_regex,
+        } for expected_file in project.file_verifiers
+    }
+    
+    response.append(("text", "project.yml", yaml.safe_dump(project_yml_dict, default_flow_style=False)))
+    
+    if project.makefile is not None:
+        response.append(("file", "Makefile", File.file_path(base_path,project.makefile.sha1)))
+        
+    for buildfile in project.build_files:
+        response.append(("file", "build_files/" + buildfile.filename, File.file_path(base_path,buildfile.file.sha1)))
+
+    for execution in project.execution_files:
+        response.append(("file", "execution_files/" + execution.filename, File.file_path(base_path,execution.file.sha1)))
+        
+
+    for testable in project.testables:
+        # create a dictionary that will represent the testable
+        testable_dict = {}
+        testable_dict["BuildFiles"] = [file.filename for file in testable.build_files]
+        testable_dict["ExecutionFiles"] = [file.filename for file in testable.execution_files]
+        testable_dict["ExpectedFiles"] = [file.filename for file in testable.file_verifiers]
+        testable_dict["MakeTarget"] = testable.make_target
+        testable_dict["Executable"] = testable.executable
+        testable_dict["IsHidden"] = testable.is_hidden
+        testable_dict["TestCases"] = {}
+        for test_case in testable.test_cases:
+            # this is the basepath where we will write out long text objects if necessary
+            testcase_basepath = ("testables/%s/%s" % (testable.name, test_case.name)) 
+
+            # create a dict to hold the information for the test case!
+            tc_dict = {}
+            tc_dict["Points"] = test_case.points
+            tc_dict["Command"] = make_big_string(test_case.args, testcase_basepath + ".args")
+            if test_case.stdin != None:
+                with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin:
+                    tc_dict["Input"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
+            if test_case.expected != None:
+                with open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
+                    tc_dict["Output"] = make_big_string(fout.read(), testcase_basepath + "." + test_case.source)
+                    tc_dict["Output"]["Source"] = test_case.source
+                    if (tc_dict["Output"]["Source"] == "file"):
+                        tc_dict["Output"]["Source"] = test_case.output_filename
+            testable_dict["TestCases"][test_case.name] = tc_dict
+        
+
+
+        response.append((
+            "text",
+            "testables/%s/%s.yml" % (testable.name,testable.name),
+            yaml.safe_dump(testable_dict, default_flow_style=False)
+        ))
+
+    return zip_response_adv(request, project.name + ".zip", response)
+
+@view_config(route_name='project_import', request_method='POST',
+             permission='authenticated', renderer='json')
+@validate(project=EditableDBThing('project_id', Project, source=MATCHDICT))
+# @validate(file=ViewableDBThing('makefile_id', File, optional=False),
+#           project=EditableDBThing('project_id', Project, source=MATCHDICT))
+
+def project_import(request, project):
+    import_filename = request.POST['file'].filename
+    import_file = request.POST['file'].file
+
+    # create a file in the backing filesystem for each file in the zip archive!
+    base_path = request.registry.settings['file_directory']
+
+    with ZipFile(import_file,"r") as myzip:
+        # upload every file we were given to the backing store... this may not acutally be the best approach
+        submit_files = {path.strip("/") : File.fetch_or_create(myzip.read(path), base_path) for path in myzip.namelist()}
+        #return myzip.namelist()
+
+        file_list = sorted([path for path,v in submit_files.iteritems()])
+
+        # we now clear out all of the old testables
+        # TODO: back these up to a temporary location before reomoving them incase of encountering errors!
+        # alternatively only allow imports on empty projects ? 
+        #project.testables[:] = []
+
+        class Filesystem(object):
+            #paths need to have trailing slashes
+            def __init__(self, file):
+                self._file = file
+                self._files = file.namelist()
+            def listdir(self, path):
+                pathlen = len(path)
+                files = [fname[pathlen:] for fname in self._files if fname.startswith(path)]
+                files = [fname for fname in files if '/' not in fname or fname.index('/') == len(fname)-1]
+                return files
+            def findroot(self,path=""):
+                folders = [folder for folder in self.listdir(path) if folder[-1:] == '/' and '__MAC' not in folder]
+                print(folders)
+                if ("project.yml" not in self.listdir(path)) and (len(folders) == 1):
+                    return self.findroot(folders[0])
+                elif "project.yml" in self.listdir(path):
+                    return path
+                else:
+                    raise SubmitException("Failed to find project.yml in root")
+                    
+        def build_file_tree(dirlist, fullpath=""):
+            dirs = filter(lambda x: "/" in x, dirlist)
+            files = filter(lambda x: "/" not in x, dirlist)
+            return dict({
+                dirname : build_file_tree([ x[x.index("/")+1:] for x in dirlist ], fullpath=fullpath + "/" + dirname)
+                for dirname, dirlist in itertools.groupby(dirs, lambda x: x[0 : x.index("/")])
+            }, **{
+                file : fullpath + "/" + file
+                for file in files
+            })
+
+
+        #need to refactor out submit files
+        #creating for makefile
+        def get_or_create_file(input, rootdir = "/"):
+            t = type(input)
+            if t == str:
+                return File.fetch_or_create(input, base_path)
+            if t == dict:
+                if "File" in input:
+                    fpath = (os.path.join(rootdir, str(input["File"]))).strip("/")
+                    if fpath not in submit_files:
+                        raise SubmitException("File %s not found in project.zip" % fpath)
+                    else:
+                        return submit_files[fpath]
+                elif "Text" in input: 
+                    return File.fetch_or_create(input, base_path)
+            raise SubmitException("Failed to load a file from the key")
+        
+
+        #creating for expected files, testables, and buildfiles
+        #the root_dir should contain the yml, testables, makefile, execution files, and build files
+        try:
+            fs = Filesystem(myzip)
+            root_dir = fs.listdir("")
+            try:
+                root_dir = fs.findroot()
+            except SubmitException as error:
+                raise SubmitException("Encountered excpetion: " + str(error) + " while finding project.yml")
+            
+            print("Testables", fs.listdir(os.path.join(root_dir, "testables")))
+            if len(fs.listdir(os.path.join(root_dir, "testables"))) == 0:
+                request.session.flash("Nonfatal exception 'no testables defined' was encountered. Continuing", 'errors')
+            
+            project_yml = yaml.safe_load(myzip.read(root_dir + "project.yml").decode('utf-8'))
+            
+
+            #"importing" expected files
+            try:
+                if "ExpectedFiles" in project_yml:
+                    project.expected_files = []
+                    for file in project_yml["ExpectedFiles"]:
+                        expect_file = FileVerifier(
+                            filename = file,
+                            copy_to_execution = project_yml["ExpectedFiles"][file]["CopyToExecution"],
+                            min_size = project_yml["ExpectedFiles"][file]["MinSize"],
+                            max_size = project_yml["ExpectedFiles"][file]["MaxSize"],
+                            min_lines = project_yml["ExpectedFiles"][file]["MinLines"],
+                            max_lines = project_yml["ExpectedFiles"][file]["MaxLines"],
+                            optional = project_yml["ExpectedFiles"][file]["Optional"],
+                            project_id = project.id,
+                            warning_regex = project_yml["ExpectedFiles"][file]["WarningRegex"]
+                        ) 
+                        Session.add(expect_file)
+                        project.expected_files.append(expect_file)
+                else:
+                    print("file: %s is empty" % file)
+            except SubmitException as error:
+                raise SubmitException("Encountered exception: " + str(error) + " while processing Expected FIles")
+
+            #importing makefile
+            try:
+                if "Makefile" in project_yml:
+                    project.makefile = get_or_create_file(project_yml["Makefile"], rootdir=root_dir)
+                
+            except SubmitException as error:
+                raise SubmitException("Encountered exception: " + str(error) + " while processing Makefile")
+            
+            #import execution files
+            try:
+
+                execution_dir = os.path.join(root_dir,"execution_files/")
+                project.execution_files = []
+                for file in fs.listdir(execution_dir):
+                    if file:
+                        file_obj = File.fetch_or_create(myzip.read(os.path.join(execution_dir, file)), base_path)
+                        exec_file = ExecutionFile(
+                            project = project,
+                            file = file_obj,
+                            filename = file
+                        )
+                        Session.add(exec_file)
+                        project.execution_files.append(exec_file)
+
+                    else:
+                        print("file: %s is empty" % file)
+            except:
+                raise SubmitException("Encountered exception while adding execution files")
+            
+
+            #importing build files
+            build_dir = os.path.join(root_dir,"build_files/")
+            project.build_files = []
+            for file in fs.listdir(build_dir):
+                if file:
+                    print("appending %s" % file)
+                    file_obj = File.fetch_or_create(myzip.read(os.path.join(build_dir, file)), base_path)
+                    build_file = BuildFile(
+                        project = project,
+                        file = file_obj,
+                        filename = file
+                    )
+                    Session.add(build_file)
+                    project.build_files.append(build_file)
+
+                else:
+                    print("file: %s is empty" % file)
+            
+            #importing testables
+            try:
+                testables_dir = os.path.join(root_dir,"testables/")
+                project.testables = []
+                
+
+                for testable_folder in fs.listdir(testables_dir):
+                    if "/" in testable_folder:
+                        print(testable_folder)
+                        testable_yml = yaml.safe_load(myzip.read(os.path.join(testables_dir,testable_folder) + ("%s.yml" % testable_folder.strip("/"))).decode('utf-8'))
+                        
+                        testable_file = Testable(
+                            #build_files = testable_yml["BuildFiles"],
+                            executable = testable_yml["Executable"],
+                            #execution_files = testable_yml["ExecutionFiles"],
+                            #file_verifiers = testable_yml["ExpectedFiles"],
+                            is_hidden = testable_yml["IsHidden"],
+                            make_target = testable_yml["MakeTarget"],
+                            name = testable_folder.strip("/"),
+                            project_id = project.id
+                        )
+
+
+                        #print(testable_yml["BuildFiles"])
+
+                        testable_file.test_cases = []
+                        if "TestCases" in testable_yml:
+                            for test_case_name in testable_yml["TestCases"]:
+                                test_cases = TestCase(
+                                    args = testable_yml["TestCases"][test_case_name]["Args"],
+                                    expected =  get_or_create_file(testable_yml["TestCases"][test_case_name]["STDOUT"], rootdir=testable_folder),
+                                    hide_expected = testable_yml["TestCases"][test_case_name]["HideExpected"],
+                                    name = test_case_name,
+                                    points = testable_yml["TestCases"][test_case_name]["Points"],
+                                    stdin = get_or_create_file(testable_yml["TestCases"][test_case_name]["STDIN"], rootdir=testable_folder)
+                                )
+                            
+                                Session.add(test_cases)
+                                testable_file.test_cases.append(test_cases)  
+                        
+                        testable_file.build_files = []
+                        if "BuildFiles" in testable_yml:
+                            for files in testable_yml["BuildFiles"]:
+                                build_file = BuildFile.fetch_by(project=project, filename=files)
+                                Session.add(build_file)
+                                testable_file.build_files.append(build_file)
+
+                        testable_file.execution_files = []
+                        if "ExecutionFiles" in testable_yml:
+                            for files in testable_yml["ExecutionFiles"]:
+                                execution_file = ExecutionFile.fetch_by(project=project, filename=files)
+                                Session.add(execution_file)
+                                testable_file.execution_files.append(execution_file)
+
+                        testable_file.file_verifiers = []
+                        if "ExpectedFiles" in testable_yml:
+                            for files in testable_yml["ExpectedFiles"]:
+                                expected_file = FileVerifier.fetch_by(project=project, filename=files)
+                                Session.add(expected_file)
+                                testable_file.file_verifiers.append(expected_file)  
+
+                        Session.add(testable_file)
+                        project.testables.append(testable_file)     
+            except SubmitException as error:
+                raise SubmitException("Encountered exception while adding testables")
+
+            #return project_yml
+        except SubmitException as error:
+            request.session.flash("Error: " + str(error), 'errors')
+
+        try:
+            Session.flush()
+        except IntegrityError:
+            raise HTTPConflict('Session could not fluch, reccomending stool softeners')
+            
+
+        redir_location = request.route_path('project_edit', project_id=project.id)
+        return http_ok(request, redir_location=redir_location)
+
+    #expected files are instances of file verifiers
+
+
+    # def testable_create(request, name, is_hidden, make_target, executable,
+    #                 build_file_ids, execution_file_ids, file_verifier_ids,
+    #                 project):
+    # if make_target and not project.makefile:
+    #     msg = 'make_target cannot be specified without a make file'
+    #     raise HTTPBadRequest(msg)
+
+    # try:
+    #     # Verify the ids actually exist and are associated with the project
+    #     build_files = fetch_request_ids(build_file_ids, BuildFile,
+    #                                     'build_file_id',
+    #                                     project.build_files)
+    #     execution_files = fetch_request_ids(execution_file_ids, ExecutionFile,
+    #                                         'execution_file_id')
+    #     file_verifiers = fetch_request_ids(file_verifier_ids, FileVerifier,
+    #                                        'file_verifier_id',
+    #                                        project.file_verifiers)
+    # except InvalidId as exc:
+    #     raise HTTPBadRequest('Invalid {0}'.format(exc.message))
+
+    # testable = Testable(name=name, is_hidden=bool(is_hidden),
+    #                     make_target=make_target,
+    #                     executable=executable, project=project,
+    #                     build_files=build_files,
+    #                     execution_files=execution_files,
+    #                     file_verifiers=file_verifiers)
+    # redir_location = request.route_path('project_edit', project_id=project.id)
+    # Session.add(testable)
+    # try:
+    #     Session.flush()
+    # except IntegrityError:
+    #     raise HTTPConflict('That name already exists for the project')
+    # return http_created(request, redir_location=redir_location,
+    #                     testable_id=testable.id)
+
+# @view_config(route_name='project_item_summary', request_method='POST',
+#              permission='authenticated', renderer='json')
+# @validate(name=String('name', min_length=2),
+#           makefile=ViewableDBThing('makefile_id', File, optional=True),
+#           is_ready=TextNumber('is_ready', min_value=0, max_value=1,
+#                               optional=True),
+#           deadline=TextDate('deadline', optional=True),
+#           delay_minutes=TextNumber('delay_minutes', min_value=1),
+#           group_max=TextNumber('group_max', min_value=1),
+#           project=EditableDBThing('project_id', Project, source=MATCHDICT))
+# def project_update(request, name, makefile, is_ready, deadline, delay_minutes,
+#                    group_max, project):
+#     # Fix timezone if it doesn't exist
+#     if project.deadline and deadline and not deadline.tzinfo:
+#         deadline = deadline.replace(tzinfo=project.deadline.tzinfo)
+#     if not project.update(name=name, makefile=makefile, deadline=deadline,
+#                           delay_minutes=delay_minutes,
+#                           group_max=group_max,
+#                           status=u'ready' if bool(is_ready) else u'notready'):
+#         return http_ok(request, message='Nothing to change')
+#     try:
+#         Session.flush()
+#     except IntegrityError:
+#         raise HTTPConflict('That project name already exists for the class')
+#     request.session.flash('Project updated', 'successes')
+#     redir_location = request.route_path('project_edit', pro
+                    
+
+  
 
 @view_config(route_name='project_group', request_method='JOIN',
              permission='authenticated', renderer='json')
@@ -1184,6 +1585,7 @@ def test_case_update(request, name, args, expected, hide_expected,
           file_verifier_ids=List('file_verifier_ids',
                                  TextNumber('', min_value=0), optional=True),
           project=EditableDBThing('project_id', Project))
+
 def testable_create(request, name, is_hidden, make_target, executable,
                     build_file_ids, execution_file_ids, file_verifier_ids,
                     project):

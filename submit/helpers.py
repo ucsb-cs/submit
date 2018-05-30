@@ -493,6 +493,34 @@ def zip_response(request, filename, files):
     finally:
         tmp_file.close()
 
+def zip_response_adv(request, filename, files):
+    """Return a Response object that is a zipfile with name filename.
+
+    :param request: The request object.
+    :param filename: The filename the browser should save the file as.
+    :param files: A list of tupples mapping 
+        (type, name in zip, filepath or content) 
+        i.e.
+        ('file', name in zip, './myfile.txt')
+        ('text', name in zip, 'a.out foo bar baz the quick fox jumps over the lazy dog')
+        only supported types are 'file' and 'text'
+    """
+    tmp_file = NamedTemporaryFile()
+    try:
+        with ZipFile(tmp_file, 'w') as zip_file:
+            for type, zip_path, actual in files:
+                if type == "file":
+                    zip_file.write(actual, zip_path)
+                else:
+                    zip_file.writestr(zip_path, actual)
+        tmp_file.flush()  # Just in case
+        response = FileResponse(tmp_file.name, request=request,
+                                content_type=str('application/zip'))
+        response.headers['Content-disposition'] = ('attachment; filename="{0}"'
+                                                   .format(filename))
+        return response
+    finally:
+        tmp_file.close() 
 
 # Avoid cyclic import
 from .diff_unit import DiffWithMetadata, ImageOutput, TextOutput

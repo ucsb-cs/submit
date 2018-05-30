@@ -31,7 +31,8 @@ requires = [
     'python-dateutil>=2.1',
     'sqla_mixins>=0.6',
     'sqlalchemy>=0.7.8',
-    'zope.sqlalchemy>=0.7.1']
+    'zope.sqlalchemy>=0.7.1',
+    'PyYAML']
 
 setup(name=PACKAGE_NAME,
       author='Bryce Boe',

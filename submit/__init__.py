@@ -38,6 +38,8 @@ def add_routes(config):
     config.add_route('password_reset', '/password_reset')
     config.add_route('password_reset_item', '/password_reset/{token}')
     config.add_route('project', '/p')
+    config.add_route('project_export', '/p/{project_id}/export')
+    config.add_route('project_import', '/p/{project_id}/import')
     config.add_route('project_group', '/p/{project_id}/group')
     config.add_route('project_group_item',
                      '/p/{project_id}/group/{group_request_id}')
