@@ -519,7 +519,7 @@ def full_fname(fname, project):
   return project.name + "/" + fname
 
 @view_config(route_name='project_export',
-             request_method='GET', permission='autenticated',
+             request_method='GET', permission='authenticated',
              renderer='json')
 @validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
 def project_export(request, project):
