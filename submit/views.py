@@ -519,7 +519,7 @@ def full_fname(fname, project):
   return project.name + "/" + fname
 
 @view_config(route_name='project_export',
-             request_method='GET', permission='autenticated',
+             request_method='GET', permission='authenticated',
              renderer='json')
 @validate(project=ViewableDBThing('project_id', Project, source=MATCHDICT))
 def project_export(request, project):
@@ -532,14 +532,11 @@ It may be imported again using the import feature""" % project.name))
 
     def make_big_string(text, filename):
         def is_binary(str):
-            return "\x00" in str or any(ord(x) > 0x80 for x in str)
-        if len(text) < 150 and "\n" not in text and not is_binary(text):
-            return text
-        else:
-            response.append(("text", full_fname(filename, project), text))
-            return {
-                "File": filename
-            }
+            return "\x00" in str or any(ord(x) > 0x80 for x in str)        
+        response.append(("text", filename, text))
+        return {
+          "File": filename
+        }
     project_yml_dict = {}
     project_yml_dict["Name"] = project.name
     project_yml_dict["ExpectedFiles"] = {
