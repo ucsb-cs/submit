@@ -531,15 +531,10 @@ This is a full copy of the testables and test cases in this project.
 It may be imported again using the import feature""" % project.name))
 
     def make_big_string(text, filename):
-        def is_binary(str):
-            return "\x00" in str or any(ord(x) > 0x80 for x in str)
-        if len(text) < 150 and "\n" not in text and not is_binary(text):
-            return text
-        else:
-            response.append(("text", full_fname(filename, project), text))
-            return {
-                "File": filename
-            }
+        response.append(("text", full_fname(filename, project), text))
+        return {
+            "File": filename
+        }
     project_yml_dict = {}
     project_yml_dict["Name"] = project.name
     project_yml_dict["ExpectedFiles"] = {
@@ -583,13 +578,16 @@ It may be imported again using the import feature""" % project.name))
             # create a dict to hold the information for the test case!
             tc_dict = {}
             tc_dict["Points"] = test_case.points
-            tc_dict["Args"] = test_case.args
+            tc_dict["Command"] = test_case.args
             if test_case.stdin != None:
                 with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin:
-                    tc_dict["Stdin"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
+                    tc_dict["Input"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
             if test_case.expected != None:
                 with open(File.file_path(base_path,test_case.expected.sha1), 'r') as fout:
-                    tc_dict["Stdout"] = make_big_string(fout.read(), testcase_basepath + ".stdout")
+                    tc_dict["Output"] = make_big_string(fout.read(), testcase_basepath + "." + test_case.source)
+                    tc_dict["Output"]["Source"] = test_case.source
+                    if (tc_dict["Output"]["Source"] == "file"):
+                      tc_dict["Output"]["Source"] = test_case.output_filename
             testable_dict["TestCases"][test_case.name] = tc_dict
         
 
