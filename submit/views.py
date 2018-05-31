@@ -514,6 +514,10 @@ def project_edit(request, project):
     return {'project': project, 'action': action}
 
 
+
+def full_fname(fname, project):
+  return project.name + "/" + fname
+
 @view_config(route_name='project_export',
              request_method='GET', permission='authenticated',
              renderer='json')
@@ -521,17 +525,15 @@ def project_edit(request, project):
 def project_export(request, project):
     response = []
     base_path = request.registry.settings['file_directory']
-    response.append(("text", "README.txt", """
+    response.append(("text", full_fname("README.txt", project), """
 Project %s 
 This is a full copy of the testables and test cases in this project.
 It may be imported again using the import feature""" % project.name))
 
     def make_big_string(text, filename):
-        def is_binary(str):
-            return "\x00" in str or any(ord(x) > 0x80 for x in str)        
-        response.append(("text", filename, text))
+        response.append(("text", full_fname(filename, project), text))
         return {
-          "File": filename
+            "File": filename
         }
     project_yml_dict = {}
     project_yml_dict["Name"] = project.name
@@ -547,16 +549,16 @@ It may be imported again using the import feature""" % project.name))
         } for expected_file in project.file_verifiers
     }
     
-    response.append(("text", "project.yml", yaml.safe_dump(project_yml_dict, default_flow_style=False)))
+    response.append(("text", full_fname("project.yml", project), yaml.safe_dump(project_yml_dict, default_flow_style=False)))
     
     if project.makefile is not None:
-        response.append(("file", "Makefile", File.file_path(base_path,project.makefile.sha1)))
+        response.append(("file", full_fname("Makefile", project), File.file_path(base_path,project.makefile.sha1)))
         
     for buildfile in project.build_files:
-        response.append(("file", "build_files/" + buildfile.filename, File.file_path(base_path,buildfile.file.sha1)))
+        response.append(("file", full_fname("build_files/" + buildfile.filename, project), File.file_path(base_path,buildfile.file.sha1)))
 
     for execution in project.execution_files:
-        response.append(("file", "execution_files/" + execution.filename, File.file_path(base_path,execution.file.sha1)))
+        response.append(("file", full_fname("execution_files/" + execution.filename, project), File.file_path(base_path,execution.file.sha1)))
         
 
     for testable in project.testables:
@@ -576,7 +578,7 @@ It may be imported again using the import feature""" % project.name))
             # create a dict to hold the information for the test case!
             tc_dict = {}
             tc_dict["Points"] = test_case.points
-            tc_dict["Command"] = make_big_string(test_case.args, testcase_basepath + ".args")
+            tc_dict["Command"] = test_case.args
             if test_case.stdin != None:
                 with open(File.file_path(base_path,test_case.stdin.sha1), 'r') as fin:
                     tc_dict["Input"] = make_big_string(fin.read(), testcase_basepath + ".stdin")
@@ -585,14 +587,14 @@ It may be imported again using the import feature""" % project.name))
                     tc_dict["Output"] = make_big_string(fout.read(), testcase_basepath + "." + test_case.source)
                     tc_dict["Output"]["Source"] = test_case.source
                     if (tc_dict["Output"]["Source"] == "file"):
-                        tc_dict["Output"]["Source"] = test_case.output_filename
+                      tc_dict["Output"]["Source"] = test_case.output_filename
             testable_dict["TestCases"][test_case.name] = tc_dict
         
 
 
         response.append((
             "text",
-            "testables/%s/%s.yml" % (testable.name,testable.name),
+            full_fname("testables/%s/%s.yml" % (testable.name,testable.name), project),
             yaml.safe_dump(testable_dict, default_flow_style=False)
         ))
 
