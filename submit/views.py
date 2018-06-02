@@ -577,6 +577,7 @@ It may be imported again using the import feature""" % project.name))
 
             # create a dict to hold the information for the test case!
             tc_dict = {}
+            tc_dict["HideExpected"] = test_case.hide_expected
             tc_dict["Points"] = test_case.points
             tc_dict["Command"] = test_case.args
             if test_case.stdin != None:
